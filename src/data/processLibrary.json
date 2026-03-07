@@ -1,0 +1,335 @@
+[
+  {
+    "id": "finance",
+    "name": "Financeiro",
+    "icon": "💰",
+    "processes": [
+      {
+        "id": "finance-ap",
+        "name": "Contas a Pagar",
+        "subprocesses": [
+          { "code": "F-AP-01", "id": "finance-ap-invoice",        "name": "Recebimento e Validação de Faturas", "process": "Contas a Pagar", "macroprocess": "Financeiro", "category": "Accounts Payable" },
+          { "code": "F-AP-02", "id": "finance-ap-approval",       "name": "Aprovação de Pagamentos",           "process": "Contas a Pagar", "macroprocess": "Financeiro", "category": "Accounts Payable" },
+          { "code": "F-AP-03", "id": "finance-ap-reconciliation", "name": "Conciliação com Fornecedores",      "process": "Contas a Pagar", "macroprocess": "Financeiro", "category": "Accounts Payable" },
+          { "code": "F-AP-04", "id": "finance-ap-tax",            "name": "Cálculo e Recolhimento de Impostos","process": "Contas a Pagar", "macroprocess": "Financeiro", "category": "Accounts Payable" }
+        ]
+      },
+      {
+        "id": "finance-ar",
+        "name": "Contas a Receber",
+        "subprocesses": [
+          { "code": "F-AR-01", "id": "finance-ar-billing",    "name": "Faturamento ao Cliente",        "process": "Contas a Receber", "macroprocess": "Financeiro", "category": "Accounts Receivable" },
+          { "code": "F-AR-02", "id": "finance-ar-collection", "name": "Cobrança e Inadimplência",      "process": "Contas a Receber", "macroprocess": "Financeiro", "category": "Accounts Receivable" },
+          { "code": "F-AR-03", "id": "finance-ar-cash",       "name": "Baixa de Pagamentos Recebidos", "process": "Contas a Receber", "macroprocess": "Financeiro", "category": "Accounts Receivable" },
+          { "code": "F-AR-04", "id": "finance-ar-credit",     "name": "Gestão de Crédito",             "process": "Contas a Receber", "macroprocess": "Financeiro", "category": "Accounts Receivable" }
+        ]
+      },
+      {
+        "id": "finance-reporting",
+        "name": "Reporte Financeiro",
+        "subprocesses": [
+          { "code": "F-FR-01", "id": "finance-rep-close",      "name": "Fechamento Mensal",            "process": "Reporte Financeiro", "macroprocess": "Financeiro", "category": "Financial Reporting" },
+          { "code": "F-FR-02", "id": "finance-rep-statements", "name": "Elaboração de Demonstrativos", "process": "Reporte Financeiro", "macroprocess": "Financeiro", "category": "Financial Reporting" },
+          { "code": "F-FR-03", "id": "finance-rep-management", "name": "Relatórios Gerenciais",        "process": "Reporte Financeiro", "macroprocess": "Financeiro", "category": "Financial Reporting" },
+          { "code": "F-FR-04", "id": "finance-rep-variance",   "name": "Análise de Variações",         "process": "Reporte Financeiro", "macroprocess": "Financeiro", "category": "Financial Reporting" }
+        ]
+      },
+      {
+        "id": "finance-budget",
+        "name": "Orçamento e Forecast",
+        "subprocesses": [
+          { "code": "F-BU-01", "id": "finance-bud-prep",     "name": "Elaboração do Orçamento Anual", "process": "Orçamento e Forecast", "macroprocess": "Financeiro", "category": "Budgeting & Forecast" },
+          { "code": "F-BU-02", "id": "finance-bud-forecast", "name": "Revisões de Forecast",          "process": "Orçamento e Forecast", "macroprocess": "Financeiro", "category": "Budgeting & Forecast" },
+          { "code": "F-BU-03", "id": "finance-bud-control",  "name": "Controle Orçamentário",         "process": "Orçamento e Forecast", "macroprocess": "Financeiro", "category": "Budgeting & Forecast" }
+        ]
+      },
+      {
+        "id": "finance-treasury",
+        "name": "Tesouraria",
+        "subprocesses": [
+          { "code": "F-TR-01", "id": "finance-tre-cashflow",  "name": "Gestão de Fluxo de Caixa", "process": "Tesouraria", "macroprocess": "Financeiro", "category": "Treasury" },
+          { "code": "F-TR-02", "id": "finance-tre-bank",      "name": "Conciliação Bancária",      "process": "Tesouraria", "macroprocess": "Financeiro", "category": "Treasury" },
+          { "code": "F-TR-03", "id": "finance-tre-liquidity", "name": "Planejamento de Liquidez",  "process": "Tesouraria", "macroprocess": "Financeiro", "category": "Treasury" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "procurement",
+    "name": "Compras",
+    "icon": "🛒",
+    "processes": [
+      {
+        "id": "proc-requisition",
+        "name": "Requisição de Compra",
+        "subprocesses": [
+          { "code": "P-RQ-01", "id": "proc-req-create",   "name": "Criação de Solicitação de Compra", "process": "Requisição de Compra", "macroprocess": "Compras", "category": "Purchase Requisition" },
+          { "code": "P-RQ-02", "id": "proc-req-approval", "name": "Fluxo de Aprovação",               "process": "Requisição de Compra", "macroprocess": "Compras", "category": "Purchase Requisition" },
+          { "code": "P-RQ-03", "id": "proc-req-budget",   "name": "Validação Orçamentária",           "process": "Requisição de Compra", "macroprocess": "Compras", "category": "Purchase Requisition" }
+        ]
+      },
+      {
+        "id": "proc-sourcing",
+        "name": "Sourcing",
+        "subprocesses": [
+          { "code": "P-SR-01", "id": "proc-src-rfq",         "name": "Emissão de Cotações (RFQ)", "process": "Sourcing", "macroprocess": "Compras", "category": "Sourcing" },
+          { "code": "P-SR-02", "id": "proc-src-eval",        "name": "Avaliação de Fornecedores", "process": "Sourcing", "macroprocess": "Compras", "category": "Sourcing" },
+          { "code": "P-SR-03", "id": "proc-src-negotiation", "name": "Negociação e Fechamento",   "process": "Sourcing", "macroprocess": "Compras", "category": "Sourcing" }
+        ]
+      },
+      {
+        "id": "proc-po",
+        "name": "Pedido de Compra",
+        "subprocesses": [
+          { "code": "P-PO-01", "id": "proc-po-create",   "name": "Criação do Pedido (PO)",   "process": "Pedido de Compra", "macroprocess": "Compras", "category": "Purchase Order" },
+          { "code": "P-PO-02", "id": "proc-po-approval", "name": "Aprovação do Pedido",      "process": "Pedido de Compra", "macroprocess": "Compras", "category": "Purchase Order" },
+          { "code": "P-PO-03", "id": "proc-po-tracking", "name": "Acompanhamento do Pedido", "process": "Pedido de Compra", "macroprocess": "Compras", "category": "Purchase Order" }
+        ]
+      },
+      {
+        "id": "proc-supplier",
+        "name": "Gestão de Fornecedores",
+        "subprocesses": [
+          { "code": "P-SM-01", "id": "proc-sup-onboard",     "name": "Cadastro e Homologação",             "process": "Gestão de Fornecedores", "macroprocess": "Compras", "category": "Supplier Management" },
+          { "code": "P-SM-02", "id": "proc-sup-performance", "name": "Avaliação de Desempenho",            "process": "Gestão de Fornecedores", "macroprocess": "Compras", "category": "Supplier Management" },
+          { "code": "P-SM-03", "id": "proc-sup-risk",        "name": "Gestão de Riscos com Fornecedores", "process": "Gestão de Fornecedores", "macroprocess": "Compras", "category": "Supplier Management" }
+        ]
+      },
+      {
+        "id": "proc-contract",
+        "name": "Gestão de Contratos",
+        "subprocesses": [
+          { "code": "P-CM-01", "id": "proc-con-create",     "name": "Elaboração de Contratos",       "process": "Gestão de Contratos", "macroprocess": "Compras", "category": "Contract Management" },
+          { "code": "P-CM-02", "id": "proc-con-renewal",    "name": "Renovação e Aditivos",          "process": "Gestão de Contratos", "macroprocess": "Compras", "category": "Contract Management" },
+          { "code": "P-CM-03", "id": "proc-con-compliance", "name": "Monitoramento de Conformidade", "process": "Gestão de Contratos", "macroprocess": "Compras", "category": "Contract Management" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sales",
+    "name": "Vendas",
+    "icon": "📈",
+    "processes": [
+      {
+        "id": "sales-leads",
+        "name": "Gestão de Leads",
+        "subprocesses": [
+          { "code": "S-LD-01", "id": "sales-lead-capture", "name": "Captação de Leads",            "process": "Gestão de Leads", "macroprocess": "Vendas", "category": "Lead Management" },
+          { "code": "S-LD-02", "id": "sales-lead-qualify", "name": "Qualificação de Leads",        "process": "Gestão de Leads", "macroprocess": "Vendas", "category": "Lead Management" },
+          { "code": "S-LD-03", "id": "sales-lead-assign",  "name": "Distribuição para Vendedores", "process": "Gestão de Leads", "macroprocess": "Vendas", "category": "Lead Management" }
+        ]
+      },
+      {
+        "id": "sales-opportunity",
+        "name": "Gestão de Oportunidades",
+        "subprocesses": [
+          { "code": "S-OP-01", "id": "sales-opp-pipeline", "name": "Gestão de Pipeline",                 "process": "Gestão de Oportunidades", "macroprocess": "Vendas", "category": "Opportunity Management" },
+          { "code": "S-OP-02", "id": "sales-opp-quote",    "name": "Elaboração de Propostas e Cotações", "process": "Gestão de Oportunidades", "macroprocess": "Vendas", "category": "Opportunity Management" },
+          { "code": "S-OP-03", "id": "sales-opp-close",    "name": "Fechamento e Contratação",           "process": "Gestão de Oportunidades", "macroprocess": "Vendas", "category": "Opportunity Management" }
+        ]
+      },
+      {
+        "id": "sales-order",
+        "name": "Gestão de Pedidos",
+        "subprocesses": [
+          { "code": "S-OM-01", "id": "sales-ord-entry",       "name": "Entrada de Pedidos",      "process": "Gestão de Pedidos", "macroprocess": "Vendas", "category": "Order Management" },
+          { "code": "S-OM-02", "id": "sales-ord-confirm",     "name": "Confirmação e Validação", "process": "Gestão de Pedidos", "macroprocess": "Vendas", "category": "Order Management" },
+          { "code": "S-OM-03", "id": "sales-ord-fulfillment", "name": "Fulfillment e Entrega",   "process": "Gestão de Pedidos", "macroprocess": "Vendas", "category": "Order Management" }
+        ]
+      },
+      {
+        "id": "sales-reporting",
+        "name": "Reporte de Vendas",
+        "subprocesses": [
+          { "code": "S-SR-01", "id": "sales-rep-performance", "name": "Desempenho Comercial",  "process": "Reporte de Vendas", "macroprocess": "Vendas", "category": "Sales Reporting" },
+          { "code": "S-SR-02", "id": "sales-rep-pipeline",    "name": "Relatório de Pipeline", "process": "Reporte de Vendas", "macroprocess": "Vendas", "category": "Sales Reporting" },
+          { "code": "S-SR-03", "id": "sales-rep-forecast",    "name": "Forecast de Vendas",    "process": "Reporte de Vendas", "macroprocess": "Vendas", "category": "Sales Reporting" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "customer-ops",
+    "name": "Operações com Clientes",
+    "icon": "🤝",
+    "processes": [
+      {
+        "id": "cop-service",
+        "name": "Atendimento ao Cliente",
+        "subprocesses": [
+          { "code": "CO-CS-01", "id": "cop-svc-ticket",     "name": "Abertura e Triagem de Chamados",    "process": "Atendimento ao Cliente", "macroprocess": "Operações com Clientes", "category": "Customer Service" },
+          { "code": "CO-CS-02", "id": "cop-svc-resolution", "name": "Resolução de Problemas",            "process": "Atendimento ao Cliente", "macroprocess": "Operações com Clientes", "category": "Customer Service" },
+          { "code": "CO-CS-03", "id": "cop-svc-escalation", "name": "Gestão de Escalações",             "process": "Atendimento ao Cliente", "macroprocess": "Operações com Clientes", "category": "Customer Service" },
+          { "code": "CO-CS-04", "id": "cop-svc-survey",     "name": "Pesquisa de Satisfação (NPS/CSAT)", "process": "Atendimento ao Cliente", "macroprocess": "Operações com Clientes", "category": "Customer Service" }
+        ]
+      },
+      {
+        "id": "cop-onboarding",
+        "name": "Onboarding de Clientes",
+        "subprocesses": [
+          { "code": "CO-OB-01", "id": "cop-onb-setup",    "name": "Configuração da Conta",  "process": "Onboarding de Clientes", "macroprocess": "Operações com Clientes", "category": "Customer Onboarding" },
+          { "code": "CO-OB-02", "id": "cop-onb-training", "name": "Treinamento do Cliente", "process": "Onboarding de Clientes", "macroprocess": "Operações com Clientes", "category": "Customer Onboarding" },
+          { "code": "CO-OB-03", "id": "cop-onb-docs",     "name": "Documentação e Aceite",  "process": "Onboarding de Clientes", "macroprocess": "Operações com Clientes", "category": "Customer Onboarding" }
+        ]
+      },
+      {
+        "id": "cop-success",
+        "name": "Customer Success",
+        "subprocesses": [
+          { "code": "CO-SU-01", "id": "cop-suc-monitoring", "name": "Monitoramento de Saúde da Conta", "process": "Customer Success", "macroprocess": "Operações com Clientes", "category": "Customer Success" },
+          { "code": "CO-SU-02", "id": "cop-suc-health",     "name": "Health Score e Alertas",          "process": "Customer Success", "macroprocess": "Operações com Clientes", "category": "Customer Success" },
+          { "code": "CO-SU-03", "id": "cop-suc-renewal",    "name": "Gestão de Renovação",             "process": "Customer Success", "macroprocess": "Operações com Clientes", "category": "Customer Success" }
+        ]
+      },
+      {
+        "id": "cop-billing",
+        "name": "Faturamento e Cobrança",
+        "subprocesses": [
+          { "code": "CO-BC-01", "id": "cop-bil-invoice", "name": "Geração de Faturas",          "process": "Faturamento e Cobrança", "macroprocess": "Operações com Clientes", "category": "Billing & Collections" },
+          { "code": "CO-BC-02", "id": "cop-bil-payment", "name": "Processamento de Pagamentos", "process": "Faturamento e Cobrança", "macroprocess": "Operações com Clientes", "category": "Billing & Collections" },
+          { "code": "CO-BC-03", "id": "cop-bil-dispute", "name": "Tratamento de Disputas",      "process": "Faturamento e Cobrança", "macroprocess": "Operações com Clientes", "category": "Billing & Collections" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "supply-chain",
+    "name": "Supply Chain",
+    "icon": "🔗",
+    "processes": [
+      {
+        "id": "sc-demand",
+        "name": "Planejamento de Demanda",
+        "subprocesses": [
+          { "code": "SC-DP-01", "id": "sc-dem-forecast",  "name": "Previsão de Demanda",                "process": "Planejamento de Demanda", "macroprocess": "Supply Chain", "category": "Demand Planning" },
+          { "code": "SC-DP-02", "id": "sc-dem-sop",       "name": "S&OP (Sales & Operations Planning)", "process": "Planejamento de Demanda", "macroprocess": "Supply Chain", "category": "Demand Planning" },
+          { "code": "SC-DP-03", "id": "sc-dem-inventory", "name": "Planejamento de Estoque",            "process": "Planejamento de Demanda", "macroprocess": "Supply Chain", "category": "Demand Planning" }
+        ]
+      },
+      {
+        "id": "sc-inventory",
+        "name": "Gestão de Estoque",
+        "subprocesses": [
+          { "code": "SC-IM-01", "id": "sc-inv-control",       "name": "Controle de Estoque",          "process": "Gestão de Estoque", "macroprocess": "Supply Chain", "category": "Inventory Management" },
+          { "code": "SC-IM-02", "id": "sc-inv-replenishment", "name": "Reposição de Estoque",         "process": "Gestão de Estoque", "macroprocess": "Supply Chain", "category": "Inventory Management" },
+          { "code": "SC-IM-03", "id": "sc-inv-cycle",         "name": "Contagem Cíclica e Inventário","process": "Gestão de Estoque", "macroprocess": "Supply Chain", "category": "Inventory Management" }
+        ]
+      },
+      {
+        "id": "sc-logistics",
+        "name": "Logística",
+        "subprocesses": [
+          { "code": "SC-LG-01", "id": "sc-log-inbound",  "name": "Logística de Entrada (Recebimento)", "process": "Logística", "macroprocess": "Supply Chain", "category": "Logistics" },
+          { "code": "SC-LG-02", "id": "sc-log-outbound", "name": "Logística de Saída (Expedição)",    "process": "Logística", "macroprocess": "Supply Chain", "category": "Logistics" },
+          { "code": "SC-LG-03", "id": "sc-log-returns",  "name": "Logística Reversa (Devoluções)",    "process": "Logística", "macroprocess": "Supply Chain", "category": "Logistics" }
+        ]
+      },
+      {
+        "id": "sc-supplier",
+        "name": "Relações com Fornecedores SC",
+        "subprocesses": [
+          { "code": "SC-SR-01", "id": "sc-sup-planning", "name": "Planejamento de Compras SC",            "process": "Relações com Fornecedores SC", "macroprocess": "Supply Chain", "category": "Supplier Relations" },
+          { "code": "SC-SR-02", "id": "sc-sup-delivery", "name": "Acompanhamento de Entregas",            "process": "Relações com Fornecedores SC", "macroprocess": "Supply Chain", "category": "Supplier Relations" },
+          { "code": "SC-SR-03", "id": "sc-sup-quality",  "name": "Inspeção de Qualidade no Recebimento", "process": "Relações com Fornecedores SC", "macroprocess": "Supply Chain", "category": "Supplier Relations" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "human-resources",
+    "name": "Recursos Humanos",
+    "icon": "👥",
+    "processes": [
+      {
+        "id": "hr-recruitment",
+        "name": "Recrutamento e Seleção",
+        "subprocesses": [
+          { "code": "HR-RS-01", "id": "hr-rec-requisition", "name": "Abertura de Vaga e Aprovação", "process": "Recrutamento e Seleção", "macroprocess": "Recursos Humanos", "category": "Recruitment" },
+          { "code": "HR-RS-02", "id": "hr-rec-screening",   "name": "Triagem de Candidatos",       "process": "Recrutamento e Seleção", "macroprocess": "Recursos Humanos", "category": "Recruitment" },
+          { "code": "HR-RS-03", "id": "hr-rec-interview",   "name": "Processo de Entrevistas",     "process": "Recrutamento e Seleção", "macroprocess": "Recursos Humanos", "category": "Recruitment" },
+          { "code": "HR-RS-04", "id": "hr-rec-offer",       "name": "Oferta e Contratação",        "process": "Recrutamento e Seleção", "macroprocess": "Recursos Humanos", "category": "Recruitment" }
+        ]
+      },
+      {
+        "id": "hr-onboarding",
+        "name": "Integração (Onboarding)",
+        "subprocesses": [
+          { "code": "HR-OB-01", "id": "hr-onb-docs",        "name": "Documentação Admissional",              "process": "Integração (Onboarding)", "macroprocess": "Recursos Humanos", "category": "Onboarding" },
+          { "code": "HR-OB-02", "id": "hr-onb-access",      "name": "Provisionamento de Acessos e Sistemas", "process": "Integração (Onboarding)", "macroprocess": "Recursos Humanos", "category": "Onboarding" },
+          { "code": "HR-OB-03", "id": "hr-onb-orientation", "name": "Integração e Orientação",               "process": "Integração (Onboarding)", "macroprocess": "Recursos Humanos", "category": "Onboarding" }
+        ]
+      },
+      {
+        "id": "hr-payroll",
+        "name": "Folha de Pagamento",
+        "subprocesses": [
+          { "code": "HR-PY-01", "id": "hr-pay-processing", "name": "Processamento da Folha",            "process": "Folha de Pagamento", "macroprocess": "Recursos Humanos", "category": "Payroll" },
+          { "code": "HR-PY-02", "id": "hr-pay-benefits",   "name": "Administração de Benefícios",       "process": "Folha de Pagamento", "macroprocess": "Recursos Humanos", "category": "Payroll" },
+          { "code": "HR-PY-03", "id": "hr-pay-compliance", "name": "Obrigações Trabalhistas e Fiscais", "process": "Folha de Pagamento", "macroprocess": "Recursos Humanos", "category": "Payroll" }
+        ]
+      },
+      {
+        "id": "hr-performance",
+        "name": "Gestão de Desempenho",
+        "subprocesses": [
+          { "code": "HR-PM-01", "id": "hr-perf-goals",       "name": "Definição de Metas e OKRs",           "process": "Gestão de Desempenho", "macroprocess": "Recursos Humanos", "category": "Performance Management" },
+          { "code": "HR-PM-02", "id": "hr-perf-review",      "name": "Avaliação de Desempenho",             "process": "Gestão de Desempenho", "macroprocess": "Recursos Humanos", "category": "Performance Management" },
+          { "code": "HR-PM-03", "id": "hr-perf-development", "name": "Plano de Desenvolvimento Individual", "process": "Gestão de Desempenho", "macroprocess": "Recursos Humanos", "category": "Performance Management" }
+        ]
+      },
+      {
+        "id": "hr-training",
+        "name": "Treinamento e Desenvolvimento",
+        "subprocesses": [
+          { "code": "HR-TD-01", "id": "hr-tra-needs",    "name": "Levantamento de Necessidades (LNT)", "process": "Treinamento e Desenvolvimento", "macroprocess": "Recursos Humanos", "category": "Training & Development" },
+          { "code": "HR-TD-02", "id": "hr-tra-delivery", "name": "Execução de Treinamentos",          "process": "Treinamento e Desenvolvimento", "macroprocess": "Recursos Humanos", "category": "Training & Development" },
+          { "code": "HR-TD-03", "id": "hr-tra-cert",     "name": "Controle de Certificações",         "process": "Treinamento e Desenvolvimento", "macroprocess": "Recursos Humanos", "category": "Training & Development" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "governance",
+    "name": "Governança",
+    "icon": "⚖️",
+    "processes": [
+      {
+        "id": "gov-compliance",
+        "name": "Compliance",
+        "subprocesses": [
+          { "code": "G-CP-01", "id": "gov-com-regulatory", "name": "Reporte Regulatório",           "process": "Compliance", "macroprocess": "Governança", "category": "Compliance" },
+          { "code": "G-CP-02", "id": "gov-com-audit",      "name": "Gestão de Auditorias",         "process": "Compliance", "macroprocess": "Governança", "category": "Compliance" },
+          { "code": "G-CP-03", "id": "gov-com-policy",     "name": "Gestão de Políticas e Normas", "process": "Compliance", "macroprocess": "Governança", "category": "Compliance" }
+        ]
+      },
+      {
+        "id": "gov-risk",
+        "name": "Gestão de Riscos",
+        "subprocesses": [
+          { "code": "G-RM-01", "id": "gov-risk-identify", "name": "Identificação de Riscos",             "process": "Gestão de Riscos", "macroprocess": "Governança", "category": "Risk Management" },
+          { "code": "G-RM-02", "id": "gov-risk-assess",   "name": "Avaliação e Priorização de Riscos",  "process": "Gestão de Riscos", "macroprocess": "Governança", "category": "Risk Management" },
+          { "code": "G-RM-03", "id": "gov-risk-mitigate", "name": "Planos de Mitigação",                "process": "Gestão de Riscos", "macroprocess": "Governança", "category": "Risk Management" }
+        ]
+      },
+      {
+        "id": "gov-controls",
+        "name": "Controles Internos",
+        "subprocesses": [
+          { "code": "G-IC-01", "id": "gov-ctrl-testing",     "name": "Teste de Controles",          "process": "Controles Internos", "macroprocess": "Governança", "category": "Internal Controls" },
+          { "code": "G-IC-02", "id": "gov-ctrl-docs",        "name": "Documentação de Controles",   "process": "Controles Internos", "macroprocess": "Governança", "category": "Internal Controls" },
+          { "code": "G-IC-03", "id": "gov-ctrl-remediation", "name": "Plano de Remediação de Gaps", "process": "Controles Internos", "macroprocess": "Governança", "category": "Internal Controls" }
+        ]
+      },
+      {
+        "id": "gov-it",
+        "name": "Governança de TI",
+        "subprocesses": [
+          { "code": "G-IT-01", "id": "gov-it-planning",    "name": "Planejamento de TI",                "process": "Governança de TI", "macroprocess": "Governança", "category": "IT Governance" },
+          { "code": "G-IT-02", "id": "gov-it-budget",      "name": "Orçamento de TI",                   "process": "Governança de TI", "macroprocess": "Governança", "category": "IT Governance" },
+          { "code": "G-IT-03", "id": "gov-it-performance", "name": "Monitoramento de Desempenho de TI", "process": "Governança de TI", "macroprocess": "Governança", "category": "IT Governance" }
+        ]
+      }
+    ]
+  }
+]
