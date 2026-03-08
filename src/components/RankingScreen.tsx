@@ -12,6 +12,7 @@ import {
 import { SubprocessAssessment, CRITERIA, DiagnosticMode } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
+import PDFReport, { PDFReportData } from './PDFReport';
 
 interface Props {
   assessments: SubprocessAssessment[];
@@ -228,47 +229,18 @@ export default function RankingScreen({
   };
 
   const handleDownloadPDF = async () => {
-    console.log("PDF export triggered");
-    const element = document.getElementById("diagnostic-results");
-    console.log("PDF container:", element);
-    if (!element) {
-      alert("Report container not found.");
-      return;
-    }
-    const clone = element.cloneNode(true) as HTMLElement;
-    const isBadColor = (val: string) => val.includes("lab(") || val.includes("oklab(");
-    clone.querySelectorAll("*").forEach(node => {
-      const htmlNode = node as HTMLElement;
-      const cs = window.getComputedStyle(htmlNode);
-      if (isBadColor(cs.color)) htmlNode.style.color = "#111827";
-      if (isBadColor(cs.backgroundColor)) htmlNode.style.backgroundColor = "#ffffff";
-      if (isBadColor(cs.borderColor)) htmlNode.style.borderColor = "#e5e7eb";
-      if (isBadColor(cs.outlineColor)) htmlNode.style.outlineColor = "#e5e7eb";
-      if (isBadColor(cs.textDecorationColor)) htmlNode.style.textDecorationColor = "#111827";
-      if (isBadColor(cs.boxShadow)) htmlNode.style.boxShadow = "none";
-      if (isBadColor(cs.background)) htmlNode.style.background = "#ffffff";
-    });
+    const element = document.getElementById("pdf-report");
+    if (!element) return;
     const html2pdf = (await import("html2pdf.js")).default;
     html2pdf()
       .set({
         margin: 20,
         filename: "diagnostico-automacao.pdf",
-        html2canvas: {
-          scale: 2,
-          backgroundColor: "#ffffff",
-          useCORS: true,
-          onclone: (clonedDoc: Document) => {
-            const badColorRe = /\b(ok)?(lab|lch)\s*\([^)]*\)/g;
-            clonedDoc.querySelectorAll("style").forEach(styleEl => {
-              if (styleEl.textContent) {
-                styleEl.textContent = styleEl.textContent.replace(badColorRe, "#6b7280");
-              }
-            });
-          },
-        },
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2 },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       })
-      .from(clone)
+      .from(element)
       .save();
   };
 
@@ -282,6 +254,17 @@ export default function RankingScreen({
   const totalAnnualHours = assessments.reduce((s, a) => s + a.annualHours, 0);
   const totalSavingsHours = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
+
+  const reportData: PDFReportData = {
+    ranked,
+    summary,
+    insights,
+    autoRoadmap,
+    totalAnnualHours,
+    totalSavingsHours,
+    totalFinancialImpact,
+    generatedAt: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+  };
 
   // Category config for the new roadmap section
   const categoryConfig: Record<RoadmapCategory, {
@@ -800,6 +783,11 @@ export default function RankingScreen({
         )}
 
       </div>{/* end #diagnostic-results */}
+
+      {/* Hidden PDF-only container — no Tailwind, safe for html2canvas */}
+      <div id="pdf-report" style={{ display: "none" }}>
+        <PDFReport report={reportData} />
+      </div>
 
       {/* Modals — outside PDF container */}
       {selected && <DetailModal item={selected} onClose={() => setSelected(null)} />}
