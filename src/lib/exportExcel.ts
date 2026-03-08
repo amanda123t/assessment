@@ -12,7 +12,7 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
   const rankSheet = workbook.addWorksheet('Ranking');
 
   // Title
-  rankSheet.mergeCells('A1:J1');
+  rankSheet.mergeCells('A1:M1');
   const titleCell = rankSheet.getCell('A1');
   titleCell.value = 'Avaliação de Eficiência Operacional – Ranking de Oportunidades';
   titleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
@@ -21,7 +21,7 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
   rankSheet.getRow(1).height = 36;
 
   // Subtitle with date
-  rankSheet.mergeCells('A2:J2');
+  rankSheet.mergeCells('A2:M2');
   const subtitleCell = rankSheet.getCell('A2');
   subtitleCell.value = `Gerado em ${new Date().toLocaleDateString('pt-BR')}`;
   subtitleCell.font = { size: 10, color: { argb: 'FF6B7280' } };
@@ -39,6 +39,7 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
     'Subprocesso',
     ...CRITERIA.map((c) => c.label),
     'Score Total',
+    'Score de Automação',
     'Prioridade',
   ];
 
@@ -77,6 +78,7 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
       a.scores.systemsOrSpreadsheets,
       a.scores.systemIntegrations,
       a.totalScore,
+      a.automationScore,
       getPriorityLabel(a.totalScore),
     ];
 
@@ -99,8 +101,13 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
         cell.font = { bold: true, color: { argb: scoreColor } };
       }
 
-      // Color priority cell
+      // Color automation score cell
       if (i === 11) {
+        cell.font = { bold: true, color: { argb: 'FF1D4ED8' } };
+      }
+
+      // Color priority cell
+      if (i === 12) {
         const pct = a.totalScore / 30;
         const priorityBg = pct >= 0.75 ? 'FFFEE2E2' : pct >= 0.5 ? 'FFFEF3C7' : 'FFF0FDF4';
         const priorityFg = pct >= 0.75 ? 'FF991B1B' : pct >= 0.5 ? 'FF92400E' : 'FF166534';
@@ -125,6 +132,7 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
     { width: 20 },  // Sistemas/Planilhas
     { width: 20 },  // Integrações
     { width: 14 },  // Score Total
+    { width: 18 },  // Score de Automação
     { width: 18 },  // Prioridade
   ];
 

@@ -41,6 +41,8 @@ export interface SubprocessAssessment {
   macroprocessName: string;
   scores: CriteriaScores;
   totalScore: number;
+  /** Automation potential score (0–100). See scoring.ts: calculateAutomationScore. */
+  automationScore: number;
 }
 
 export interface AssessmentState {

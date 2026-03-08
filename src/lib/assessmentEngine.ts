@@ -12,7 +12,7 @@
  */
 
 import { Macroprocess, Process, Subprocess, CriteriaScores, SubprocessAssessment } from '@/types';
-import { calculateTotalScore } from './scoring';
+import { calculateTotalScore, calculateAutomationScore } from './scoring';
 
 /** Create an initial empty assessment entry for a subprocess. */
 export function createAssessment(
@@ -30,6 +30,7 @@ export function createAssessment(
     macroprocessName: macroprocess.name,
     scores,
     totalScore: calculateTotalScore(scores),
+    automationScore: calculateAutomationScore(scores),
   };
 }
 

@@ -248,6 +248,7 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Processo</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Subprocesso</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Score</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Automação</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Prioridade</th>
               </tr>
             </thead>
@@ -288,6 +289,12 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
                         />
                       </div>
                     </div>
+                  </td>
+                  <td className="px-4 py-3.5 text-center">
+                    <span className="font-semibold text-blue-600 text-sm">
+                      {item.automationScore}
+                      <span className="text-xs font-normal text-gray-400">/100</span>
+                    </span>
                   </td>
                   <td className="px-4 py-3.5 text-center">
                     <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
