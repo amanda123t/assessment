@@ -45,10 +45,18 @@ export interface SubprocessAssessment {
   automationScore: number;
 }
 
+/** A subprocess together with the full context of its parent hierarchy. */
+export interface SelectedSubprocessItem {
+  macroprocess: Macroprocess;
+  process: Process;
+  subprocess: Subprocess;
+}
+
 export interface AssessmentState {
   selectedMacroprocess: Macroprocess | null;
   selectedProcess: Process | null;
-  selectedSubprocesses: Subprocess[];
+  /** Global accumulator — persists across macroprocess/process navigation. */
+  globalSelectedSubprocesses: SelectedSubprocessItem[];
   assessments: SubprocessAssessment[];
   currentSubprocessIndex: number;
   step: 'start' | 'macroprocess' | 'process' | 'subprocess' | 'questionnaire' | 'ranking';
