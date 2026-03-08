@@ -142,6 +142,26 @@ function loadStoredLead(): LeadData | null {
   }
 }
 
+const GAS_ENDPOINT =
+  'https://script.google.com/macros/s/AKfycbyCCAJbYHpmzggLHo8hRePZEsHNeA6wvoGWHPEcAT4IJJzAajkk0MeixyuDDLnd4Fd6/exec';
+
+/**
+ * Fire-and-forget POST to the Google Apps Script endpoint.
+ * Uses text/plain so the request stays a CORS "simple request" —
+ * GAS doesn't send Access-Control-Allow-Origin headers, so no-cors mode
+ * is required. The GAS handler reads the payload via e.postData.contents.
+ */
+function sendLeadToSheets(data: LeadData): void {
+  fetch(GAS_ENDPOINT, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(data),
+  }).catch(() => {
+    // Network failure is non-critical — data is already in localStorage.
+  });
+}
+
 function LeadCaptureSection({
   onGenerate,
 }: {
@@ -176,6 +196,7 @@ function LeadCaptureSection({
       createdAt: Date.now(),
     };
     localStorage.setItem(LEAD_KEY, JSON.stringify(data));
+    sendLeadToSheets(data); // non-blocking — does not delay UI or download
     setSubmitted(true);
     onGenerate(data);
   };
