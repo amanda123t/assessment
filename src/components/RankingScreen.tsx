@@ -231,6 +231,7 @@ export default function RankingScreen({
   const handleDownloadPDF = async () => {
     const element = document.getElementById("pdf-report");
     if (!element) return;
+    await new Promise(resolve => setTimeout(resolve, 300));
     const html2pdf = (await import("html2pdf.js")).default;
     html2pdf()
       .set({
@@ -784,8 +785,8 @@ export default function RankingScreen({
 
       </div>{/* end #diagnostic-results */}
 
-      {/* Hidden PDF-only container — no Tailwind, safe for html2canvas */}
-      <div id="pdf-report" style={{ display: "none" }}>
+      {/* PDF-only container — off-screen so html2canvas can render it */}
+      <div id="pdf-report" style={{ position: "fixed", left: "-9999px", top: 0, width: "800px", background: "white" }}>
         <PDFReport report={reportData} />
       </div>
 
