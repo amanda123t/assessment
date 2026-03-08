@@ -8,6 +8,8 @@ const STEPS = [
   { key: 'ranking', label: 'Resultados' },
 ] as const;
 
+// 'mode-selection' sits between explore and questionnaire but maps to the
+// same visual position as 'explore' (it's part of the "Seleção" phase).
 const STEP_ORDER = ['explore', 'questionnaire', 'ranking'];
 
 interface Props {
@@ -17,7 +19,8 @@ interface Props {
 export default function StepIndicator({ step }: Props) {
   if (step === 'start') return null;
 
-  const currentIndex = STEP_ORDER.indexOf(step);
+  const normalizedStep = step === 'mode-selection' ? 'explore' : step;
+  const currentIndex = STEP_ORDER.indexOf(normalizedStep);
 
   return (
     <div className="w-full bg-white border-b border-gray-100 px-6 py-4">

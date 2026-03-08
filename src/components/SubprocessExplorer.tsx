@@ -25,6 +25,8 @@ const MAX_CUSTOM = 3;
 interface Props {
   selectedIds: Set<string>;
   customSubprocesses: SelectedSubprocessItem[];
+  /** Subprocesses already answered in a collaborative session — shown as locked. */
+  answeredSubprocessIds?: Set<string>;
   onToggle: (subprocess: Subprocess, macroprocess: Macroprocess, process: Process) => void;
   onToggleAll: (subprocesses: Subprocess[], macroprocess: Macroprocess, process: Process, selectAll: boolean) => void;
   onAddCustom: (item: SelectedSubprocessItem) => void;
@@ -157,6 +159,7 @@ function CustomForm({
 export default function SubprocessExplorer({
   selectedIds,
   customSubprocesses,
+  answeredSubprocessIds = new Set(),
   onToggle,
   onToggleAll,
   onAddCustom,
@@ -303,6 +306,23 @@ export default function SubprocessExplorer({
                             {/* Standard subprocesses */}
                             {proc.subprocesses.map((sp) => {
                               const isSelected = selectedIds.has(sp.id);
+                              const isAnswered = answeredSubprocessIds.has(sp.id);
+                              if (isAnswered) {
+                                return (
+                                  <div
+                                    key={sp.id}
+                                    className="w-full flex items-center gap-3 pl-16 pr-5 py-2.5 opacity-60 cursor-not-allowed"
+                                  >
+                                    <div className="w-4 h-4 rounded border-2 bg-green-500 border-green-500 flex items-center justify-center flex-shrink-0">
+                                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                                        <path d="M1.5 4.5L3.5 6.5L7.5 2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    </div>
+                                    <span className="text-sm text-gray-500 flex-1">{sp.name}</span>
+                                    <span className="text-xs text-green-600 font-medium flex-shrink-0">Respondido</span>
+                                  </div>
+                                );
+                              }
                               return (
                                 <button
                                   key={sp.id}

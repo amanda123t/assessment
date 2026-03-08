@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ClipboardCheck } from 'lucide-react';
-import { Macroprocess, Process, Subprocess, CriteriaScores, CRITERIA } from '@/types';
+import { ClipboardCheck, Users } from 'lucide-react';
+import { Macroprocess, Process, Subprocess, CriteriaScores, CRITERIA, DiagnosticMode } from '@/types';
 import { getEmptyScores, calculateTotalScore } from '@/lib/scoring';
 
 interface Props {
@@ -11,6 +11,9 @@ interface Props {
   subprocess: Subprocess;
   currentIndex: number;
   total: number;
+  /** Number of already-answered subprocesses (from collaborative pre-load). */
+  answeredCount?: number;
+  diagnosticMode?: DiagnosticMode;
   onComplete: (scores: CriteriaScores) => void;
   onBack: () => void;
 }
@@ -21,6 +24,8 @@ export default function Questionnaire({
   subprocess,
   currentIndex,
   total,
+  answeredCount = 0,
+  diagnosticMode = 'solo',
   onComplete,
   onBack,
 }: Props) {
@@ -31,7 +36,7 @@ export default function Questionnaire({
 
   const allAnswered = Object.values(scores).every((s) => s > 0);
   const totalScore = calculateTotalScore(scores);
-  const answeredCount = Object.values(scores).filter((s) => s > 0).length;
+  const criteriaAnsweredCount = Object.values(scores).filter((s) => s > 0).length;
   const isLast = currentIndex === total - 1;
 
   const handleScore = (key: keyof CriteriaScores, value: number) => {
@@ -61,6 +66,14 @@ export default function Questionnaire({
             style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
           />
         </div>
+
+        {/* Collaborative progress pill */}
+        {diagnosticMode === 'collaborative' && (
+          <div className="inline-flex items-center gap-1.5 bg-violet-50 border border-violet-200 text-violet-700 text-xs font-medium px-2.5 py-1 rounded-full mb-3">
+            <Users size={12} strokeWidth={1.75} />
+            Subprocessos respondidos: {answeredCount + currentIndex} / {answeredCount + total}
+          </div>
+        )}
 
         {/* Breadcrumb */}
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">
@@ -126,7 +139,7 @@ export default function Questionnaire({
         <span className="text-sm text-gray-500">
           {allAnswered
             ? <span className="text-blue-600 font-semibold">Score total: <span className="text-lg">{totalScore}</span></span>
-            : <>{answeredCount} de {CRITERIA.length} respondidos</>
+            : <>{criteriaAnsweredCount} de {CRITERIA.length} respondidos</>
           }
         </span>
         <button

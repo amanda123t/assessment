@@ -62,12 +62,18 @@ export interface SelectedSubprocessItem {
   isCustom?: boolean;
 }
 
+/** Whether the diagnostic is answered by a single user or collaboratively. */
+export type DiagnosticMode = 'solo' | 'collaborative';
+
 export interface AssessmentState {
   /** Global accumulator — persists across all navigation. */
   globalSelectedSubprocesses: SelectedSubprocessItem[];
   assessments: SubprocessAssessment[];
   currentSubprocessIndex: number;
-  step: 'start' | 'explore' | 'questionnaire' | 'ranking';
+  step: 'start' | 'explore' | 'mode-selection' | 'questionnaire' | 'ranking';
+  /** Unique ID for this diagnostic session; null until the user starts. */
+  diagnosticId: string | null;
+  diagnosticMode: DiagnosticMode;
 }
 
 export const CRITERIA = [
