@@ -229,20 +229,44 @@ export default function RankingScreen({
   };
 
   const handleDownloadPDF = async () => {
-    const element = document.getElementById("pdf-report");
-    if (!element) return;
+    const source = document.getElementById("pdf-report");
+    if (!source) return;
     await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Clone so we never mutate the live DOM node.
+    const clone = source.cloneNode(true) as HTMLElement;
+
+    // Sanitize computed colors: html2canvas cannot parse lab()/oklab() values
+    // emitted by modern browsers / Tailwind.
+    clone.querySelectorAll<HTMLElement>("*").forEach(el => {
+      const cs = window.getComputedStyle(el);
+      if (cs.color.includes("lab"))            el.style.color            = "#111827";
+      if (cs.backgroundColor.includes("lab"))  el.style.backgroundColor  = "#ffffff";
+      if (cs.borderColor.includes("lab"))      el.style.borderColor      = "#e5e7eb";
+    });
+
+    // Mount clone off-screen so html2canvas can measure and paint it.
+    clone.style.position = "absolute";
+    clone.style.top      = "0";
+    clone.style.left     = "0";
+    clone.style.opacity  = "0";
+    document.body.appendChild(clone);
+
     const html2pdf = (await import("html2pdf.js")).default;
-    html2pdf()
-      .set({
-        margin: 20,
-        filename: "diagnostico-automacao.pdf",
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      })
-      .from(element)
-      .save();
+    try {
+      await html2pdf()
+        .set({
+          margin: 20,
+          filename: "diagnostico-automacao.pdf",
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(clone)
+        .save();
+    } finally {
+      document.body.removeChild(clone);
+    }
   };
 
   const ranked = buildRanking(assessments);

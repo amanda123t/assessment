@@ -91,39 +91,47 @@ type View = 'identify' | 'list' | 'answering' | 'results';
 export default function CollaboratorView({ initialSession, onSessionChange }: Props) {
   const [session, setSession] = useState<AssessmentSession>(initialSession);
   const [participant, setParticipant] = useState<Participant | null>(null);
+  // Always start at 'identify'. The mount effect below may advance to 'list'
+  // if a saved participant is found, but never to 'answering'.
   const [view, setView] = useState<View>('identify');
   const [activeItem, setActiveItem] = useState<SelectedSubprocessItem | null>(null);
 
   const participantKey = `oea_participant_${initialSession.sessionId}`;
-
-  // Restore participant from sessionStorage on mount.
-  // Always lands on 'list' — never auto-opens any subprocess.
-  useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem(participantKey);
-      if (saved) {
-        const p = JSON.parse(saved) as Participant;
-        setParticipant(p);
-        setView('list'); // always show list; participant must click to open a subprocess
-      }
-    } catch {
-      // sessionStorage unavailable — fall through to identify view
-    }
-  }, [participantKey]);
-
-  // Re-sync session from localStorage whenever the list view becomes active so
-  // completions by other participants (on the same device/tab) are always visible.
-  useEffect(() => {
-    if (view !== 'list') return;
-    const fresh = loadSession(initialSession.sessionId);
-    if (fresh) setSession(fresh);
-  }, [view, initialSession.sessionId]);
 
   const persistSession = useCallback((updated: AssessmentSession) => {
     setSession(updated);
     saveSession(updated);
     onSessionChange(updated);
   }, [onSessionChange]);
+
+  // Helper: reload the latest session from localStorage and show the list.
+  // Called explicitly from every handler that returns to the list — never
+  // from a reactive effect — so there is no background auto-open path.
+  const goToList = useCallback(() => {
+    const fresh = loadSession(initialSession.sessionId);
+    if (fresh) setSession(fresh);
+    setActiveItem(null);
+    setView('list');
+  }, [initialSession.sessionId]);
+
+  // On mount: if this participant already identified earlier (sessionStorage),
+  // restore their data and show the list. Never opens a subprocess automatically.
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(participantKey);
+      if (saved) {
+        const p = JSON.parse(saved) as Participant;
+        setParticipant(p);
+        // Reload session so the list reflects the latest state from storage.
+        const fresh = loadSession(initialSession.sessionId);
+        if (fresh) setSession(fresh);
+        setView('list'); // always land on list — participant must click to open anything
+      }
+    } catch {
+      // sessionStorage unavailable — fall through to identify view
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
 
   // ── Identify ────────────────────────────────────────────────────────────────
 
@@ -136,20 +144,21 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
     }
     const updated = addParticipantToSession(session, p);
     persistSession(updated);
-    setView('list');
+    goToList();
   };
 
-  // ── Start answering a subprocess ────────────────────────────────────────────
+  // ── Start answering a subprocess ─────────────────────────────────────────────
+  // This is the ONLY place that sets view = 'answering'.
+  // It is called exclusively from an explicit onClick on a list row.
 
   const handleSelectSubprocess = (item: SelectedSubprocessItem) => {
     if (!participant) return;
 
-    // Reload from storage before every action so stale state from other
-    // participants is never used. This is the only entry-point that opens
-    // the questionnaire — nothing opens it automatically.
+    // Always reload before acting so we never act on stale state.
     const fresh = loadSession(initialSession.sessionId) ?? session;
-    setSession(fresh); // always sync UI, regardless of whether data changed
+    setSession(fresh);
 
+    // Hard guard: completed subprocesses cannot be opened.
     if (fresh.subprocessStates[item.subprocess.id]?.status === 'completed') return;
 
     const updated = lockSubprocess(fresh, item.subprocess.id, participant);
@@ -158,34 +167,33 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
     setView('answering');
   };
 
-  // ── Complete questionnaire ──────────────────────────────────────────────────
+  // ── Complete questionnaire ───────────────────────────────────────────────────
 
   const handleComplete = (scores: CriteriaScores) => {
     if (!activeItem || !participant) return;
     const { macroprocess, process, subprocess, isCustom } = activeItem;
     const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
 
-    // Merge onto the freshest session so we never overwrite another participant's answers.
+    // Merge onto freshest session to avoid overwriting other participants' answers.
     const fresh = loadSession(initialSession.sessionId) ?? session;
     const updated = completeSubprocessInSession(fresh, subprocess.id, assessment);
     persistSession(updated);
     sendAnswerToGAS(initialSession.sessionId, participant, assessment);
 
-    setActiveItem(null);
-
-    // Navigate to results when every subprocess has been answered
+    // Navigate to results when every subprocess is answered; otherwise list.
+    // Never automatically opens another subprocess.
     const progress = getSessionProgress(updated);
     if (progress.total > 0 && progress.answered === progress.total) {
+      setActiveItem(null);
       setView('results');
     } else {
-      setView('list');
+      goToList();
     }
   };
 
   const handleBackFromQuestionnaire = () => {
-    // Keep the subprocess locked to this participant so they can resume later
-    setView('list');
-    setActiveItem(null);
+    // Subprocess remains in_progress (participant can resume by clicking it again).
+    goToList();
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -216,7 +224,7 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
         assessments={session.answers}
         diagnosticId={session.sessionId}
         diagnosticMode="collaborative"
-        onRestart={() => setView('list')}
+        onRestart={goToList}
       />
     );
   }
@@ -254,7 +262,6 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
             </p>
           )}
         </div>
-        {/* Progress bar */}
         <div className="w-24 bg-gray-100 rounded-full h-1.5 ml-6">
           <div
             className="bg-blue-600 h-1.5 rounded-full transition-all"
@@ -279,7 +286,7 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
             return (
               <button
                 key={item.subprocess.id}
-                onClick={() => !isCompleted && handleSelectSubprocess(item)}
+                onClick={() => handleSelectSubprocess(item)}
                 disabled={isCompleted}
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl border text-left transition-all ${
                   isCompleted
