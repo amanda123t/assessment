@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import {
   Trophy, BarChart2, FileDown, RotateCcw, X, Activity,
-  Lightbulb, Clock, TrendingUp, DollarSign, Zap, Target, Map, ChevronDown,
+  Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown,
 } from 'lucide-react';
 import { SubprocessAssessment, CRITERIA, DiagnosticMode } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
@@ -198,68 +198,6 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
     .map((i) => i.text);
 }
 
-// ─── Automation Roadmap (legacy tier classification) ────────────────────────
-
-type RoadmapTier = 'quickWins' | 'strategic' | 'lower';
-
-interface RoadmapEntry {
-  item: RankedAssessment;
-  seq: number;
-}
-
-interface RoadmapGroup {
-  tier: RoadmapTier;
-  label: string;
-  description: string;
-  entries: RoadmapEntry[];
-}
-
-function buildRoadmap(ranked: RankedAssessment[]): RoadmapGroup[] {
-  if (ranked.length === 0) return [];
-
-  const withPS = ranked.map((r) => ({
-    item: r,
-    priorityScore: r.automationScore * r.annualHours,
-  }));
-  withPS.sort((a, b) => b.priorityScore - a.priorityScore);
-
-  const sorted = withPS.map((x) => x.priorityScore);
-  const mid = Math.floor(sorted.length / 2);
-  const medianPS = sorted.length % 2 !== 0
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2;
-
-  const buckets: Record<RoadmapTier, RankedAssessment[]> = {
-    quickWins: [],
-    strategic: [],
-    lower: [],
-  };
-
-  for (const { item, priorityScore } of withPS) {
-    if (item.automationScore >= 65 && priorityScore >= medianPS) {
-      buckets.quickWins.push(item);
-    } else if (item.automationScore >= 40) {
-      buckets.strategic.push(item);
-    } else {
-      buckets.lower.push(item);
-    }
-  }
-
-  let seq = 1;
-  const makeGroup = (tier: RoadmapTier, label: string, description: string): RoadmapGroup => ({
-    tier,
-    label,
-    description,
-    entries: buckets[tier].map((item) => ({ item, seq: seq++ })),
-  });
-
-  return [
-    makeGroup('quickWins', 'Quick Wins', 'Alto potencial de automação e impacto operacional relevante — pontos de partida ideais.'),
-    makeGroup('strategic', 'Automação Estratégica', 'Bom potencial de automação, indicados para uma segunda fase de implementação.'),
-    makeGroup('lower', 'Menor Prioridade', 'Baixo potencial de automação — podem ser revisitados após as fases anteriores.'),
-  ].filter((g) => g.entries.length > 0);
-}
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function RankingScreen({
@@ -316,7 +254,6 @@ export default function RankingScreen({
   const summary = buildPrioritySummary(ranked);
   const top3 = ranked.slice(0, 3);
   const insights = buildInsights(ranked);
-  const roadmap = buildRoadmap(ranked);
   const autoRoadmap = buildAutomationRoadmap(assessments);
 
   const totalAnnualHours = assessments.reduce((s, a) => s + a.annualHours, 0);
@@ -814,104 +751,6 @@ export default function RankingScreen({
             </section>
           );
         })()}
-
-        {/* ── Roteiro de Automação (legacy) ────────────────────────── */}
-        {roadmap.length > 0 && (
-          <section className="mb-8">
-            <div className="flex items-center gap-2 mb-5">
-              <Map size={16} className="text-blue-500" strokeWidth={1.75} />
-              <div>
-                <h3 className="font-semibold text-gray-800">Roteiro de Automação</h3>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Subprocessos priorizados por score de automação × esforço anual
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {roadmap.map((group) => {
-                const tierConfig = {
-                  quickWins: {
-                    Icon: Zap,
-                    iconColor: 'text-emerald-500',
-                    headerBg: 'bg-emerald-50 border-emerald-100',
-                    rowHover: 'hover:bg-emerald-50',
-                    seqBg: 'bg-emerald-600 text-white',
-                    chip: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-                    chipLabel: 'Quick Win',
-                  },
-                  strategic: {
-                    Icon: Target,
-                    iconColor: 'text-blue-500',
-                    headerBg: 'bg-blue-50 border-blue-100',
-                    rowHover: 'hover:bg-blue-50',
-                    seqBg: 'bg-blue-600 text-white',
-                    chip: 'bg-blue-100 text-blue-700 border-blue-200',
-                    chipLabel: 'Estratégico',
-                  },
-                  lower: {
-                    Icon: Clock,
-                    iconColor: 'text-gray-400',
-                    headerBg: 'bg-gray-50 border-gray-100',
-                    rowHover: 'hover:bg-gray-50',
-                    seqBg: 'bg-gray-400 text-white',
-                    chip: 'bg-gray-100 text-gray-500 border-gray-200',
-                    chipLabel: 'Menor prioridade',
-                  },
-                }[group.tier];
-                const { Icon } = tierConfig;
-
-                return (
-                  <div key={group.tier} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className={`flex items-start gap-3 px-5 py-4 border-b ${tierConfig.headerBg}`}>
-                      <Icon size={16} className={`mt-0.5 flex-shrink-0 ${tierConfig.iconColor}`} strokeWidth={1.75} />
-                      <div>
-                        <p className="font-semibold text-gray-800 text-sm">{group.label}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{group.description}</p>
-                      </div>
-                    </div>
-
-                    <ul className="divide-y divide-gray-50">
-                      {group.entries.map(({ item, seq }) => (
-                        <li key={item.subprocessId}>
-                          <button
-                            onClick={() => setSelected(item)}
-                            className={`w-full text-left flex items-center gap-4 px-5 py-3.5 transition-colors ${tierConfig.rowHover}`}
-                          >
-                            <span className={`flex-shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${tierConfig.seqBg}`}>
-                              {seq}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-800 text-sm truncate">{item.subprocessName}</p>
-                              <p className="text-xs text-gray-400 truncate">
-                                {item.macroprocessName} › {item.processName}
-                              </p>
-                            </div>
-                            <span className={`hidden sm:inline-block flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full border ${tierConfig.chip}`}>
-                              {tierConfig.chipLabel}
-                            </span>
-                            <div className="flex-shrink-0 text-right hidden md:block w-24">
-                              <p className="text-xs text-gray-400">Automação</p>
-                              <p className="font-bold text-blue-600 text-sm">{item.automationScore}<span className="text-xs font-normal text-gray-400">/100</span></p>
-                            </div>
-                            <div className="flex-shrink-0 text-right hidden md:block w-24">
-                              <p className="text-xs text-gray-400">Esforço</p>
-                              <p className="font-medium text-gray-700 text-sm">{fmt(item.annualHours)}<span className="text-xs font-normal text-gray-400"> h/ano</span></p>
-                            </div>
-                            <div className="flex-shrink-0 text-right w-28">
-                              <p className="text-xs text-gray-400">Economia pot.</p>
-                              <p className="font-semibold text-green-600 text-sm">{fmtCurrency(item.financialImpact)}</p>
-                            </div>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
 
         {/* ── Diagnostic Insights ──────────────────────────────────── */}
         {insights.length > 0 && (
