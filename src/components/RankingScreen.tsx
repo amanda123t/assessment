@@ -8,6 +8,7 @@ import {
 import { Trophy, BarChart2, Download, RotateCcw, X, Activity, Lightbulb, Clock, TrendingUp, DollarSign, Zap, Target, Map, FileText, CheckCircle2, ChevronDown } from 'lucide-react';
 import { SubprocessAssessment, CRITERIA, DiagnosticMode } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
+import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 
 interface Props {
   assessments: SubprocessAssessment[];
@@ -556,6 +557,8 @@ export default function RankingScreen({ assessments, diagnosticId, diagnosticMod
   const totalSavingsHours = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
 
+  const autoRoadmap = buildAutomationRoadmap(assessments);
+
   const handleExport = async () => {
     setExporting(true);
     await onExport();
@@ -907,6 +910,130 @@ export default function RankingScreen({ assessments, diagnosticId, diagnosticMod
           </tbody>
         </table>
       </div>
+
+      {/* ── New: Roadmap de Automação Sugerido (Impact × Effort) ─────── */}
+      {autoRoadmap.length > 0 && (() => {
+        const quickWins  = autoRoadmap.filter((r) => r.roadmapCategory === 'quick-wins');
+        const strategic  = autoRoadmap.filter((r) => r.roadmapCategory === 'strategic');
+        const transform  = autoRoadmap.filter((r) => r.roadmapCategory === 'transformation');
+
+        const categoryConfig: Record<RoadmapCategory, {
+          label: string; timeline: string; color: string; badge: string; bar: string; dot: string;
+        }> = {
+          'quick-wins':     { label: 'Quick Wins',               timeline: '0–3 meses',  color: 'bg-emerald-50 border-emerald-200',  badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', bar: 'bg-emerald-500', dot: 'bg-emerald-500' },
+          'strategic':      { label: 'Strategic Initiatives',    timeline: '3–6 meses',  color: 'bg-blue-50 border-blue-200',         badge: 'bg-blue-100 text-blue-800 border-blue-200',          bar: 'bg-blue-500',    dot: 'bg-blue-500'    },
+          'transformation': { label: 'Transformation Initiatives', timeline: '6–12 meses', color: 'bg-violet-50 border-violet-200',   badge: 'bg-violet-100 text-violet-800 border-violet-200',    bar: 'bg-violet-500',  dot: 'bg-violet-500'  },
+        };
+
+        const SubprocessRow = ({ item }: { item: RoadmapItem }) => {
+          const cfg = categoryConfig[item.roadmapCategory];
+          return (
+            <div className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-b-0">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate">{item.subprocessName}</p>
+                <p className="text-xs text-gray-400 truncate mt-0.5">{item.macroprocessName} › {item.processName}</p>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {/* Automation score */}
+                <div className="text-right w-14">
+                  <p className="text-xs text-gray-400">Automação</p>
+                  <p className="text-sm font-semibold text-blue-600">{item.automationScore}</p>
+                </div>
+                {/* Impact bar */}
+                <div className="w-20 hidden sm:block">
+                  <div className="flex justify-between text-xs text-gray-400 mb-0.5">
+                    <span>Impacto</span>
+                    <span>{item.impactScore}</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5">
+                    <div className={`${cfg.bar} h-1.5 rounded-full`} style={{ width: `${item.impactScore}%` }} />
+                  </div>
+                </div>
+                {/* Estimated savings */}
+                <div className="text-right w-24 hidden sm:block">
+                  <p className="text-xs text-gray-400">Economia est.</p>
+                  <p className="text-xs font-semibold text-green-700">{fmtCurrency(item.estimatedSavings)}</p>
+                </div>
+                {/* Category badge */}
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${cfg.badge}`}>
+                  {item.timeline}
+                </span>
+              </div>
+            </div>
+          );
+        };
+
+        const groups: { category: RoadmapCategory; items: RoadmapItem[] }[] = (
+          [
+            { category: 'quick-wins' as const, items: quickWins },
+            { category: 'strategic' as const, items: strategic },
+            { category: 'transformation' as const, items: transform },
+          ] as const
+        ).filter((g) => g.items.length > 0);
+
+        const prioritisedSavings = [...quickWins, ...strategic]
+          .reduce((s, r) => s + r.estimatedSavings, 0);
+
+        return (
+          <section className="mb-8">
+            {/* Section header */}
+            <div className="flex items-center gap-2 mb-4">
+              <Target size={16} className="text-blue-500" strokeWidth={1.75} />
+              <div>
+                <h3 className="font-semibold text-gray-800">Roadmap de Automação Sugerido</h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Iniciativas priorizadas por impacto e esforço de implementação
+                </p>
+              </div>
+            </div>
+
+            {/* Executive summary */}
+            {prioritisedSavings > 0 && (
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl px-5 py-4 mb-5 text-white">
+                <p className="text-xs font-semibold uppercase tracking-widest opacity-80 mb-1">
+                  Impacto potencial estimado das iniciativas priorizadas
+                </p>
+                <p className="text-sm leading-relaxed">
+                  O diagnóstico identificou{' '}
+                  <strong>{quickWins.length + strategic.length}</strong> oportunidades de
+                  automação que podem gerar até{' '}
+                  <strong>{fmtCurrency(prioritisedSavings)}</strong> em ganhos operacionais anuais.
+                </p>
+              </div>
+            )}
+
+            {/* Horizon blocks */}
+            <div className="space-y-4">
+              {groups.map(({ category, items }) => {
+                const cfg = categoryConfig[category];
+                return (
+                  <div key={category} className={`rounded-xl border ${cfg.color} overflow-hidden`}>
+                    {/* Block header */}
+                    <div className="flex items-center justify-between px-5 py-3 border-b border-current border-opacity-20">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
+                        <span className="font-semibold text-gray-800 text-sm">{cfg.label}</span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${cfg.badge}`}>
+                          {cfg.timeline}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500 font-medium">
+                        {items.length} iniciativa{items.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {/* Items */}
+                    <div className="px-5">
+                      {items.map((item) => (
+                        <SubprocessRow key={item.subprocessId} item={item} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ── Automation Roadmap ──────────────────────────────────────── */}
       {roadmap.length > 0 && (

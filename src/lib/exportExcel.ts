@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { SubprocessAssessment } from '@/types';
 import { CRITERIA } from '@/types';
 import { getPriorityLabel } from './scoring';
+import { buildAutomationRoadmap } from './automationRoadmap';
 
 export async function exportToExcel(assessments: SubprocessAssessment[]): Promise<void> {
   const workbook = new ExcelJS.Workbook();
@@ -11,8 +12,18 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
   // ── Sheet 1: Ranking ──────────────────────────────────────────────────────
   const rankSheet = workbook.addWorksheet('Ranking');
 
-  // Title
-  rankSheet.mergeCells('A1:M1');
+  // Build roadmap data for the extra columns (lookup by subprocessId)
+  const roadmapItems = buildAutomationRoadmap(assessments);
+  const roadmapMap = new Map(roadmapItems.map((r) => [r.subprocessId, r]));
+
+  const ROADMAP_CATEGORY_LABELS: Record<string, string> = {
+    'quick-wins':     'Quick Wins',
+    'strategic':      'Strategic Initiatives',
+    'transformation': 'Transformation Initiatives',
+  };
+
+  // Title — now spans 17 columns (A:Q)
+  rankSheet.mergeCells('A1:Q1');
   const titleCell = rankSheet.getCell('A1');
   titleCell.value = 'Avaliação de Eficiência Operacional – Ranking de Oportunidades';
   titleCell.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
@@ -21,7 +32,7 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
   rankSheet.getRow(1).height = 36;
 
   // Subtitle with date
-  rankSheet.mergeCells('A2:M2');
+  rankSheet.mergeCells('A2:Q2');
   const subtitleCell = rankSheet.getCell('A2');
   subtitleCell.value = `Gerado em ${new Date().toLocaleDateString('pt-BR')}`;
   subtitleCell.font = { size: 10, color: { argb: 'FF6B7280' } };
@@ -41,6 +52,11 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
     'Score Total',
     'Score de Automação',
     'Prioridade',
+    // Roadmap columns (new — do not remove existing columns)
+    'Impact Score',
+    'Effort Score',
+    'Roadmap Category',
+    'Timeline',
   ];
 
   const headerRow = rankSheet.getRow(4);
@@ -66,6 +82,7 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
     const isEven = idx % 2 === 0;
     const bgColor = isEven ? 'FFFAFAFA' : 'FFFFFFFF';
 
+    const ri = roadmapMap.get(a.subprocessId);
     const values = [
       idx + 1,
       a.macroprocessName,
@@ -80,6 +97,11 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
       a.totalScore,
       a.automationScore,
       getPriorityLabel(a.totalScore),
+      // Roadmap columns
+      ri?.impactScore ?? '',
+      ri?.effortScore ?? '',
+      ri ? ROADMAP_CATEGORY_LABELS[ri.roadmapCategory] : '',
+      ri?.timeline ?? '',
     ];
 
     values.forEach((val, i) => {
@@ -115,6 +137,20 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
         cell.font = { bold: true, color: { argb: priorityFg } };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
       }
+
+      // Color roadmap category cell
+      if (i === 15 && ri) {
+        const catColors: Record<string, { bg: string; fg: string }> = {
+          'quick-wins':     { bg: 'FFD1FAE5', fg: 'FF065F46' },
+          'strategic':      { bg: 'FFDBEAFE', fg: 'FF1E40AF' },
+          'transformation': { bg: 'FFEDE9FE', fg: 'FF5B21B6' },
+        };
+        const c = catColors[ri.roadmapCategory];
+        if (c) {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: c.bg } };
+          cell.font = { bold: true, color: { argb: c.fg } };
+        }
+      }
     });
     row.height = 22;
   });
@@ -134,6 +170,10 @@ export async function exportToExcel(assessments: SubprocessAssessment[]): Promis
     { width: 14 },  // Score Total
     { width: 18 },  // Score de Automação
     { width: 18 },  // Prioridade
+    { width: 14 },  // Impact Score (new)
+    { width: 14 },  // Effort Score (new)
+    { width: 26 },  // Roadmap Category (new)
+    { width: 14 },  // Timeline (new)
   ];
 
   // ── Sheet 2: Detalhamento ─────────────────────────────────────────────────
