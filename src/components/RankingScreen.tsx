@@ -235,19 +235,13 @@ export default function RankingScreen({
       alert("Report container not found.");
       return;
     }
-    const clone = element.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll("*").forEach(el => {
-      const htmlEl = el as HTMLElement;
-      const style = window.getComputedStyle(htmlEl);
-      if (style.color.includes("lab(") || style.color.includes("oklab(")) {
-        htmlEl.style.color = "#111827";
-      }
-      if (style.backgroundColor.includes("lab(") || style.backgroundColor.includes("oklab(")) {
-        htmlEl.style.backgroundColor = "#ffffff";
-      }
-      if (style.borderColor.includes("lab(") || style.borderColor.includes("oklab(")) {
-        htmlEl.style.borderColor = "#e5e7eb";
-      }
+    element.style.color = "#111827";
+    element.style.backgroundColor = "#ffffff";
+    element.querySelectorAll("*").forEach(node => {
+      const htmlNode = node as HTMLElement;
+      const style = window.getComputedStyle(htmlNode);
+      if (style.color) htmlNode.style.color = style.color;
+      if (style.backgroundColor) htmlNode.style.backgroundColor = style.backgroundColor;
     });
     const html2pdf = (await import("html2pdf.js")).default;
     html2pdf()
@@ -257,7 +251,7 @@ export default function RankingScreen({
         html2canvas: { scale: 2, backgroundColor: "#ffffff", useCORS: true },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       })
-      .from(clone)
+      .from(element)
       .save();
   };
 
