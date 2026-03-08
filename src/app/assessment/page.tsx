@@ -1,79 +1,22 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   AssessmentState, DiagnosticMode,
   Macroprocess, Process, Subprocess, CriteriaScores,
-  SelectedSubprocessItem, SubprocessAssessment,
+  SelectedSubprocessItem,
 } from '@/types';
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 import { exportToExcel } from '@/lib/exportExcel';
+import { createNewSession, finalizeSessionSubprocesses, saveSession } from '@/lib/session';
 
 import StepIndicator from '@/components/StepIndicator';
 import StartScreen from '@/components/StartScreen';
+import ModeSelectionScreen from '@/components/ModeSelectionScreen';
 import SubprocessExplorer from '@/components/SubprocessExplorer';
 import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
-import ModeSelectionScreen from '@/components/ModeSelectionScreen';
 import Questionnaire from '@/components/Questionnaire';
 import RankingScreen from '@/components/RankingScreen';
-
-// ── Collaborative response storage ──────────────────────────────────────────
-
-const GAS_ENDPOINT =
-  'https://script.google.com/macros/s/AKfycbzn23DipnagQMTtSSs8F40Sdn_a-MAir-CCAxvUSq6OMmhwzVJCOQAwAtQulQO3prSl/exec';
-
-const COLLAB_STORE_KEY = 'oea_collab_responses';
-const DIAGNOSTIC_ID_KEY = 'oea_diagnostic_id';
-
-function loadCollabResponses(diagnosticId: string): SubprocessAssessment[] {
-  try {
-    const raw = localStorage.getItem(COLLAB_STORE_KEY);
-    if (!raw) return [];
-    const store = JSON.parse(raw) as Record<string, SubprocessAssessment[]>;
-    return store[diagnosticId] ?? [];
-  } catch {
-    return [];
-  }
-}
-
-function saveCollabResponse(diagnosticId: string, assessment: SubprocessAssessment): void {
-  try {
-    const raw = localStorage.getItem(COLLAB_STORE_KEY);
-    const store = raw ? (JSON.parse(raw) as Record<string, SubprocessAssessment[]>) : {};
-    const existing = store[diagnosticId] ?? [];
-    // Overwrite any previous entry for the same subprocess
-    const filtered = existing.filter((a) => a.subprocessId !== assessment.subprocessId);
-    store[diagnosticId] = [...filtered, assessment];
-    localStorage.setItem(COLLAB_STORE_KEY, JSON.stringify(store));
-  } catch {
-    // Non-critical
-  }
-}
-
-function sendCollabResponseToGAS(diagnosticId: string, assessment: SubprocessAssessment): void {
-  try {
-    const payload = {
-      event_type: 'collaborative_response',
-      diagnostic_id: diagnosticId,
-      subprocess_id: assessment.subprocessId,
-      subprocess_name: assessment.subprocessName,
-      macroprocess: assessment.macroprocessName,
-      process: assessment.processName,
-      score: assessment.totalScore,
-      automationScore: assessment.automationScore,
-      annualHours: assessment.annualHours,
-      timestamp: new Date().toISOString(),
-    };
-    fetch(GAS_ENDPOINT, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload),
-    }).catch(() => {});
-  } catch {
-    // Non-critical
-  }
-}
 
 // ── Initial state ────────────────────────────────────────────────────────────
 
@@ -83,7 +26,7 @@ const INITIAL_STATE: AssessmentState = {
   currentSubprocessIndex: 0,
   step: 'start',
   diagnosticId: null,
-  diagnosticMode: 'solo',
+  diagnosticMode: 'individual',
 };
 
 // ── Page component ───────────────────────────────────────────────────────────
@@ -91,36 +34,33 @@ const INITIAL_STATE: AssessmentState = {
 export default function AssessmentPage() {
   const [state, setState] = useState<AssessmentState>(INITIAL_STATE);
 
-  // On mount: check for ?diagnostic=ID → join a collaborative session
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('diagnostic');
-    if (!id) return;
-    const existing = loadCollabResponses(id);
+  // ── Navigation ──────────────────────────────────────────────────────────────
+
+  /** Called from StartScreen — goes to mode selection first. */
+  const goToModeSelection = useCallback(() => {
+    setState((s) => ({ ...s, step: 'mode-selection' }));
+  }, []);
+
+  /** Called from ModeSelectionScreen — generates sessionId and opens explore. */
+  const confirmMode = useCallback((mode: DiagnosticMode) => {
+    const sessionId = crypto.randomUUID();
+    // Create and persist an empty session; subprocesses are added at startEvaluation
+    const session = createNewSession(sessionId, mode);
+    saveSession(session);
     setState((s) => ({
       ...s,
-      diagnosticId: id,
-      diagnosticMode: 'collaborative',
-      assessments: existing,
+      diagnosticId: sessionId,
+      diagnosticMode: mode,
       step: 'explore',
     }));
   }, []);
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
-
-  const goToExplorer = useCallback(() => {
-    // Generate a fresh diagnostic ID for a brand-new session
-    const id = crypto.randomUUID();
-    localStorage.setItem(DIAGNOSTIC_ID_KEY, id);
-    // Append to URL so the link is shareable
-    const url = new URL(window.location.href);
-    url.searchParams.set('diagnostic', id);
-    window.history.replaceState(null, '', url.toString());
-    setState((s) => ({ ...s, step: 'explore', diagnosticId: id }));
-  }, []);
-
   const goBackToStart = useCallback(() => {
     setState((s) => ({ ...s, step: 'start' }));
+  }, []);
+
+  const goBackToModeSelection = useCallback(() => {
+    setState((s) => ({ ...s, step: 'mode-selection' }));
   }, []);
 
   // ── Subprocess selection ─────────────────────────────────────────────────────
@@ -198,21 +138,14 @@ export default function AssessmentPage() {
 
   const startEvaluation = useCallback(() => {
     setState((s) => {
-      // Collaborators who joined via a shared link skip mode selection
-      if (s.diagnosticMode === 'collaborative') {
-        return { ...s, currentSubprocessIndex: 0, step: 'questionnaire' };
+      // Finalise session with the selected subprocess list
+      if (s.diagnosticId) {
+        const session = createNewSession(s.diagnosticId, s.diagnosticMode);
+        const finalised = finalizeSessionSubprocesses(session, s.globalSelectedSubprocesses);
+        saveSession(finalised);
       }
-      return { ...s, currentSubprocessIndex: 0, step: 'mode-selection' };
+      return { ...s, currentSubprocessIndex: 0, step: 'questionnaire' };
     });
-  }, []);
-
-  /** Called from ModeSelectionScreen once the user picks a mode. */
-  const confirmMode = useCallback((mode: DiagnosticMode) => {
-    setState((s) => ({
-      ...s,
-      diagnosticMode: mode,
-      step: 'questionnaire',
-    }));
   }, []);
 
   // ── Questionnaire ────────────────────────────────────────────────────────────
@@ -222,12 +155,6 @@ export default function AssessmentPage() {
       const { macroprocess, process, subprocess, isCustom } =
         s.globalSelectedSubprocesses[s.currentSubprocessIndex];
       const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
-
-      // In collaborative mode: persist locally and send to GAS
-      if (s.diagnosticMode === 'collaborative' && s.diagnosticId) {
-        saveCollabResponse(s.diagnosticId, assessment);
-        sendCollabResponseToGAS(s.diagnosticId, assessment);
-      }
 
       const updatedAssessments = addAssessment(s.assessments, assessment);
       const done = isAssessmentComplete(
@@ -248,21 +175,13 @@ export default function AssessmentPage() {
   const goBackInQuestionnaire = useCallback(() => {
     setState((s) => {
       if (s.currentSubprocessIndex === 0) {
-        // Collaborators go back to explore; the original user goes back to mode-selection
-        return {
-          ...s,
-          step: s.diagnosticMode === 'collaborative' ? 'explore' : 'mode-selection',
-        };
+        return { ...s, step: 'explore' };
       }
       return { ...s, currentSubprocessIndex: s.currentSubprocessIndex - 1 };
     });
   }, []);
 
   const restart = useCallback(() => {
-    // Remove diagnostic param from URL
-    const url = new URL(window.location.href);
-    url.searchParams.delete('diagnostic');
-    window.history.replaceState(null, '', url.toString());
     setState(INITIAL_STATE);
   }, []);
 
@@ -282,18 +201,12 @@ export default function AssessmentPage() {
     [state.globalSelectedSubprocesses]
   );
 
-  /** Subprocesses that already have answers (from a prior collaborative session). */
-  const answeredSubprocessIds = useMemo(
-    () => new Set(state.assessments.map((a) => a.subprocessId)),
-    [state.assessments]
-  );
-
   const currentItem = state.globalSelectedSubprocesses[state.currentSubprocessIndex];
 
   return (
     <div className="min-h-screen bg-gray-50">
       {state.step === 'start' ? (
-        <StartScreen onStart={goToExplorer} />
+        <StartScreen onStart={goToModeSelection} />
       ) : (
         <>
           {/* Persistent header */}
@@ -303,7 +216,7 @@ export default function AssessmentPage() {
                 <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
                 <p className="text-xs text-gray-400">Operational Efficiency Assessment</p>
               </div>
-              {state.diagnosticMode === 'collaborative' && state.diagnosticId && (
+              {state.diagnosticMode === 'collaborative' && (
                 <span className="text-xs bg-violet-50 text-violet-700 font-medium px-2.5 py-1 rounded-full border border-violet-200">
                   Diagnóstico colaborativo
                 </span>
@@ -317,30 +230,28 @@ export default function AssessmentPage() {
           {state.step === 'explore' && (
             <SelectedSubprocessesPanel
               count={state.globalSelectedSubprocesses.length}
+              mode={state.diagnosticMode}
               onStart={startEvaluation}
               onClear={clearSelection}
             />
           )}
 
           <main>
+            {state.step === 'mode-selection' && (
+              <ModeSelectionScreen onConfirm={confirmMode} />
+            )}
+
             {state.step === 'explore' && (
               <SubprocessExplorer
                 selectedIds={selectedIds}
                 customSubprocesses={customSubprocesses}
-                answeredSubprocessIds={answeredSubprocessIds}
+                sessionId={state.diagnosticId ?? undefined}
+                diagnosticMode={state.diagnosticMode}
                 onToggle={toggleSubprocess}
                 onToggleAll={toggleAllInProcess}
                 onAddCustom={addCustomSubprocess}
                 onRemoveCustom={removeCustomSubprocess}
-                onBack={goBackToStart}
-              />
-            )}
-
-            {state.step === 'mode-selection' && state.diagnosticId && (
-              <ModeSelectionScreen
-                diagnosticId={state.diagnosticId}
-                selectedCount={state.globalSelectedSubprocesses.length}
-                onConfirm={confirmMode}
+                onBack={goBackToModeSelection}
               />
             )}
 
@@ -352,7 +263,6 @@ export default function AssessmentPage() {
                 subprocess={currentItem.subprocess}
                 currentIndex={state.currentSubprocessIndex}
                 total={state.globalSelectedSubprocesses.length}
-                answeredCount={answeredSubprocessIds.size}
                 diagnosticMode={state.diagnosticMode}
                 onComplete={completeQuestionnaire}
                 onBack={goBackInQuestionnaire}

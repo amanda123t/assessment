@@ -1,14 +1,18 @@
 'use client';
 
-import { ListChecks, Trash2, PlayCircle } from 'lucide-react';
+import { ListChecks, Trash2, PlayCircle, Users } from 'lucide-react';
+import { DiagnosticMode } from '@/types';
 
 interface Props {
   count: number;
+  mode?: DiagnosticMode;
   onStart: () => void;
   onClear: () => void;
 }
 
-export default function SelectedSubprocessesPanel({ count, onStart, onClear }: Props) {
+export default function SelectedSubprocessesPanel({ count, mode = 'individual', onStart, onClear }: Props) {
+  const isCollaborative = mode === 'collaborative';
+
   return (
     <div className="bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
@@ -41,10 +45,17 @@ export default function SelectedSubprocessesPanel({ count, onStart, onClear }: P
           <button
             onClick={onStart}
             disabled={count === 0}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white disabled:text-gray-400 font-semibold px-4 py-1.5 rounded-lg transition-colors text-xs"
+            className={`flex items-center gap-1.5 disabled:bg-gray-200 disabled:cursor-not-allowed text-white disabled:text-gray-400 font-semibold px-4 py-1.5 rounded-lg transition-colors text-xs ${
+              isCollaborative
+                ? 'bg-violet-600 hover:bg-violet-700'
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
           >
-            <PlayCircle size={14} strokeWidth={2} />
-            Iniciar avaliação
+            {isCollaborative ? (
+              <><Users size={14} strokeWidth={2} /> Iniciar respondendo</>
+            ) : (
+              <><PlayCircle size={14} strokeWidth={2} /> Iniciar avaliação</>
+            )}
           </button>
         </div>
       </div>

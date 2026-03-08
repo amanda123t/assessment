@@ -528,7 +528,7 @@ function buildRoadmap(ranked: RankedAssessment[]): RoadmapGroup[] {
   ].filter((g) => g.entries.length > 0);
 }
 
-export default function RankingScreen({ assessments, diagnosticId, diagnosticMode = 'solo', onExport, onRestart }: Props) {
+export default function RankingScreen({ assessments, diagnosticId, diagnosticMode = 'individual', onExport, onRestart }: Props) {
   const [selected, setSelected] = useState<RankedAssessment | null>(null);
   const [exporting, setExporting] = useState(false);
   const [leadCaptured, setLeadCaptured] = useState(() => !!loadStoredLead());

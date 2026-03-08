@@ -25,7 +25,7 @@ export default function Questionnaire({
   currentIndex,
   total,
   answeredCount = 0,
-  diagnosticMode = 'solo',
+  diagnosticMode = 'individual',
   onComplete,
   onBack,
 }: Props) {

@@ -5,9 +5,9 @@ import {
   ChevronRight, ChevronDown,
   DollarSign, ShoppingCart, TrendingUp, Users,
   Truck, UserCog, ShieldCheck, LucideIcon,
-  Plus, X,
+  Plus, X, Copy, Check,
 } from 'lucide-react';
-import { Macroprocess, Process, Subprocess, SelectedSubprocessItem } from '@/types';
+import { Macroprocess, Process, Subprocess, SelectedSubprocessItem, DiagnosticMode } from '@/types';
 import { processLibrary } from '@/data/processLibrary';
 
 const MACRO_ICONS: Record<string, LucideIcon> = {
@@ -27,6 +27,9 @@ interface Props {
   customSubprocesses: SelectedSubprocessItem[];
   /** Subprocesses already answered in a collaborative session — shown as locked. */
   answeredSubprocessIds?: Set<string>;
+  /** Session ID — used to build the share link in collaborative mode. */
+  sessionId?: string;
+  diagnosticMode?: DiagnosticMode;
   onToggle: (subprocess: Subprocess, macroprocess: Macroprocess, process: Process) => void;
   onToggleAll: (subprocesses: Subprocess[], macroprocess: Macroprocess, process: Process, selectAll: boolean) => void;
   onAddCustom: (item: SelectedSubprocessItem) => void;
@@ -160,6 +163,8 @@ export default function SubprocessExplorer({
   selectedIds,
   customSubprocesses,
   answeredSubprocessIds = new Set(),
+  sessionId,
+  diagnosticMode = 'individual',
   onToggle,
   onToggleAll,
   onAddCustom,
@@ -169,6 +174,21 @@ export default function SubprocessExplorer({
   const [expandedMacros, setExpandedMacros] = useState<Set<string>>(new Set());
   const [expandedProcesses, setExpandedProcesses] = useState<Set<string>>(new Set());
   const [showFormFor, setShowFormFor] = useState<{ macro: Macroprocess; proc: Process } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const shareUrl =
+    typeof window !== 'undefined' && sessionId
+      ? `${window.location.origin}/assessment/session/${sessionId}`
+      : null;
+
+  const handleCopyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    } catch { /* ignore */ }
+  };
 
   const toggleMacro = (id: string) => {
     setExpandedMacros((prev) => {
@@ -191,18 +211,45 @@ export default function SubprocessExplorer({
   return (
     <div className="max-w-4xl mx-auto px-6 py-10">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <button
           onClick={onBack}
           className="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4 block"
         >
-          ← Voltar ao início
+          ← Voltar
         </button>
         <h2 className="text-2xl font-bold text-gray-900">Selecione os Subprocessos</h2>
         <p className="text-gray-500 mt-1">
           Expanda qualquer área e selecione subprocessos — as seleções acumulam globalmente
         </p>
       </div>
+
+      {/* Share link banner — collaborative mode only */}
+      {diagnosticMode === 'collaborative' && shareUrl && (
+        <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-6">
+          <p className="text-xs font-semibold text-violet-700 uppercase tracking-wide mb-1">
+            Compartilhar diagnóstico com sua equipe
+          </p>
+          <p className="text-xs text-gray-500 mb-3">
+            Envie este link para que especialistas respondam apenas os subprocessos relevantes.
+          </p>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 bg-white border border-violet-200 rounded-lg px-3 py-2 text-xs text-gray-600 font-mono truncate select-all">
+              {shareUrl}
+            </div>
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex-shrink-0"
+            >
+              {linkCopied ? (
+                <><Check size={13} strokeWidth={2.5} /> Copiado</>
+              ) : (
+                <><Copy size={13} strokeWidth={1.75} /> Copiar link</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Collapsible tree */}
       <div className="space-y-2">

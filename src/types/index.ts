@@ -63,15 +63,60 @@ export interface SelectedSubprocessItem {
 }
 
 /** Whether the diagnostic is answered by a single user or collaboratively. */
-export type DiagnosticMode = 'solo' | 'collaborative';
+export type DiagnosticMode = 'individual' | 'collaborative';
+
+// ── Collaborative session types ──────────────────────────────────────────────
+
+export type SubprocessStatus = 'open' | 'in_progress' | 'completed';
+
+export interface SubprocessState {
+  subprocessId: string;
+  status: SubprocessStatus;
+  /** Display name of the participant currently answering this subprocess. */
+  assignedTo?: string;
+  assignedEmail?: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+export interface Participant {
+  participantId: string;
+  name: string;
+  email: string;
+  department: string;
+  joinedAt: string;
+}
+
+/**
+ * Full session object stored in localStorage under `oea_session_{sessionId}`.
+ * Contains all subprocesses, their states, collected answers, and participants.
+ */
+export interface AssessmentSession {
+  sessionId: string;
+  mode: DiagnosticMode;
+  createdAt: number;
+  /** IDs of all selected subprocesses, in order. */
+  subprocessIds: string[];
+  /**
+   * Full SelectedSubprocessItem for each subprocess — stored so collaborators
+   * on the same device can look up names/hierarchy without re-querying processLibrary.
+   */
+  subprocessItems: SelectedSubprocessItem[];
+  /** Per-subprocess answering state (open / in_progress / completed). */
+  subprocessStates: Record<string, SubprocessState>;
+  /** Accumulated answers from all participants. */
+  answers: SubprocessAssessment[];
+  /** Participants who have joined (identified themselves). */
+  participants: Participant[];
+}
 
 export interface AssessmentState {
   /** Global accumulator — persists across all navigation. */
   globalSelectedSubprocesses: SelectedSubprocessItem[];
   assessments: SubprocessAssessment[];
   currentSubprocessIndex: number;
-  step: 'start' | 'explore' | 'mode-selection' | 'questionnaire' | 'ranking';
-  /** Unique ID for this diagnostic session; null until the user starts. */
+  step: 'start' | 'mode-selection' | 'explore' | 'questionnaire' | 'ranking';
+  /** Unique ID for this diagnostic session; null until the user confirms mode. */
   diagnosticId: string | null;
   diagnosticMode: DiagnosticMode;
 }
