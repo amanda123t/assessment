@@ -67,14 +67,14 @@ function StatusBadge({ status, assignedTo }: { status: SubprocessStatus; assigne
     return (
       <span className="inline-flex items-center gap-1 text-xs text-amber-700 font-medium">
         <Clock size={13} strokeWidth={2} className="text-amber-500" />
-        Em andamento{assignedTo ? ` por ${assignedTo}` : ''}
+        Em andamento
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 text-xs text-gray-500 font-medium">
       <Circle size={12} strokeWidth={2} className="text-gray-400" />
-      Não iniciado
+      Disponível
     </span>
   );
 }
@@ -96,14 +96,15 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
 
   const participantKey = `oea_participant_${initialSession.sessionId}`;
 
-  // Restore participant from sessionStorage on mount so refreshes don't lose identity
+  // Restore participant from sessionStorage on mount.
+  // Always lands on 'list' — never auto-opens any subprocess.
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(participantKey);
       if (saved) {
         const p = JSON.parse(saved) as Participant;
         setParticipant(p);
-        setView('list');
+        setView('list'); // always show list; participant must click to open a subprocess
       }
     } catch {
       // sessionStorage unavailable — fall through to identify view
@@ -143,10 +144,11 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
   const handleSelectSubprocess = (item: SelectedSubprocessItem) => {
     if (!participant) return;
 
-    // Always read the freshest session from localStorage before locking so that
-    // a completion by another participant (or another tab) is respected.
+    // Reload from storage before every action so stale state from other
+    // participants is never used. This is the only entry-point that opens
+    // the questionnaire — nothing opens it automatically.
     const fresh = loadSession(initialSession.sessionId) ?? session;
-    if (fresh !== session) setSession(fresh);
+    setSession(fresh); // always sync UI, regardless of whether data changed
 
     if (fresh.subprocessStates[item.subprocess.id]?.status === 'completed') return;
 
