@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
 } from 'recharts';
-import { Trophy, BarChart2, Download, RotateCcw, X, Activity, Lightbulb, Clock, TrendingUp, DollarSign, Zap, Target, Map, FileText, CheckCircle2 } from 'lucide-react';
+import { Trophy, BarChart2, Download, RotateCcw, X, Activity, Lightbulb, Clock, TrendingUp, DollarSign, Zap, Target, Map, FileText, CheckCircle2, ChevronDown } from 'lucide-react';
 import { SubprocessAssessment, CRITERIA, DiagnosticMode } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 
@@ -530,8 +530,17 @@ function buildRoadmap(ranked: RankedAssessment[]): RoadmapGroup[] {
 
 export default function RankingScreen({ assessments, diagnosticId, diagnosticMode = 'individual', onExport, onRestart }: Props) {
   const [selected, setSelected] = useState<RankedAssessment | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
   const [leadCaptured, setLeadCaptured] = useState(() => !!loadStoredLead());
+
+  const toggleRow = (id: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
   const [showLeadModal, setShowLeadModal] = useState(false);
 
   const ranked = buildRanking(assessments);
@@ -763,113 +772,140 @@ export default function RankingScreen({ assessments, diagnosticId, diagnosticMod
         </ResponsiveContainer>
       </div>
 
-      {/* ── Ranking table ───────────────────────────────────────────── */}
+      {/* ── Ranking table (accordion) ────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-8">
         <div className="px-6 py-4 border-b border-gray-100">
           <h3 className="font-semibold text-gray-800">Ranking Detalhado</h3>
           <p className="text-xs text-gray-400 mt-0.5">
-            Clique em um item para ver o detalhamento por critério
+            Clique em qualquer linha para expandir os detalhes
           </p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">#</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Macroprocesso</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Processo</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Subprocesso</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Score</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Automação</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Tipo</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Esforço Anual</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Economia Pot.</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Impacto Fin.</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Prioridade</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {ranked.map((item) => (
-                <tr
-                  key={item.subprocessId}
-                  onClick={() => setSelected(item)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors group"
-                >
-                  <td className="px-4 py-3.5">
-                    <span className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-xs font-bold
-                      ${item.rank <= 3 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                      {item.rank}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-gray-500 text-xs">
-                    {item.macroprocessName}
-                  </td>
-                  <td className="px-4 py-3.5 text-gray-500 text-xs">
-                    {item.processName}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="font-medium text-gray-800 group-hover:text-blue-600 transition-colors">
-                      {item.subprocessName}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className={`font-extrabold ${item.priorityColor}`}>
-                        {item.totalScore}
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-100">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">#</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Subprocesso</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Score</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Automação</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Economia Potencial</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Prioridade</th>
+              <th className="w-8" />
+            </tr>
+          </thead>
+          <tbody>
+            {ranked.map((item) => {
+              const isExpanded = expandedRows.has(item.subprocessId);
+              return (
+                <>
+                  {/* ── Level 1 — summary row ── */}
+                  <tr
+                    key={item.subprocessId}
+                    onClick={() => toggleRow(item.subprocessId)}
+                    className={`cursor-pointer transition-colors border-t border-gray-50 group ${
+                      isExpanded ? 'bg-blue-50/60' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <td className="px-4 py-3.5">
+                      <span className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-xs font-bold ${
+                        item.rank <= 3 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {item.rank}
                       </span>
-                      <div className="w-16 bg-gray-100 rounded-full h-1">
-                        <div
-                          className={`${item.barColor} h-1 rounded-full`}
-                          style={{ width: `${item.scorePercent}%` }}
-                        />
+                    </td>
+
+                    <td className="px-4 py-3.5">
+                      <span className={`font-medium transition-colors ${isExpanded ? 'text-blue-700' : 'text-gray-800 group-hover:text-blue-600'}`}>
+                        {item.subprocessName}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3.5 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`font-extrabold ${item.priorityColor}`}>{item.totalScore}</span>
+                        <div className="w-14 bg-gray-100 rounded-full h-1">
+                          <div className={`${item.barColor} h-1 rounded-full`} style={{ width: `${item.scorePercent}%` }} />
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className="font-semibold text-blue-600 text-sm">
-                      {item.automationScore}
-                      <span className="text-xs font-normal text-gray-400">/100</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    {item.isCustom ? (
-                      <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full border bg-blue-50 text-blue-700 border-blue-200">
-                        Personalizado
+                    </td>
+
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="font-semibold text-blue-600">
+                        {item.automationScore}
+                        <span className="text-xs font-normal text-gray-400">/100</span>
                       </span>
-                    ) : (
-                      <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full border bg-gray-50 text-gray-500 border-gray-200">
-                        Padrão
+                    </td>
+
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="text-blue-700 font-medium">
+                        {fmt(item.automationSavingsHours)}
+                        <span className="text-xs font-normal text-gray-400"> h/ano</span>
                       </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className="text-gray-700 font-medium text-sm">
-                      {fmt(item.annualHours)}
-                      <span className="text-xs font-normal text-gray-400"> h/ano</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className="text-blue-700 font-medium text-sm">
-                      {fmt(item.automationSavingsHours)}
-                      <span className="text-xs font-normal text-gray-400"> h/ano</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className="text-green-700 font-semibold text-sm">
-                      {fmtCurrency(item.financialImpact)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
-                      {item.priority} Prioridade
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </td>
+
+                    <td className="px-4 py-3.5 text-center">
+                      <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
+                        {item.priority}
+                      </span>
+                    </td>
+
+                    <td className="px-3 py-3.5 text-right">
+                      <ChevronDown
+                        size={15}
+                        strokeWidth={2}
+                        className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                    </td>
+                  </tr>
+
+                  {/* ── Level 2 — expanded details ── */}
+                  {isExpanded && (
+                    <tr key={`${item.subprocessId}-details`}>
+                      <td colSpan={7} className="px-6 pb-5 pt-1 bg-blue-50/40 border-b border-blue-100">
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm mb-4 pt-2 sm:grid-cols-3">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Macroprocesso</p>
+                            <p className="text-gray-700 font-medium">{item.macroprocessName}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Processo</p>
+                            <p className="text-gray-700 font-medium">{item.processName}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Tipo</p>
+                            <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                              item.isCustom
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-gray-50 text-gray-500 border-gray-200'
+                            }`}>
+                              {item.isCustom ? 'Personalizado' : 'Padrão'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Esforço Anual</p>
+                            <p className="text-gray-700 font-medium">
+                              {fmt(item.annualHours)}<span className="text-gray-400 font-normal"> h/ano</span>
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Impacto Financeiro</p>
+                            <p className="text-green-700 font-semibold">{fmtCurrency(item.financialImpact)}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelected(item); }}
+                          className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                        >
+                          Ver detalhamento por critério →
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       {/* ── Automation Roadmap ──────────────────────────────────────── */}
