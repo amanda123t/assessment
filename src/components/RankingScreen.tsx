@@ -228,26 +228,23 @@ export default function RankingScreen({
   };
 
   const handleDownloadPDF = async () => {
-    console.log('[PDF] handleDownloadPDF triggered');
-    setGeneratingPdf(true);
-    try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const element = document.getElementById('diagnostic-results');
-      console.log('[PDF] element found:', !!element);
-      if (!element) return;
-      await html2pdf()
-        .from(element)
-        .set({
-          margin: 20,
-          filename: 'diagnostico-automacao.pdf',
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        })
-        .save();
-      console.log('[PDF] save() called successfully');
-    } finally {
-      setGeneratingPdf(false);
+    console.log("PDF export triggered");
+    const element = document.getElementById("diagnostic-results");
+    console.log("PDF container:", element);
+    if (!element) {
+      alert("Report container not found.");
+      return;
     }
+    const html2pdf = (await import("html2pdf.js")).default;
+    html2pdf()
+      .set({
+        margin: 20,
+        filename: "diagnostico-automacao.pdf",
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      })
+      .from(element)
+      .save();
   };
 
   const ranked = buildRanking(assessments);
