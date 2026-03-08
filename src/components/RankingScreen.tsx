@@ -235,23 +235,40 @@ export default function RankingScreen({
       alert("Report container not found.");
       return;
     }
-    element.style.color = "#111827";
-    element.style.backgroundColor = "#ffffff";
-    element.querySelectorAll("*").forEach(node => {
+    const clone = element.cloneNode(true) as HTMLElement;
+    const isBadColor = (val: string) => val.includes("lab(") || val.includes("oklab(");
+    clone.querySelectorAll("*").forEach(node => {
       const htmlNode = node as HTMLElement;
-      const style = window.getComputedStyle(htmlNode);
-      if (style.color) htmlNode.style.color = style.color;
-      if (style.backgroundColor) htmlNode.style.backgroundColor = style.backgroundColor;
+      const cs = window.getComputedStyle(htmlNode);
+      if (isBadColor(cs.color)) htmlNode.style.color = "#111827";
+      if (isBadColor(cs.backgroundColor)) htmlNode.style.backgroundColor = "#ffffff";
+      if (isBadColor(cs.borderColor)) htmlNode.style.borderColor = "#e5e7eb";
+      if (isBadColor(cs.outlineColor)) htmlNode.style.outlineColor = "#e5e7eb";
+      if (isBadColor(cs.textDecorationColor)) htmlNode.style.textDecorationColor = "#111827";
+      if (isBadColor(cs.boxShadow)) htmlNode.style.boxShadow = "none";
+      if (isBadColor(cs.background)) htmlNode.style.background = "#ffffff";
     });
     const html2pdf = (await import("html2pdf.js")).default;
     html2pdf()
       .set({
         margin: 20,
         filename: "diagnostico-automacao.pdf",
-        html2canvas: { scale: 2, backgroundColor: "#ffffff", useCORS: true },
+        html2canvas: {
+          scale: 2,
+          backgroundColor: "#ffffff",
+          useCORS: true,
+          onclone: (clonedDoc: Document) => {
+            const badColorRe = /\b(ok)?(lab|lch)\s*\([^)]*\)/g;
+            clonedDoc.querySelectorAll("style").forEach(styleEl => {
+              if (styleEl.textContent) {
+                styleEl.textContent = styleEl.textContent.replace(badColorRe, "#6b7280");
+              }
+            });
+          },
+        },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       })
-      .from(element)
+      .from(clone)
       .save();
   };
 
