@@ -7,7 +7,6 @@ import {
   SelectedSubprocessItem,
 } from '@/types';
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
-import { exportToExcel } from '@/lib/exportExcel';
 import { createNewSession, finalizeSessionSubprocesses, saveSession } from '@/lib/session';
 
 import StepIndicator from '@/components/StepIndicator';
@@ -185,10 +184,6 @@ export default function AssessmentPage() {
     setState(INITIAL_STATE);
   }, []);
 
-  const handleExport = useCallback(async () => {
-    await exportToExcel(state.assessments);
-  }, [state.assessments]);
-
   // ── Derived values ───────────────────────────────────────────────────────────
 
   const selectedIds = useMemo(
@@ -274,7 +269,6 @@ export default function AssessmentPage() {
                 assessments={state.assessments}
                 diagnosticId={state.diagnosticId}
                 diagnosticMode={state.diagnosticMode}
-                onExport={handleExport}
                 onRestart={restart}
               />
             )}

@@ -96,14 +96,9 @@ export default function Questionnaire({
           const currentScore = scores[criterion.key];
           return (
             <div key={criterion.key} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-              <div className="flex items-start gap-3 mb-4">
-                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {idx + 1}
-                </span>
-                <div>
-                  <h3 className="font-semibold text-gray-800 text-sm">{criterion.label}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">{criterion.description}</p>
-                </div>
+              <div className="mb-4">
+                <h3 className="font-semibold text-gray-800 text-sm">{criterion.label}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{criterion.description}</p>
               </div>
 
               {/* Descriptive 4-option scale for impact estimation */}
