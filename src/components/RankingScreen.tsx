@@ -128,6 +128,36 @@ interface LeadData {
   createdAt: number;
 }
 
+interface DiagnosticMeta {
+  diagnosis_subprocess_count: number;
+  diagnosis_top_opportunity: string;
+  diagnosis_top_score: number;
+  diagnosis_average_score: number;
+  diagnosis_timestamp: string;
+  diagnosis_page_url: string;
+  diagnosis_source: string;
+}
+
+function buildDiagnosticMeta(ranked: RankedAssessment[]): DiagnosticMeta {
+  const topByAuto = ranked.reduce(
+    (best, r) => (r.automationScore > best.automationScore ? r : best),
+    ranked[0],
+  );
+  const avgScore =
+    ranked.length > 0
+      ? Math.round(ranked.reduce((s, r) => s + r.automationScore, 0) / ranked.length)
+      : 0;
+  return {
+    diagnosis_subprocess_count: ranked.length,
+    diagnosis_top_opportunity: topByAuto?.subprocessName ?? '',
+    diagnosis_top_score: topByAuto?.automationScore ?? 0,
+    diagnosis_average_score: avgScore,
+    diagnosis_timestamp: new Date().toISOString(),
+    diagnosis_page_url: typeof window !== 'undefined' ? window.location.href : '',
+    diagnosis_source: 'Operational Efficiency Assessment',
+  };
+}
+
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
@@ -151,21 +181,27 @@ const GAS_ENDPOINT =
  * GAS doesn't send Access-Control-Allow-Origin headers, so no-cors mode
  * is required. The GAS handler reads the payload via e.postData.contents.
  */
-function sendLeadToSheets(data: LeadData): void {
-  fetch(GAS_ENDPOINT, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify(data),
-  }).catch(() => {
-    // Network failure is non-critical — data is already in localStorage.
-  });
+function sendLeadToSheets(data: LeadData & DiagnosticMeta): void {
+  try {
+    fetch(GAS_ENDPOINT, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(data),
+    }).catch(() => {
+      // Network failure is non-critical — data is already in localStorage.
+    });
+  } catch {
+    // Synchronous errors (e.g. fetch not available) must not block report generation.
+  }
 }
 
 function LeadCaptureSection({
   onGenerate,
+  meta,
 }: {
   onGenerate: (data: LeadData) => void;
+  meta: DiagnosticMeta;
 }) {
   const stored = loadStoredLead();
 
@@ -196,7 +232,13 @@ function LeadCaptureSection({
       createdAt: Date.now(),
     };
     localStorage.setItem(LEAD_KEY, JSON.stringify(data));
-    sendLeadToSheets(data); // non-blocking — does not delay UI or download
+    sendLeadToSheets({
+      ...data,
+      ...meta,
+      // Overwrite timestamp and URL with values captured at submission time
+      diagnosis_timestamp: new Date().toISOString(),
+      diagnosis_page_url: typeof window !== 'undefined' ? window.location.href : '',
+    }); // non-blocking — does not delay UI or download
     setSubmitted(true);
     onGenerate(data);
   };
@@ -475,6 +517,7 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
   const top3 = ranked.slice(0, 3);
   const insights = buildInsights(ranked);
   const roadmap = buildRoadmap(ranked);
+  const diagMeta = buildDiagnosticMeta(ranked);
 
   // Executive summary aggregates
   const totalAnnualHours = assessments.reduce((s, a) => s + a.annualHours, 0);
@@ -932,7 +975,7 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
             </div>
           </div>
         ) : (
-          <LeadCaptureSection onGenerate={handleLeadGenerate} />
+          <LeadCaptureSection onGenerate={handleLeadGenerate} meta={diagMeta} />
         )}
       </section>
 
