@@ -775,7 +775,7 @@ export default function RankingScreen({
       </div>{/* end #diagnostic-results */}
 
       {/* PDF-only container — off-screen so html2canvas can render it */}
-      <div id="pdf-report" style={{ position: "fixed", left: "-9999px", top: 0, width: "800px", background: "white" }}>
+      <div id="pdf-report" style={{ position: "absolute", top: 0, left: 0, width: "800px", opacity: 0, pointerEvents: "none", zIndex: -1, background: "white" }}>
         <PDFReport assessments={assessments} ranked={ranked} roadmap={autoRoadmap} />
       </div>
 
