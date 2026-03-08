@@ -116,54 +116,88 @@ function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () =>
   );
 }
 
+interface Insight {
+  text: string;
+  /** Higher = shown first; top 4 selected. */
+  weight: number;
+}
+
 function buildInsights(ranked: RankedAssessment[]): string[] {
-  const insights: string[] = [];
-  if (ranked.length === 0) return insights;
+  if (ranked.length === 0) return [];
+  const pool: Insight[] = [];
+  const n = ranked.length;
 
-  // High automation potential
-  const highAuto = ranked.filter((r) => r.automationScore >= 60).length;
-  const highAutoPct = Math.round((highAuto / ranked.length) * 100);
-  if (highAutoPct >= 50) {
-    insights.push(
-      `${highAutoPct}% dos subprocessos avaliados apresentam alto potencial de automação (score ≥ 60), indicando oportunidades expressivas de ganho operacional.`
-    );
+  // 1 — High automation potential (score > 80)
+  const highAuto = ranked.filter((r) => r.automationScore > 80).length;
+  if (highAuto >= 1) {
+    pool.push({
+      weight: 10,
+      text: `${highAuto} subprocesso${highAuto > 1 ? 's apresentam' : ' apresenta'} score de automação acima de 80 — indicando forte oportunidade para automação de fluxos de trabalho ou RPA.`,
+    });
+  } else {
+    const autoPct = Math.round((ranked.filter((r) => r.automationScore >= 60).length / n) * 100);
+    if (autoPct >= 40) {
+      pool.push({
+        weight: 7,
+        text: `${autoPct}% dos subprocessos avaliados apresentam bom potencial de automação, sinalizando oportunidades relevantes de ganho operacional.`,
+      });
+    }
   }
 
-  // Finance dominance
-  const financeMacros = ranked.filter((r) =>
-    /financ|contab|fiscal|tribut|tesour|pagamento|recebi/i.test(r.macroprocessName)
-  );
-  if (financeMacros.length > 0 && financeMacros.length >= Math.ceil(ranked.length / 3)) {
-    insights.push(
-      'Operações financeiras concentram uma parcela significativa da carga operacional avaliada e costumam apresentar alto retorno com automação.'
-    );
-  }
-
-  // High rework / error rate
+  // 2 — High rework / process instability
   const highRework = ranked.filter((r) => r.scores.reworkOrErrors >= 3).length;
-  if (highRework >= 3) {
-    insights.push(
-      `${highRework} subprocessos apresentam frequência elevada de retrabalho ou erros, sinalizando fragilidade nos processos e potencial de melhoria imediata.`
-    );
+  if (highRework >= 2) {
+    pool.push({
+      weight: 9,
+      text: `O diagnóstico indica instabilidade de processo: ${highRework} subprocesso${highRework > 1 ? 's apresentam' : ' apresenta'} frequência elevada de retrabalho ou erros, reflexo de atividades manuais sem padronização adequada.`,
+    });
   }
 
-  // Manual spreadsheet dependency
+  // 3 — Finance dominance (> 30% of items)
+  const financeCount = ranked.filter((r) =>
+    /financ|contab|fiscal|tribut|tesour|pagamento|recebi/i.test(r.macroprocessName)
+  ).length;
+  const financePct = Math.round((financeCount / n) * 100);
+  if (financePct > 30) {
+    pool.push({
+      weight: 8,
+      text: `Operações financeiras representam ${financePct}% dos itens avaliados e concentram grande parte da carga operacional analisada — área que costuma apresentar alto retorno com automação.`,
+    });
+  }
+
+  // 4 — Heavy manual / spreadsheet dependency
   const heavyManual = ranked.filter((r) => r.scores.systemsOrSpreadsheets >= 3).length;
-  if (heavyManual >= Math.ceil(ranked.length / 2)) {
-    insights.push(
-      'A maioria dos subprocessos avaliados depende significativamente de planilhas ou processos manuais, o que representa o principal vetor de automação identificado.'
-    );
+  const manualPct = Math.round((heavyManual / n) * 100);
+  if (manualPct >= 40) {
+    pool.push({
+      weight: 6,
+      text: `${manualPct}% dos subprocessos avaliados dependem de planilhas ou controles manuais — esse perfil representa o principal vetor de automação identificado no diagnóstico.`,
+    });
   }
 
-  // Large financial impact
-  const totalImpact = ranked.reduce((s, r) => s + r.financialImpact, 0);
-  if (totalImpact >= 50000) {
-    insights.push(
-      `O potencial de impacto financeiro estimado totaliza ${fmtCurrency(totalImpact)} por ano, considerando custo médio de R$ 80/hora e as taxas de automação aplicáveis a cada subprocesso.`
-    );
+  // 5 — People-intensive operations
+  const highPeople = ranked.filter((r) => r.scores.peopleInvolved >= 3).length;
+  if (highPeople >= Math.ceil(n / 2)) {
+    pool.push({
+      weight: 4,
+      text: `A maioria dos subprocessos envolve múltiplas pessoas para execução — operações intensivas em mão de obra tendem a gerar maior impacto com automação e padronização de fluxos.`,
+    });
   }
 
-  return insights;
+  // 6 — Dominant Alta Prioridade concentration
+  const altaCount = ranked.filter((r) => r.priority === 'Alta').length;
+  const altaPct = Math.round((altaCount / n) * 100);
+  if (altaPct >= 50) {
+    pool.push({
+      weight: 5,
+      text: `${altaPct}% dos subprocessos foram classificados como Alta Prioridade — o escopo avaliado está concentrado em áreas com relevância operacional crítica.`,
+    });
+  }
+
+  return pool
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 4)
+    .map((i) => i.text);
 }
 
 export default function RankingScreen({ assessments, onExport, onRestart }: Props) {
@@ -257,6 +291,24 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
           </div>
         </div>
       </section>
+
+      {/* ── Diagnostic Insights ─────────────────────────────────────── */}
+      {insights.length > 0 && (
+        <section className="mb-8 bg-amber-50 border border-amber-100 rounded-2xl p-6">
+          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Lightbulb size={16} className="text-amber-500" strokeWidth={1.75} />
+            Insights do Diagnóstico
+          </h3>
+          <ul className="space-y-3">
+            {insights.map((insight, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* ── Summary cards ───────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-4 mb-8">
@@ -473,24 +525,6 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
           </table>
         </div>
       </div>
-
-      {/* ── Diagnostic Insights ─────────────────────────────────────── */}
-      {insights.length > 0 && (
-        <section className="bg-amber-50 border border-amber-100 rounded-2xl p-6">
-          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Lightbulb size={16} className="text-amber-500" strokeWidth={1.75} />
-            Insights do Diagnóstico
-          </h3>
-          <ul className="space-y-3">
-            {insights.map((insight, i) => (
-              <li key={i} className="flex items-start gap-3">
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {selected && <DetailModal item={selected} onClose={() => setSelected(null)} />}
     </div>
