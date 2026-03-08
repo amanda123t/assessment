@@ -1,19 +1,13 @@
+'use client';
+
+import { SubprocessAssessment } from '@/types';
 import { RankedAssessment } from '@/lib/ranking';
 import { RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 
-export interface PDFReportData {
-  ranked: RankedAssessment[];
-  summary: { alta: number; media: number; baixa: number };
-  insights: string[];
-  autoRoadmap: RoadmapItem[];
-  totalAnnualHours: number;
-  totalSavingsHours: number;
-  totalFinancialImpact: number;
-  generatedAt: string;
-}
-
 interface Props {
-  report: PDFReportData;
+  assessments: SubprocessAssessment[];
+  ranked: RankedAssessment[];
+  roadmap: RoadmapItem[];
 }
 
 const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
@@ -42,15 +36,25 @@ function fmtCurrency(n: number): string {
   return `R$ ${n.toLocaleString('pt-BR')}`;
 }
 
-export default function PDFReport({ report }: Props) {
-  const {
-    ranked, summary, insights, autoRoadmap,
-    totalAnnualHours, totalSavingsHours, totalFinancialImpact, generatedAt,
-  } = report;
+export default function PDFReport({ assessments, ranked, roadmap }: Props) {
+  const summary = {
+    alta:  ranked.filter(r => r.priority === 'Alta').length,
+    media: ranked.filter(r => r.priority === 'Média').length,
+    baixa: ranked.filter(r => r.priority === 'Baixa').length,
+  };
 
-  const roadmapByCategory = (['quick-wins', 'strategic', 'transformation'] as RoadmapCategory[]).map(
-    cat => ({ cat, items: autoRoadmap.filter(r => r.roadmapCategory === cat) }),
-  ).filter(g => g.items.length > 0);
+  const totalAnnualHours    = assessments.reduce((s, a) => s + a.annualHours, 0);
+  const totalSavingsHours   = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
+  const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
+
+  const generatedAt = new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  const roadmapByCategory = (['quick-wins', 'strategic', 'transformation'] as RoadmapCategory[])
+    .map(cat => ({ cat, items: roadmap.filter(r => r.roadmapCategory === cat) }))
+    .filter(g => g.items.length > 0);
 
   return (
     <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '12px', color: '#111827', backgroundColor: '#ffffff', lineHeight: '1.5' }}>
@@ -70,13 +74,12 @@ export default function PDFReport({ report }: Props) {
           Resumo do Diagnóstico
         </div>
 
-        {/* Priority counts */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
           {[
-            { label: 'Prioridade Alta',  value: summary.alta,    color: '#dc2626' },
-            { label: 'Prioridade Média', value: summary.media,   color: '#d97706' },
-            { label: 'Prioridade Baixa', value: summary.baixa,   color: '#6b7280' },
-            { label: 'Total Avaliados',  value: ranked.length,   color: '#111827' },
+            { label: 'Prioridade Alta',  value: summary.alta,   color: '#dc2626' },
+            { label: 'Prioridade Média', value: summary.media,  color: '#d97706' },
+            { label: 'Prioridade Baixa', value: summary.baixa,  color: '#6b7280' },
+            { label: 'Total Avaliados',  value: ranked.length,  color: '#111827' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ flex: 1, border: '1px solid #e5e7eb', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
               <div style={{ fontSize: '22px', fontWeight: 'bold', color }}>{value}</div>
@@ -85,12 +88,11 @@ export default function PDFReport({ report }: Props) {
           ))}
         </div>
 
-        {/* Totals */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
           {[
-            { label: 'Horas Anuais Mapeadas',       value: `${fmt(totalAnnualHours)} h`,         color: '#111827' },
-            { label: 'Potencial de Economia',        value: `${fmt(totalSavingsHours)} h/ano`,    color: '#059669' },
-            { label: 'Impacto Financeiro Estimado',  value: fmtCurrency(totalFinancialImpact),   color: '#059669' },
+            { label: 'Horas Anuais Mapeadas',      value: `${fmt(totalAnnualHours)} h`,       color: '#111827' },
+            { label: 'Potencial de Economia',       value: `${fmt(totalSavingsHours)} h/ano`,  color: '#059669' },
+            { label: 'Impacto Financeiro Estimado', value: fmtCurrency(totalFinancialImpact),  color: '#059669' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ flex: 1, border: '1px solid #e5e7eb', borderRadius: '6px', padding: '10px' }}>
               <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '3px' }}>{label}</div>
@@ -99,23 +101,6 @@ export default function PDFReport({ report }: Props) {
           ))}
         </div>
       </div>
-
-      {/* ── Insights ─────────────────────────────────────────────────────── */}
-      {insights.length > 0 && (
-        <div style={{ padding: '0 32px 20px' }}>
-          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e40af', borderBottom: '2px solid #e5e7eb', paddingBottom: '6px', marginBottom: '12px' }}>
-            Insights do Diagnóstico
-          </div>
-          <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', padding: '12px' }}>
-            {insights.map((insight, i) => (
-              <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: i < insights.length - 1 ? '8px' : '0' }}>
-                <span style={{ color: '#d97706', fontWeight: 'bold', flexShrink: 0 }}>•</span>
-                <span style={{ color: '#111827', fontSize: '11px' }}>{insight}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Opportunity Ranking ──────────────────────────────────────────── */}
       <div style={{ padding: '0 32px 20px' }}>

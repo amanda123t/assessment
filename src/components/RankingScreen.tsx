@@ -12,7 +12,7 @@ import {
 import { SubprocessAssessment, CRITERIA, DiagnosticMode } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
-import PDFReport, { PDFReportData } from './PDFReport';
+import PDFReport from './PDFReport';
 
 interface Props {
   assessments: SubprocessAssessment[];
@@ -255,17 +255,6 @@ export default function RankingScreen({
   const totalAnnualHours = assessments.reduce((s, a) => s + a.annualHours, 0);
   const totalSavingsHours = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
-
-  const reportData: PDFReportData = {
-    ranked,
-    summary,
-    insights,
-    autoRoadmap,
-    totalAnnualHours,
-    totalSavingsHours,
-    totalFinancialImpact,
-    generatedAt: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-  };
 
   // Category config for the new roadmap section
   const categoryConfig: Record<RoadmapCategory, {
@@ -787,7 +776,7 @@ export default function RankingScreen({
 
       {/* PDF-only container — off-screen so html2canvas can render it */}
       <div id="pdf-report" style={{ position: "fixed", left: "-9999px", top: 0, width: "800px", background: "white" }}>
-        <PDFReport report={reportData} />
+        <PDFReport assessments={assessments} ranked={ranked} roadmap={autoRoadmap} />
       </div>
 
       {/* Modals — outside PDF container */}
