@@ -19,8 +19,7 @@ interface Props {
 export default function StepIndicator({ step }: Props) {
   if (step === 'start') return null;
 
-  const normalizedStep = step === 'mode-selection' ? 'explore' : step;
-  const currentIndex = STEP_ORDER.indexOf(normalizedStep);
+  const currentIndex = STEP_ORDER.indexOf(step);
 
   return (
     <div className="w-full bg-white border-b border-gray-100 px-6 py-4">

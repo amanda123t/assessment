@@ -2,16 +2,14 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import {
-  AssessmentState, DiagnosticMode,
+  AssessmentState,
   Macroprocess, Process, Subprocess, CriteriaScores,
   SelectedSubprocessItem,
 } from '@/types';
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
-import { createNewSession, finalizeSessionSubprocesses, saveSession } from '@/lib/session';
 
 import StepIndicator from '@/components/StepIndicator';
 import StartScreen from '@/components/StartScreen';
-import ModeSelectionScreen from '@/components/ModeSelectionScreen';
 import SubprocessExplorer from '@/components/SubprocessExplorer';
 import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
 import Questionnaire from '@/components/Questionnaire';
@@ -24,7 +22,6 @@ const INITIAL_STATE: AssessmentState = {
   assessments: [],
   currentSubprocessIndex: 0,
   step: 'start',
-  diagnosticId: null,
   diagnosticMode: 'individual',
 };
 
@@ -35,31 +32,12 @@ export default function AssessmentPage() {
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 
-  /** Called from StartScreen — goes to mode selection first. */
-  const goToModeSelection = useCallback(() => {
-    setState((s) => ({ ...s, step: 'mode-selection' }));
-  }, []);
-
-  /** Called from ModeSelectionScreen — generates sessionId and opens explore. */
-  const confirmMode = useCallback((mode: DiagnosticMode) => {
-    const sessionId = crypto.randomUUID();
-    // Create and persist an empty session; subprocesses are added at startEvaluation
-    const session = createNewSession(sessionId, mode);
-    saveSession(session);
-    setState((s) => ({
-      ...s,
-      diagnosticId: sessionId,
-      diagnosticMode: mode,
-      step: 'explore',
-    }));
+  const goToExplore = useCallback(() => {
+    setState((s) => ({ ...s, step: 'explore' }));
   }, []);
 
   const goBackToStart = useCallback(() => {
     setState((s) => ({ ...s, step: 'start' }));
-  }, []);
-
-  const goBackToModeSelection = useCallback(() => {
-    setState((s) => ({ ...s, step: 'mode-selection' }));
   }, []);
 
   // ── Subprocess selection ─────────────────────────────────────────────────────
@@ -136,15 +114,7 @@ export default function AssessmentPage() {
   // ── Start evaluation ─────────────────────────────────────────────────────────
 
   const startEvaluation = useCallback(() => {
-    setState((s) => {
-      // Finalise session with the selected subprocess list
-      if (s.diagnosticId) {
-        const session = createNewSession(s.diagnosticId, s.diagnosticMode);
-        const finalised = finalizeSessionSubprocesses(session, s.globalSelectedSubprocesses);
-        saveSession(finalised);
-      }
-      return { ...s, currentSubprocessIndex: 0, step: 'questionnaire' };
-    });
+    setState((s) => ({ ...s, currentSubprocessIndex: 0, step: 'questionnaire' }));
   }, []);
 
   // ── Questionnaire ────────────────────────────────────────────────────────────
@@ -201,21 +171,14 @@ export default function AssessmentPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {state.step === 'start' ? (
-        <StartScreen onStart={goToModeSelection} />
+        <StartScreen onStart={goToExplore} />
       ) : (
         <>
           {/* Persistent header */}
           <header className="bg-white border-b border-gray-100 px-6 py-3 shadow-sm">
-            <div className="max-w-5xl mx-auto flex items-center justify-between">
-              <div>
-                <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
-                <p className="text-xs text-gray-400">Operational Efficiency Assessment</p>
-              </div>
-              {state.diagnosticMode === 'collaborative' && (
-                <span className="text-xs bg-violet-50 text-violet-700 font-medium px-2.5 py-1 rounded-full border border-violet-200">
-                  Diagnóstico colaborativo
-                </span>
-              )}
+            <div className="max-w-5xl mx-auto">
+              <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
+              <p className="text-xs text-gray-400">Operational Efficiency Assessment</p>
             </div>
           </header>
 
@@ -232,21 +195,15 @@ export default function AssessmentPage() {
           )}
 
           <main>
-            {state.step === 'mode-selection' && (
-              <ModeSelectionScreen onConfirm={confirmMode} />
-            )}
-
             {state.step === 'explore' && (
               <SubprocessExplorer
                 selectedIds={selectedIds}
                 customSubprocesses={customSubprocesses}
-                sessionId={state.diagnosticId ?? undefined}
-                diagnosticMode={state.diagnosticMode}
                 onToggle={toggleSubprocess}
                 onToggleAll={toggleAllInProcess}
                 onAddCustom={addCustomSubprocess}
                 onRemoveCustom={removeCustomSubprocess}
-                onBack={goBackToModeSelection}
+                onBack={goBackToStart}
               />
             )}
 
@@ -267,7 +224,6 @@ export default function AssessmentPage() {
             {state.step === 'ranking' && (
               <RankingScreen
                 assessments={state.assessments}
-                diagnosticId={state.diagnosticId}
                 diagnosticMode={state.diagnosticMode}
                 onRestart={restart}
               />

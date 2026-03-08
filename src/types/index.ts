@@ -65,45 +65,12 @@ export interface SelectedSubprocessItem {
 /** Whether the diagnostic is answered by a single user or collaboratively. */
 export type DiagnosticMode = 'individual' | 'collaborative';
 
-// ── Collaborative session types ──────────────────────────────────────────────
-
-export interface Participant {
-  participantId: string;
-  name: string;
-  email: string;
-  department: string;
-  joinedAt: string;
-}
-
-/**
- * Full session object stored in localStorage under `oea_session_{sessionId}`.
- * Contains all subprocesses, their states, collected answers, and participants.
- */
-export interface AssessmentSession {
-  sessionId: string;
-  mode: DiagnosticMode;
-  createdAt: number;
-  /** IDs of all selected subprocesses, in order. */
-  subprocessIds: string[];
-  /**
-   * Full SelectedSubprocessItem for each subprocess — stored so collaborators
-   * on the same device can look up names/hierarchy without re-querying processLibrary.
-   */
-  subprocessItems: SelectedSubprocessItem[];
-  /** Accumulated answers from all participants. */
-  answers: SubprocessAssessment[];
-  /** Participants who have joined (identified themselves). */
-  participants: Participant[];
-}
-
 export interface AssessmentState {
   /** Global accumulator — persists across all navigation. */
   globalSelectedSubprocesses: SelectedSubprocessItem[];
   assessments: SubprocessAssessment[];
   currentSubprocessIndex: number;
-  step: 'start' | 'mode-selection' | 'explore' | 'questionnaire' | 'ranking';
-  /** Unique ID for this diagnostic session; null until the user confirms mode. */
-  diagnosticId: string | null;
+  step: 'start' | 'explore' | 'questionnaire' | 'ranking';
   diagnosticMode: DiagnosticMode;
 }
 
