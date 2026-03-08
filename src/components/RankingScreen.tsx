@@ -173,7 +173,7 @@ function loadStoredLead(): LeadData | null {
 }
 
 const GAS_ENDPOINT =
-  'https://script.google.com/macros/s/AKfycbyDOatlkXE0Z_bbCvyCb7WWj0hIU1d506CtYS8Xl5ybUYwFfKDdVv5tdksmGnsnyzA0/exec';
+  'https://script.google.com/macros/s/AKfycbzn23DipnagQMTtSSs8F40Sdn_a-MAir-CCAxvUSq6OMmhwzVJCOQAwAtQulQO3prSl/exec';
 
 /**
  * Fire-and-forget POST to the Google Apps Script endpoint.
