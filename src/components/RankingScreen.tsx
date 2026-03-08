@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
@@ -196,12 +196,14 @@ function sendLeadToSheets(data: LeadData & DiagnosticMeta): void {
   }
 }
 
-function LeadCaptureSection({
-  onGenerate,
+function LeadModal({
   meta,
+  onSuccess,
+  onClose,
 }: {
-  onGenerate: (data: LeadData) => void;
   meta: DiagnosticMeta;
+  onSuccess: (data: LeadData) => void;
+  onClose: () => void;
 }) {
   const stored = loadStoredLead();
 
@@ -209,14 +211,19 @@ function LeadCaptureSection({
   const [company, setCompany] = useState(stored?.company ?? '');
   const [email, setEmail]     = useState(stored?.email ?? '');
   const [role, setRole]       = useState(stored?.role ?? '');
-  const [submitted, setSubmitted] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<'name' | 'company' | 'email', string>>>({});
+  const [errors, setErrors]   = useState<Partial<Record<'name' | 'company' | 'email', string>>>({});
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const validate = (): boolean => {
     const next: typeof errors = {};
-    if (!name.trim())    next.name    = 'Nome é obrigatório';
-    if (!company.trim()) next.company = 'Empresa é obrigatória';
-    if (!email.trim())       next.email = 'E-mail é obrigatório';
+    if (!name.trim())          next.name    = 'Nome é obrigatório';
+    if (!company.trim())       next.company = 'Empresa é obrigatória';
+    if (!email.trim())         next.email   = 'E-mail é obrigatório';
     else if (!isValidEmail(email)) next.email = 'E-mail inválido';
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -235,12 +242,10 @@ function LeadCaptureSection({
     sendLeadToSheets({
       ...data,
       ...meta,
-      // Overwrite timestamp and URL with values captured at submission time
       diagnosis_timestamp: new Date().toISOString(),
       diagnosis_page_url: typeof window !== 'undefined' ? window.location.href : '',
-    }); // non-blocking — does not delay UI or download
-    setSubmitted(true);
-    onGenerate(data);
+    });
+    onSuccess(data);
   };
 
   const field = (
@@ -281,53 +286,70 @@ function LeadCaptureSection({
     </div>
   );
 
-  if (submitted) {
-    return (
-      <section className="mb-8 bg-green-50 border border-green-100 rounded-2xl p-6 flex items-center gap-4">
-        <CheckCircle2 size={24} className="text-green-500 flex-shrink-0" strokeWidth={1.75} />
-        <div>
-          <p className="font-semibold text-gray-800">Relatório gerado com sucesso!</p>
-          <p className="text-sm text-gray-500 mt-0.5">O download do arquivo Excel foi iniciado.</p>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <section className="mb-8 bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-      {/* Section header */}
-      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-6 py-5">
-        <div className="flex items-center gap-2 mb-1">
-          <FileText size={16} className="text-blue-200" strokeWidth={1.75} />
-          <h3 className="font-semibold text-white">Receba o relatório completo do diagnóstico</h3>
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal header */}
+        <div className="bg-gradient-to-br from-green-600 to-green-700 px-6 py-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <FileText size={16} className="text-green-200" strokeWidth={1.75} />
+                <h3 className="font-semibold text-white">Receba o relatório completo</h3>
+              </div>
+              <p className="text-green-200 text-sm">
+                Preencha seus dados para gerar e baixar o relatório em Excel.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-green-300 hover:text-white transition-colors ml-4 flex-shrink-0 mt-0.5"
+              aria-label="Fechar"
+            >
+              <X size={18} strokeWidth={1.75} />
+            </button>
+          </div>
         </div>
-        <p className="text-blue-200 text-sm">
-          Preencha seus dados para gerar e baixar o relatório em Excel com todos os resultados.
-        </p>
-      </div>
 
-      {/* Form */}
-      <div className="p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          {field('lead-name',    'Nome',    name,    setName,    'Seu nome completo',            false, errors.name)}
-          {field('lead-company', 'Empresa', company, setCompany, 'Nome da empresa',              false, errors.company)}
-          {field('lead-email',   'E-mail',  email,   setEmail,   'seu@email.com.br',             false, errors.email)}
-          {field('lead-role',    'Cargo',   role,    setRole,    'Ex: Gerente de Operações',     true)}
+        {/* Form */}
+        <div className="p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {field('lead-name',    'Nome',    name,    setName,    'Seu nome completo',        false, errors.name)}
+            {field('lead-company', 'Empresa', company, setCompany, 'Nome da empresa',          false, errors.company)}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {field('lead-email',   'E-mail',  email,   setEmail,   'seu@email.com.br',         false, errors.email)}
+            {field('lead-role',    'Cargo',   role,    setRole,    'Ex: Gerente de Operações', true)}
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              <Download size={14} strokeWidth={1.75} />
+              Gerar relatório
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-400 text-center">
+            Seus dados são armazenados localmente e não serão compartilhados.
+          </p>
         </div>
-
-        <button
-          onClick={handleSubmit}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 mt-2"
-        >
-          <Download size={15} strokeWidth={1.75} />
-          Gerar relatório
-        </button>
-
-        <p className="text-xs text-gray-400 text-center mt-3">
-          Seus dados são armazenados localmente e não serão compartilhados.
-        </p>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -507,9 +529,8 @@ function buildRoadmap(ranked: RankedAssessment[]): RoadmapGroup[] {
 export default function RankingScreen({ assessments, onExport, onRestart }: Props) {
   const [selected, setSelected] = useState<RankedAssessment | null>(null);
   const [exporting, setExporting] = useState(false);
-  // Lead is considered captured if a previous session already stored it
   const [leadCaptured, setLeadCaptured] = useState(() => !!loadStoredLead());
-  const leadFormRef = useRef<HTMLElement>(null);
+  const [showLeadModal, setShowLeadModal] = useState(false);
 
   const ranked = buildRanking(assessments);
   const chartData = buildChartData(ranked);
@@ -532,13 +553,14 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
 
   const handleTopExportClick = () => {
     if (!leadCaptured) {
-      leadFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setShowLeadModal(true);
       return;
     }
     handleExport();
   };
 
-  const handleLeadGenerate = (_data: LeadData) => {
+  const handleLeadSuccess = (_data: LeadData) => {
+    setShowLeadModal(false);
     setLeadCaptured(true);
     handleExport();
   };
@@ -561,15 +583,10 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
           <button
             onClick={handleTopExportClick}
             disabled={exporting}
-            title={leadCaptured ? undefined : 'Preencha o formulário abaixo para exportar'}
-            className={`inline-flex items-center gap-2 border font-medium px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed
-              ${leadCaptured
-                ? 'bg-white border-gray-200 hover:border-blue-400 hover:text-blue-600 text-gray-600'
-                : 'bg-gray-50 border-gray-200 text-gray-400 cursor-pointer'
-              }`}
+            className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download size={14} strokeWidth={1.75} />
-            {exporting ? 'Exportando...' : leadCaptured ? 'Exportar Excel' : 'Exportar Excel ↓'}
+            {exporting ? 'Exportando...' : 'Exportar Excel'}
           </button>
           <button
             onClick={onRestart}
@@ -618,24 +635,6 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
           </div>
         </div>
       </section>
-
-      {/* ── Diagnostic Insights ─────────────────────────────────────── */}
-      {insights.length > 0 && (
-        <section className="mb-8 bg-amber-50 border border-amber-100 rounded-2xl p-6">
-          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Lightbulb size={16} className="text-amber-500" strokeWidth={1.75} />
-            Insights do Diagnóstico
-          </h3>
-          <ul className="space-y-3">
-            {insights.map((insight, i) => (
-              <li key={i} className="flex items-start gap-3">
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {/* ── Summary cards ───────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-4 mb-8">
@@ -964,22 +963,33 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
         </section>
       )}
 
-      {/* ── Lead Capture / Report Download ──────────────────────────── */}
-      <section ref={leadFormRef}>
-        {leadCaptured ? (
-          <div className="mb-8 bg-green-50 border border-green-100 rounded-2xl px-6 py-4 flex items-center gap-3">
-            <CheckCircle2 size={18} className="text-green-500 flex-shrink-0" strokeWidth={1.75} />
-            <div className="flex-1">
-              <p className="font-medium text-gray-800 text-sm">Relatório disponível para download</p>
-              <p className="text-xs text-gray-500 mt-0.5">Use o botão "Exportar Excel" acima para baixar novamente.</p>
-            </div>
-          </div>
-        ) : (
-          <LeadCaptureSection onGenerate={handleLeadGenerate} meta={diagMeta} />
-        )}
-      </section>
+      {/* ── Diagnostic Insights ─────────────────────────────────────── */}
+      {insights.length > 0 && (
+        <section className="mb-8 bg-amber-50 border border-amber-100 rounded-2xl p-6">
+          <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Lightbulb size={16} className="text-amber-500" strokeWidth={1.75} />
+            Insights do Diagnóstico
+          </h3>
+          <ul className="space-y-3">
+            {insights.map((insight, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {selected && <DetailModal item={selected} onClose={() => setSelected(null)} />}
+
+      {showLeadModal && (
+        <LeadModal
+          meta={diagMeta}
+          onSuccess={handleLeadSuccess}
+          onClose={() => setShowLeadModal(false)}
+        />
+      )}
     </div>
   );
 }
