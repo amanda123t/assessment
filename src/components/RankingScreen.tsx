@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
 } from 'recharts';
+import { Trophy, BarChart2, Download, RotateCcw, X } from 'lucide-react';
 import { SubprocessAssessment, CRITERIA } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 
@@ -47,9 +48,10 @@ function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () =>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors ml-4 flex-shrink-0 text-lg leading-none"
+            className="text-gray-400 hover:text-gray-600 transition-colors ml-4 flex-shrink-0"
+            aria-label="Fechar"
           >
-            ×
+            <X size={18} strokeWidth={1.75} />
           </button>
         </div>
 
@@ -63,11 +65,11 @@ function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () =>
           </span>
         </div>
 
+        {/* Criteria breakdown — neutral blue bars to match questionnaire */}
         <div className="space-y-3">
           {CRITERIA.map((c) => {
             const score = item.scores[c.key];
             const pct = (score / 5) * 100;
-            const barCls = score >= 4 ? 'bg-red-500' : score >= 3 ? 'bg-yellow-400' : 'bg-gray-400';
             return (
               <div key={c.key}>
                 <div className="flex justify-between text-xs mb-1">
@@ -75,7 +77,7 @@ function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () =>
                   <span className="font-bold text-gray-800">{score}/5</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div className={`${barCls} h-2 rounded-full`} style={{ width: `${pct}%` }} />
+                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
@@ -119,14 +121,16 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 text-gray-600 font-medium px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 text-gray-600 font-medium px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
+            <Download size={14} strokeWidth={1.75} />
             {exporting ? 'Exportando...' : 'Exportar Excel'}
           </button>
           <button
             onClick={onRestart}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
           >
+            <RotateCcw size={14} strokeWidth={1.75} />
             Nova Avaliação
           </button>
         </div>
@@ -152,7 +156,8 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
       {/* ── Top Opportunities ───────────────────────────────────────── */}
       {top3.length > 0 && (
         <section className="mb-8">
-          <h3 className="text-base font-semibold text-gray-800 mb-3">
+          <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+            <Trophy size={16} className="text-blue-500" strokeWidth={1.75} />
             Principais Oportunidades
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -188,7 +193,8 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
 
       {/* ── Chart ───────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-8">
-        <h3 className="font-semibold text-gray-800 mb-1">
+        <h3 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
+          <BarChart2 size={16} className="text-blue-500" strokeWidth={1.75} />
           Score por Subprocesso{chartData.length < ranked.length ? ` (Top ${chartData.length})` : ''}
         </h3>
         <p className="text-xs text-gray-400 mb-5">Ordenado do maior para o menor score</p>
@@ -252,32 +258,23 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
                   onClick={() => setSelected(item)}
                   className="hover:bg-gray-50 cursor-pointer transition-colors group"
                 >
-                  {/* Rank */}
                   <td className="px-4 py-3.5">
                     <span className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-xs font-bold
                       ${item.rank <= 3 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
                       {item.rank}
                     </span>
                   </td>
-
-                  {/* Macroprocess */}
                   <td className="px-4 py-3.5 text-gray-500 text-xs">
                     {item.macroprocessName}
                   </td>
-
-                  {/* Process */}
                   <td className="px-4 py-3.5 text-gray-500 text-xs">
                     {item.processName}
                   </td>
-
-                  {/* Subprocess */}
                   <td className="px-4 py-3.5">
                     <span className="font-medium text-gray-800 group-hover:text-blue-600 transition-colors">
                       {item.subprocessName}
                     </span>
                   </td>
-
-                  {/* Score */}
                   <td className="px-4 py-3.5 text-center">
                     <div className="flex flex-col items-center gap-1">
                       <span className={`font-extrabold ${item.priorityColor}`}>
@@ -292,8 +289,6 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
                       </div>
                     </div>
                   </td>
-
-                  {/* Priority */}
                   <td className="px-4 py-3.5 text-center">
                     <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
                       {item.priority} Prioridade

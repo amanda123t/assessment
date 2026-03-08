@@ -1,33 +1,38 @@
 'use client';
 
+import { Activity, ClipboardList, BarChart3, TrendingUp, FileDown } from 'lucide-react';
+
 interface Props {
   onStart: () => void;
 }
 
+const features = [
+  { icon: ClipboardList, title: 'Avaliação Estruturada',    desc: 'Avalie subprocessos com 6 critérios objetivos' },
+  { icon: BarChart3,     title: 'Ranking de Oportunidades', desc: 'Identifique onde estão os maiores ganhos de eficiência' },
+  { icon: TrendingUp,    title: 'Visualização Gráfica',     desc: 'Gráficos interativos para facilitar a tomada de decisão' },
+  { icon: FileDown,      title: 'Exportação Excel',         desc: 'Exporte o relatório completo para apresentações' },
+];
+
+const criteria = [
+  'Volume Operacional',
+  'Pessoas Envolvidas',
+  'Tempo de Execução',
+  'Retrabalho / Erros',
+  'Uso de Sistemas / Planilhas',
+  'Integrações entre Sistemas',
+];
+
 export default function StartScreen({ onStart }: Props) {
-  const features = [
-    { title: 'Avaliação Estruturada', desc: 'Avalie subprocessos com 6 critérios objetivos' },
-    { title: 'Ranking de Oportunidades', desc: 'Identifique onde estão os maiores ganhos de eficiência' },
-    { title: 'Visualização Gráfica', desc: 'Gráficos interativos para facilitar a tomada de decisão' },
-    { title: 'Exportação Excel', desc: 'Exporte o relatório completo para apresentações' },
-  ];
-
-  const criteria = [
-    'Volume Operacional',
-    'Pessoas Envolvidas',
-    'Tempo de Execução',
-    'Retrabalho / Erros',
-    'Uso de Sistemas / Planilhas',
-    'Integrações entre Sistemas',
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-gray-100 px-6 py-4 shadow-sm">
-        <div className="max-w-5xl mx-auto">
-          <h1 className="text-base font-bold text-gray-900">OEA</h1>
-          <p className="text-xs text-gray-500">Operational Efficiency Assessment</p>
+        <div className="max-w-5xl mx-auto flex items-center gap-2">
+          <Activity size={16} className="text-blue-600" strokeWidth={1.75} />
+          <div>
+            <h1 className="text-base font-bold text-gray-900 leading-none">OEA</h1>
+            <p className="text-xs text-gray-500">Operational Efficiency Assessment</p>
+          </div>
         </div>
       </header>
 
@@ -54,12 +59,13 @@ export default function StartScreen({ onStart }: Props) {
           </button>
         </div>
 
-        {/* Features */}
+        {/* Feature cards */}
         <div className="max-w-4xl w-full mt-16 grid grid-cols-2 md:grid-cols-4 gap-4">
-          {features.map((f) => (
-            <div key={f.title} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-              <h3 className="font-semibold text-gray-800 text-sm mb-1">{f.title}</h3>
-              <p className="text-xs text-gray-500">{f.desc}</p>
+          {features.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+              <Icon size={16} className="text-blue-500 mb-2" strokeWidth={1.75} />
+              <h3 className="font-semibold text-gray-800 text-sm mb-1">{title}</h3>
+              <p className="text-xs text-gray-500">{desc}</p>
             </div>
           ))}
         </div>
