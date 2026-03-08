@@ -12,7 +12,7 @@ import {
 import { SubprocessAssessment, CRITERIA, DiagnosticMode } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
-import PDFReport from './PDFReport';
+import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
   assessments: SubprocessAssessment[];
@@ -229,43 +229,24 @@ export default function RankingScreen({
   };
 
   const handleDownloadPDF = async () => {
-    const source = document.getElementById("pdf-report");
-    if (!source) return;
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Clone so we never mutate the live DOM node.
-    const clone = source.cloneNode(true) as HTMLElement;
-
-    // Sanitize computed colors: html2canvas cannot parse lab()/oklab() values
-    // emitted by modern browsers / Tailwind.
-    clone.querySelectorAll<HTMLElement>("*").forEach(el => {
-      const cs = window.getComputedStyle(el);
-      if (cs.color.includes("lab"))            el.style.color            = "#111827";
-      if (cs.backgroundColor.includes("lab"))  el.style.backgroundColor  = "#ffffff";
-      if (cs.borderColor.includes("lab"))      el.style.borderColor      = "#e5e7eb";
-    });
-
-    // Mount clone off-screen so html2canvas can measure and paint it.
-    clone.style.position = "absolute";
-    clone.style.top      = "0";
-    clone.style.left     = "0";
-    clone.style.opacity  = "0";
-    document.body.appendChild(clone);
-
-    const html2pdf = (await import("html2pdf.js")).default;
+    setGeneratingPdf(true);
     try {
-      await html2pdf()
-        .set({
-          margin: 20,
-          filename: "diagnostico-automacao.pdf",
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        })
-        .from(clone)
-        .save();
+      const { pdf } = await import('@react-pdf/renderer');
+      const blob = await pdf(
+        <PDFDiagnosticReport
+          assessments={assessments}
+          ranked={ranked}
+          roadmap={autoRoadmap}
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'diagnostico-automacao.pdf';
+      link.click();
+      URL.revokeObjectURL(url);
     } finally {
-      document.body.removeChild(clone);
+      setGeneratingPdf(false);
     }
   };
 
@@ -798,12 +779,7 @@ export default function RankingScreen({
 
       </div>{/* end #diagnostic-results */}
 
-      {/* PDF-only container — off-screen so html2canvas can render it */}
-      <div id="pdf-report" style={{ position: "absolute", top: 0, left: 0, width: "800px", opacity: 0, pointerEvents: "none", zIndex: -1, background: "white" }}>
-        <PDFReport assessments={assessments} ranked={ranked} roadmap={autoRoadmap} />
-      </div>
-
-      {/* Modals — outside PDF container */}
+      {/* Modals */}
       {selected && <DetailModal item={selected} onClose={() => setSelected(null)} />}
     </div>
   );
