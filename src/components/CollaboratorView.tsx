@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState } from 'react';
 import { CheckCircle2, Clock, Circle } from 'lucide-react';
 import {
   AssessmentSession,
@@ -20,12 +20,15 @@ import {
 } from '@/lib/session';
 import ParticipantFormModal from './ParticipantFormModal';
 import Questionnaire from './Questionnaire';
-import RankingScreen from './RankingScreen';
 
 const GAS_ENDPOINT =
   'https://script.google.com/macros/s/AKfycbzn23DipnagQMTtSSs8F40Sdn_a-MAir-CCAxvUSq6OMmhwzVJCOQAwAtQulQO3prSl/exec';
 
-function sendAnswerToGAS(sessionId: string, participant: Participant, assessment: ReturnType<typeof createAssessment>) {
+function sendAnswerToGAS(
+  sessionId: string,
+  participant: Participant,
+  assessment: ReturnType<typeof createAssessment>,
+) {
   try {
     const payload = {
       event_type: 'collaborative_response',
@@ -52,7 +55,7 @@ function sendAnswerToGAS(sessionId: string, participant: Participant, assessment
   }
 }
 
-// ── Status badge ─────────────────────────────────────────────────────────────
+// ── Status badge ──────────────────────────────────────────────────────────────
 
 function StatusBadge({ status, assignedTo }: { status: SubprocessStatus; assignedTo?: string }) {
   if (status === 'completed') {
@@ -86,150 +89,88 @@ interface Props {
   onSessionChange: (session: AssessmentSession) => void;
 }
 
-type View = 'identify' | 'list' | 'answering' | 'results';
-
 export default function CollaboratorView({ initialSession, onSessionChange }: Props) {
-  const [session, setSession] = useState<AssessmentSession>(initialSession);
-  const [participant, setParticipant] = useState<Participant | null>(null);
-  // Always start at 'identify'. The mount effect below may advance to 'list'
-  // if a saved participant is found, but never to 'answering'.
-  const [view, setView] = useState<View>('identify');
-  const [activeItem, setActiveItem] = useState<SelectedSubprocessItem | null>(null);
+  const [session, setSession]                   = useState<AssessmentSession>(initialSession);
+  const [participant, setParticipant]           = useState<Participant | null>(null);
+  const [view, setView]                         = useState<'list' | 'questionnaire'>('list');
+  const [currentSubprocess, setCurrentSubprocess] = useState<SelectedSubprocessItem | null>(null);
 
   const participantKey = `oea_participant_${initialSession.sessionId}`;
 
-  const persistSession = useCallback((updated: AssessmentSession) => {
-    setSession(updated);
-    saveSession(updated);
-    onSessionChange(updated);
-  }, [onSessionChange]);
-
-  // Helper: reload the latest session from localStorage and show the list.
-  // Called explicitly from every handler that returns to the list — never
-  // from a reactive effect — so there is no background auto-open path.
-  const goToList = useCallback(() => {
-    const fresh = loadSession(initialSession.sessionId);
-    if (fresh) setSession(fresh);
-    setActiveItem(null);
-    setView('list');
-  }, [initialSession.sessionId]);
-
-  // On mount: if this participant already identified earlier (sessionStorage),
-  // restore their data and show the list. Never opens a subprocess automatically.
-  useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem(participantKey);
-      if (saved) {
-        const p = JSON.parse(saved) as Participant;
-        setParticipant(p);
-        // Reload session so the list reflects the latest state from storage.
-        const fresh = loadSession(initialSession.sessionId);
-        if (fresh) setSession(fresh);
-        setView('list'); // always land on list — participant must click to open anything
-      }
-    } catch {
-      // sessionStorage unavailable — fall through to identify view
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount only
-
-  // ── Identify ────────────────────────────────────────────────────────────────
+  // ── Participant identification ────────────────────────────────────────────
 
   const handleIdentify = (p: Participant) => {
     setParticipant(p);
-    try {
-      sessionStorage.setItem(participantKey, JSON.stringify(p));
-    } catch {
-      // Non-critical
-    }
+    try { sessionStorage.setItem(participantKey, JSON.stringify(p)); } catch { /* non-critical */ }
     const updated = addParticipantToSession(session, p);
-    persistSession(updated);
-    goToList();
+    setSession(updated);
+    saveSession(updated);
+    onSessionChange(updated);
+    // Always lands on the list — nothing opens automatically.
   };
 
-  // ── Start answering a subprocess ─────────────────────────────────────────────
-  // This is the ONLY place that sets view = 'answering'.
-  // It is called exclusively from an explicit onClick on a list row.
+  // ── Select a subprocess (only on explicit click) ──────────────────────────
 
   const handleSelectSubprocess = (item: SelectedSubprocessItem) => {
-    if (!participant) return;
-
-    // Always reload before acting so we never act on stale state.
     const fresh = loadSession(initialSession.sessionId) ?? session;
-    setSession(fresh);
-
-    // Hard guard: completed subprocesses cannot be opened.
     if (fresh.subprocessStates[item.subprocess.id]?.status === 'completed') return;
 
-    const updated = lockSubprocess(fresh, item.subprocess.id, participant);
-    persistSession(updated);
-    setActiveItem(item);
-    setView('answering');
+    const updated = lockSubprocess(fresh, item.subprocess.id, participant!);
+    setSession(updated);
+    saveSession(updated);
+    onSessionChange(updated);
+    setCurrentSubprocess(item);
+    setView('questionnaire');
   };
 
-  // ── Complete questionnaire ───────────────────────────────────────────────────
+  // ── Complete questionnaire — save and return to list ──────────────────────
 
   const handleComplete = (scores: CriteriaScores) => {
-    if (!activeItem || !participant) return;
-    const { macroprocess, process, subprocess, isCustom } = activeItem;
+    if (!currentSubprocess || !participant) return;
+    const { macroprocess, process, subprocess, isCustom } = currentSubprocess;
     const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
 
-    // Merge onto freshest session to avoid overwriting other participants' answers.
     const fresh = loadSession(initialSession.sessionId) ?? session;
     const updated = completeSubprocessInSession(fresh, subprocess.id, assessment);
-    persistSession(updated);
+    setSession(updated);
+    saveSession(updated);
+    onSessionChange(updated);
     sendAnswerToGAS(initialSession.sessionId, participant, assessment);
 
-    // Navigate to results when every subprocess is answered; otherwise list.
-    // Never automatically opens another subprocess.
-    const progress = getSessionProgress(updated);
-    if (progress.total > 0 && progress.answered === progress.total) {
-      setActiveItem(null);
-      setView('results');
-    } else {
-      goToList();
-    }
+    setCurrentSubprocess(null);
+    setView('list');
   };
 
-  const handleBackFromQuestionnaire = () => {
-    // Subprocess remains in_progress (participant can resume by clicking it again).
-    goToList();
+  const handleBack = () => {
+    setCurrentSubprocess(null);
+    setView('list');
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Identification gate ───────────────────────────────────────────────────
 
-  if (view === 'identify') {
+  if (!participant) {
     return <ParticipantFormModal onIdentify={handleIdentify} />;
   }
 
-  if (view === 'answering' && activeItem) {
+  // ── Questionnaire view ────────────────────────────────────────────────────
+
+  if (view === 'questionnaire' && currentSubprocess) {
     return (
       <Questionnaire
-        key={activeItem.subprocess.id}
-        macroprocess={activeItem.macroprocess}
-        process={activeItem.process}
-        subprocess={activeItem.subprocess}
+        key={currentSubprocess.subprocess.id}
+        macroprocess={currentSubprocess.macroprocess}
+        process={currentSubprocess.process}
+        subprocess={currentSubprocess.subprocess}
         currentIndex={0}
         total={1}
         diagnosticMode="collaborative"
         onComplete={handleComplete}
-        onBack={handleBackFromQuestionnaire}
+        onBack={handleBack}
       />
     );
   }
 
-  if (view === 'results') {
-    return (
-      <RankingScreen
-        assessments={session.answers}
-        diagnosticId={session.sessionId}
-        diagnosticMode="collaborative"
-        onRestart={goToList}
-      />
-    );
-  }
-
-  // ── List view ────────────────────────────────────────────────────────────────
+  // ── List view ─────────────────────────────────────────────────────────────
 
   const progress = getSessionProgress(session);
   const items = session.subprocessItems;
@@ -243,7 +184,7 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
         </p>
         <h2 className="text-2xl font-bold text-gray-900">Subprocessos do diagnóstico</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Selecione um subprocesso para respondê-lo. Olá, <strong>{participant?.name}</strong>.
+          Selecione um subprocesso para respondê-lo. Olá, <strong>{participant.name}</strong>.
         </p>
       </div>
 
