@@ -43,6 +43,12 @@ export interface SubprocessAssessment {
   totalScore: number;
   /** Automation potential score (0–100). See scoring.ts: calculateAutomationScore. */
   automationScore: number;
+  /** Estimated annual operational effort in hours. See impactCalculator.ts. */
+  annualHours: number;
+  /** Estimated hours saved per year through automation. */
+  automationSavingsHours: number;
+  /** Estimated financial impact of automation savings (hourly cost × savings hours). */
+  financialImpact: number;
 }
 
 /** A subprocess together with the full context of its parent hierarchy. */
@@ -64,9 +70,10 @@ export const CRITERIA = [
   {
     key: 'operationalVolume' as keyof CriteriaScores,
     label: 'Volume Operacional',
-    description: 'Frequência e quantidade de transações ou ocorrências do subprocesso',
+    description: 'Frequência e quantidade de transações ou ocorrências do subprocesso por mês',
     lowLabel: 'Baixo volume',
     highLabel: 'Alto volume',
+    options: ['Menos de 50', '50 a 200', '200 a 500', 'Mais de 500'] as const,
   },
   {
     key: 'peopleInvolved' as keyof CriteriaScores,
@@ -74,33 +81,38 @@ export const CRITERIA = [
     description: 'Quantidade de colaboradores necessários para executar o subprocesso',
     lowLabel: 'Poucas pessoas',
     highLabel: 'Muitas pessoas',
+    options: ['1 pessoa', '2–3 pessoas', '4–6 pessoas', 'Mais de 6'] as const,
   },
   {
     key: 'executionTime' as keyof CriteriaScores,
-    label: 'Tempo de Execução',
-    description: 'Tempo médio gasto para completar o subprocesso',
+    label: 'Tempo de Execução por Tarefa',
+    description: 'Tempo médio gasto para completar o subprocesso por tarefa',
     lowLabel: 'Muito rápido',
     highLabel: 'Muito demorado',
+    options: ['Menos de 2 min', '2 a 5 min', '5 a 15 min', 'Mais de 15 min'] as const,
   },
   {
     key: 'reworkOrErrors' as keyof CriteriaScores,
-    label: 'Retrabalho ou Erros',
+    label: 'Frequência de Retrabalho',
     description: 'Frequência de erros, retrabalho ou exceções no subprocesso',
     lowLabel: 'Poucos erros',
     highLabel: 'Muitos erros',
+    options: ['Raro', 'Ocasional', 'Frequente', 'Muito frequente'] as const,
   },
   {
     key: 'systemsOrSpreadsheets' as keyof CriteriaScores,
     label: 'Uso de Sistemas ou Planilhas',
     description: 'Dependência de planilhas manuais ou sistemas legados',
-    lowLabel: 'Totalmente automatizado',
+    lowLabel: 'Totalmente sistematizado',
     highLabel: 'Totalmente manual',
+    options: ['Totalmente sistematizado', 'Algumas planilhas', 'Principalmente planilhas', 'Manual + planilhas'] as const,
   },
   {
     key: 'systemIntegrations' as keyof CriteriaScores,
-    label: 'Integrações entre Sistemas',
-    description: 'Quantidade de sistemas ou interfaces que precisam trocar informações',
-    lowLabel: 'Sem integrações',
-    highLabel: 'Muitas integrações',
+    label: 'Integrações Manuais',
+    description: 'Quantidade de integrações manuais entre sistemas ou interfaces',
+    lowLabel: 'Nenhuma',
+    highLabel: 'Constante',
+    options: ['Nenhuma', 'Ocasional', 'Frequente', 'Constante'] as const,
   },
 ] as const;

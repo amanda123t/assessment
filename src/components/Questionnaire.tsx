@@ -93,29 +93,28 @@ export default function Questionnaire({
                 </div>
               </div>
 
-              {/* Neutral blue score scale — no semantic coloring per value */}
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((val) => {
+              {/* Descriptive 4-option scale for impact estimation */}
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {criterion.options.map((optLabel, optIdx) => {
+                  const val = optIdx + 1;
                   const isSelected = currentScore === val;
                   return (
                     <button
                       key={val}
                       onClick={() => handleScore(criterion.key, val)}
-                      className={`flex-1 h-10 rounded-md border font-semibold text-sm transition-all duration-150
+                      className={`flex flex-col items-center gap-1 px-2 py-3 rounded-lg border text-center transition-all duration-150
                         ${isSelected
                           ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                          : 'bg-white border-gray-300 text-gray-600 hover:bg-blue-50 hover:border-blue-300'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300'
                         }`}
                     >
-                      {val}
+                      <span className="font-bold text-sm leading-none">{val}</span>
+                      <span className={`text-xs leading-tight ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
+                        {optLabel}
+                      </span>
                     </button>
                   );
                 })}
-              </div>
-
-              <div className="flex justify-between text-xs text-gray-400 mt-1.5 px-0.5">
-                <span>{criterion.lowLabel}</span>
-                <span>{criterion.highLabel}</span>
               </div>
             </div>
           );
@@ -126,7 +125,7 @@ export default function Questionnaire({
       <div className="mt-8 flex items-center justify-between">
         <span className="text-sm text-gray-500">
           {allAnswered
-            ? <span className="text-blue-600 font-semibold">Score total: <span className="text-lg">{totalScore}</span>/30</span>
+            ? <span className="text-blue-600 font-semibold">Score total: <span className="text-lg">{totalScore}</span></span>
             : <>{answeredCount} de {CRITERIA.length} respondidos</>
           }
         </span>
