@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { CheckCircle2, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { CheckCircle2, ChevronRight, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import {
   AssessmentSession,
   Participant,
@@ -76,6 +76,8 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
   // answeredSubareas is the single source of truth for which subareas are locked.
   const [answeredSubareas, setAnsweredSubareas] = useState<string[]>([]);
   const [loadingAnswers, setLoadingAnswers]     = useState(false);
+  const [submitting, setSubmitting]             = useState(false);
+  const [submitError, setSubmitError]           = useState<string | null>(null);
 
   const refreshAnswered = useCallback(async () => {
     setLoadingAnswers(true);
@@ -153,6 +155,7 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
   const handleSelectSubarea = (item: SelectedSubprocessItem) => {
     // Supabase is the source of truth — only answered subareas are locked.
     if (answeredSubareas.includes(item.subprocess.id)) return;
+    setSubmitError(null);
     // Start a fresh questionnaire; no locking/in_progress state needed.
     setCurrentSubprocess(item);
     setStep('questionnaire');
@@ -161,12 +164,14 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
   // ── Questionnaire completion ──────────────────────────────────────────────
 
   const handleComplete = async (scores: CriteriaScores) => {
-    if (!currentSubprocess || !participant) return;
+    if (!currentSubprocess || !participant || submitting) return;
+    setSubmitting(true);
+
     const { macroprocess, process, subprocess, isCustom } = currentSubprocess;
     const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
 
     // Insert into Supabase — this is the authoritative write.
-    await insertResponse({
+    const result = await insertResponse({
       session_id:        initialSession.sessionId,
       area:              macroprocess.name,
       process:           process.name,
@@ -175,13 +180,23 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
       participant_email: participant.email,
     });
 
+    // Refresh answered list regardless of outcome so UI is current.
+    await refreshAnswered();
+    setSubmitting(false);
+
+    if (!result.ok) {
+      // Show error on the subarea selection screen so user can pick another.
+      setSubmitError(result.message);
+      setCurrentSubprocess(null);
+      setStep('select-subarea');
+      return;
+    }
+
     // Fire-and-forget to GAS (non-critical secondary sink).
     sendAnswerToGAS(initialSession.sessionId, participant, assessment);
 
-    // Refresh answered list so UI reflects the new state immediately.
-    await refreshAnswered();
-
-    // Reset selection — user always starts from Area.
+    // Success — reset to Area selection.
+    setSubmitError(null);
     setCurrentSubprocess(null);
     setSelectedMacroprocess(null);
     setSelectedProcess(null);
@@ -343,6 +358,13 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
       {/* ── Step: Select Subarea ── */}
       {step === 'select-subarea' && (
         <div className="space-y-2">
+          {/* Error banner — shown when a unique constraint is hit on submit */}
+          {submitError && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-2 text-sm">
+              <AlertCircle size={16} className="mt-0.5 flex-shrink-0 text-red-500" />
+              <span>{submitError}</span>
+            </div>
+          )}
           {loadingAnswers ? (
             <div className="flex justify-center py-12">
               <Loader2 size={22} className="animate-spin text-gray-400" />

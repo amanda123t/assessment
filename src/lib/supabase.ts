@@ -21,9 +21,18 @@ export async function fetchAnsweredSubareas(sessionId: string): Promise<string[]
   return data.map((row: { subarea_id: string }) => row.subarea_id);
 }
 
+// Postgres unique-violation code returned by Supabase
+const UNIQUE_VIOLATION = '23505';
+
+export type InsertResponseResult =
+  | { ok: true }
+  | { ok: false; alreadyAnswered: boolean; message: string };
+
 /**
  * Inserts a completed response row into Supabase.
- * Called once per subprocess submission.
+ * Returns { ok: true } on success.
+ * Returns { ok: false, alreadyAnswered: true } on unique constraint violation
+ * (subarea already answered by another participant).
  */
 export async function insertResponse(params: {
   session_id: string;
@@ -32,9 +41,18 @@ export async function insertResponse(params: {
   subarea_id: string;
   score: number;
   participant_email: string;
-}): Promise<void> {
+}): Promise<InsertResponseResult> {
   const { error } = await supabase.from('responses').insert(params);
-  if (error) {
-    console.error('[supabase] insertResponse error:', error.message);
+  if (!error) return { ok: true };
+
+  if (error.code === UNIQUE_VIOLATION) {
+    return {
+      ok: false,
+      alreadyAnswered: true,
+      message: 'Este subprocesso já foi respondido por outro participante.',
+    };
   }
+
+  console.error('[supabase] insertResponse error:', error.message);
+  return { ok: false, alreadyAnswered: false, message: error.message };
 }
