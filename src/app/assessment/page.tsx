@@ -111,16 +111,9 @@ export default function AssessmentPage() {
         <>
           {/* Persistent header for non-start screens */}
           <header className="bg-white border-b border-gray-100 px-6 py-3 shadow-sm">
-            <div className="max-w-5xl mx-auto flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
-                <p className="text-xs text-gray-400">Operational Efficiency Assessment</p>
-              </div>
+            <div className="max-w-5xl mx-auto">
+              <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
+              <p className="text-xs text-gray-400">Operational Efficiency Assessment</p>
             </div>
           </header>
 
@@ -150,6 +143,7 @@ export default function AssessmentPage() {
 
             {state.step === 'questionnaire' && state.selectedMacroprocess && state.selectedProcess && currentSubprocess && (
               <Questionnaire
+                key={currentSubprocess.id}
                 macroprocess={state.selectedMacroprocess}
                 process={state.selectedProcess}
                 subprocess={currentSubprocess}

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell,
 } from 'recharts';
 import { SubprocessAssessment, CRITERIA } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
@@ -13,13 +14,15 @@ interface Props {
   onRestart: () => void;
 }
 
-// Custom tooltip for the bar chart
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { name: string; score: number } }> }) {
+function CustomTooltip({ active, payload }: {
+  active?: boolean;
+  payload?: Array<{ payload: { name: string; score: number } }>;
+}) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm">
-      <p className="font-semibold text-gray-800 mb-1 max-w-[200px] leading-tight">{d.name}</p>
+      <p className="font-semibold text-gray-800 mb-1 max-w-[220px] leading-snug">{d.name}</p>
       <p className="text-blue-600 font-bold">Score: {d.score} / 30</p>
     </div>
   );
@@ -27,8 +30,14 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
 
 function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between mb-5">
           <div>
             <p className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">
@@ -36,15 +45,19 @@ function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () =>
             </p>
             <h3 className="text-lg font-bold text-gray-900">{item.subprocessName}</h3>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 flex-shrink-0">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors ml-4 flex-shrink-0 text-lg leading-none"
+          >
+            ×
           </button>
         </div>
 
         <div className="flex items-center gap-3 mb-5">
-          <div className={`text-2xl font-extrabold ${item.priorityColor}`}>{item.totalScore}<span className="text-base font-normal text-gray-400">/30</span></div>
+          <span className={`text-2xl font-extrabold ${item.priorityColor}`}>
+            {item.totalScore}
+            <span className="text-base font-normal text-gray-400">/30</span>
+          </span>
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
             {item.priority} Prioridade
           </span>
@@ -54,7 +67,7 @@ function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () =>
           {CRITERIA.map((c) => {
             const score = item.scores[c.key];
             const pct = (score / 5) * 100;
-            const barCls = score >= 4 ? 'bg-red-500' : score >= 3 ? 'bg-yellow-400' : 'bg-green-500';
+            const barCls = score >= 4 ? 'bg-red-500' : score >= 3 ? 'bg-yellow-400' : 'bg-gray-400';
             return (
               <div key={c.key}>
                 <div className="flex justify-between text-xs mb-1">
@@ -62,7 +75,7 @@ function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () =>
                   <span className="font-bold text-gray-800">{score}/5</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div className={`${barCls} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                  <div className={`${barCls} h-2 rounded-full`} style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
@@ -80,6 +93,7 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
   const ranked = buildRanking(assessments);
   const chartData = buildChartData(ranked);
   const summary = buildPrioritySummary(ranked);
+  const top3 = ranked.slice(0, 3);
 
   const handleExport = async () => {
     setExporting(true);
@@ -89,52 +103,45 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
-      {/* Page header */}
-      <div className="flex items-start justify-between mb-8">
+
+      {/* ── Page title ───────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between mb-2">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Resultados da Avaliação</h2>
-          <p className="text-gray-500 mt-1">{ranked.length} subprocesso{ranked.length !== 1 ? 's' : ''} avaliado{ranked.length !== 1 ? 's' : ''} • ordenados por potencial de melhoria</p>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Oportunidades de Eficiência Operacional
+          </h2>
+          <p className="text-gray-500 mt-2 max-w-2xl text-sm leading-relaxed">
+            Subprocessos com maiores scores indicam maior potencial de melhoria operacional.
+            Os resultados abaixo foram ordenados do maior para o menor score.
+          </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 ml-6 flex-shrink-0">
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="inline-flex items-center gap-2 bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 text-gray-600 font-medium px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm"
+            className="bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 text-gray-600 font-medium px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {exporting ? (
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            )}
-            Exportar Excel
+            {exporting ? 'Exportando...' : 'Exportar Excel'}
           </button>
           <button
             onClick={onRestart}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
             Nova Avaliação
           </button>
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      {/* ── Summary cards ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-4 mt-8 mb-8">
         {[
-          { label: 'Alta Prioridade', count: summary.alta, color: 'bg-red-50 border-red-100', text: 'text-red-600', dot: 'bg-red-500' },
-          { label: 'Média Prioridade', count: summary.media, color: 'bg-orange-50 border-orange-100', text: 'text-orange-600', dot: 'bg-orange-400' },
-          { label: 'Baixa Prioridade', count: summary.baixa, color: 'bg-green-50 border-green-100', text: 'text-green-600', dot: 'bg-green-500' },
+          { label: 'Alta Prioridade',  count: summary.alta,  bg: 'bg-red-50    border-red-100',    text: 'text-red-600',    bar: 'bg-red-500' },
+          { label: 'Média Prioridade', count: summary.media, bg: 'bg-orange-50 border-orange-100', text: 'text-orange-600', bar: 'bg-orange-400' },
+          { label: 'Baixa Prioridade', count: summary.baixa, bg: 'bg-gray-50   border-gray-200',   text: 'text-gray-600',   bar: 'bg-gray-400' },
         ].map((card) => (
-          <div key={card.label} className={`${card.color} border rounded-xl p-4`}>
+          <div key={card.label} className={`${card.bg} border rounded-xl p-4`}>
             <div className="flex items-center gap-2 mb-1">
-              <div className={`w-2 h-2 rounded-full ${card.dot}`} />
+              <div className={`w-2 h-2 rounded-full ${card.bar}`} />
               <span className="text-xs text-gray-500 font-medium">{card.label}</span>
             </div>
             <p className={`text-3xl font-extrabold ${card.text}`}>{card.count}</p>
@@ -142,98 +149,160 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
         ))}
       </div>
 
-      {/* Bar chart */}
+      {/* ── Top Opportunities ───────────────────────────────────────── */}
+      {top3.length > 0 && (
+        <section className="mb-8">
+          <h3 className="text-base font-semibold text-gray-800 mb-3">
+            Principais Oportunidades
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {top3.map((item, i) => (
+              <button
+                key={item.subprocessId}
+                onClick={() => setSelected(item)}
+                className="text-left bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-blue-200 transition-all"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    #{i + 1}
+                  </span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${item.badgeColor}`}>
+                    {item.priority}
+                  </span>
+                </div>
+                <p className="font-semibold text-gray-900 text-sm leading-snug mb-1">
+                  {item.subprocessName}
+                </p>
+                <p className="text-xs text-gray-400 mb-3">
+                  {item.macroprocessName} › {item.processName}
+                </p>
+                <p className={`text-2xl font-extrabold ${item.priorityColor}`}>
+                  {item.totalScore}
+                  <span className="text-sm font-normal text-gray-400">/30</span>
+                </p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Chart ───────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-8">
-        <h3 className="font-semibold text-gray-800 mb-5 flex items-center gap-2">
-          <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          Score por Subprocesso {chartData.length < ranked.length ? `(Top ${chartData.length})` : ''}
+        <h3 className="font-semibold text-gray-800 mb-1">
+          Score por Subprocesso{chartData.length < ranked.length ? ` (Top ${chartData.length})` : ''}
         </h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 20, left: 8, bottom: 0 }}>
+        <p className="text-xs text-gray-400 mb-5">Ordenado do maior para o menor score</p>
+        <ResponsiveContainer width="100%" height={Math.max(260, chartData.length * 32)}>
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 0, right: 24, left: 8, bottom: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F3F4F6" />
-            <XAxis type="number" domain={[0, 30]} tick={{ fontSize: 11, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
+            <XAxis
+              type="number"
+              domain={[0, 30]}
+              tick={{ fontSize: 11, fill: '#9CA3AF' }}
+              tickLine={false}
+              axisLine={false}
+            />
             <YAxis
               type="category"
               dataKey="name"
-              width={180}
+              width={190}
               tick={{ fontSize: 11, fill: '#6B7280' }}
               tickLine={false}
               axisLine={false}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F9FAFB' }} />
-            <ReferenceLine x={15} stroke="#E5E7EB" strokeDasharray="4 4" />
-            <ReferenceLine x={22} stroke="#FECACA" strokeDasharray="4 4" />
-            <Bar dataKey="score" radius={[0, 4, 4, 0]} maxBarSize={22}>
+            <Bar dataKey="score" radius={[0, 4, 4, 0]} maxBarSize={20}>
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-        <div className="flex gap-5 mt-3 justify-end text-xs text-gray-400">
-          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-gray-300 inline-block" style={{ borderTop: '1px dashed #E5E7EB' }} />Score 15 (50%)</span>
-          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-red-200 inline-block" />Score 22 (75%)</span>
-        </div>
       </div>
 
-      {/* Ranking table */}
+      {/* ── Ranking table ───────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h3 className="font-semibold text-gray-800">Ranking Detalhado</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Clique em um item para ver o detalhamento por critério</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Clique em um item para ver o detalhamento por critério
+          </p>
         </div>
-        <div className="divide-y divide-gray-50">
-          {ranked.map((item) => (
-            <button
-              key={item.subprocessId}
-              onClick={() => setSelected(item)}
-              className="w-full flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors text-left group"
-            >
-              {/* Rank */}
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
-                ${item.rank <= 3 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                {item.rank}
-              </div>
 
-              {/* Text */}
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-800 text-sm truncate group-hover:text-blue-600 transition-colors">
-                  {item.subprocessName}
-                </p>
-                <p className="text-xs text-gray-400 truncate mt-0.5">
-                  {item.macroprocessName} › {item.processName}
-                </p>
-              </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">#</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Macroprocesso</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Processo</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Subprocesso</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Score</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Prioridade</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {ranked.map((item) => (
+                <tr
+                  key={item.subprocessId}
+                  onClick={() => setSelected(item)}
+                  className="hover:bg-gray-50 cursor-pointer transition-colors group"
+                >
+                  {/* Rank */}
+                  <td className="px-4 py-3.5">
+                    <span className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-xs font-bold
+                      ${item.rank <= 3 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                      {item.rank}
+                    </span>
+                  </td>
 
-              {/* Score bar */}
-              <div className="w-32 hidden md:block">
-                <div className="w-full bg-gray-100 rounded-full h-1.5">
-                  <div
-                    className={`${item.barColor} h-1.5 rounded-full transition-all`}
-                    style={{ width: `${item.scorePercent}%` }}
-                  />
-                </div>
-              </div>
+                  {/* Macroprocess */}
+                  <td className="px-4 py-3.5 text-gray-500 text-xs">
+                    {item.macroprocessName}
+                  </td>
 
-              {/* Score */}
-              <div className={`text-lg font-extrabold flex-shrink-0 w-16 text-right ${item.priorityColor}`}>
-                {item.totalScore}
-                <span className="text-xs font-normal text-gray-400">/30</span>
-              </div>
+                  {/* Process */}
+                  <td className="px-4 py-3.5 text-gray-500 text-xs">
+                    {item.processName}
+                  </td>
 
-              {/* Priority badge */}
-              <span className={`hidden sm:inline-flex text-xs font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 ${item.badgeColor}`}>
-                {item.priority}
-              </span>
+                  {/* Subprocess */}
+                  <td className="px-4 py-3.5">
+                    <span className="font-medium text-gray-800 group-hover:text-blue-600 transition-colors">
+                      {item.subprocessName}
+                    </span>
+                  </td>
 
-              {/* Arrow */}
-              <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          ))}
+                  {/* Score */}
+                  <td className="px-4 py-3.5 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className={`font-extrabold ${item.priorityColor}`}>
+                        {item.totalScore}
+                        <span className="text-xs font-normal text-gray-400">/30</span>
+                      </span>
+                      <div className="w-16 bg-gray-100 rounded-full h-1">
+                        <div
+                          className={`${item.barColor} h-1 rounded-full`}
+                          style={{ width: `${item.scorePercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Priority */}
+                  <td className="px-4 py-3.5 text-center">
+                    <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
+                      {item.priority} Prioridade
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

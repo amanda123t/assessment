@@ -56,10 +56,10 @@ function getPriorityColors(priority: Priority) {
       };
     default:
       return {
-        priorityColor: 'text-green-600',
-        barColor: 'bg-green-500',
-        badgeColor: 'bg-green-100 text-green-700 border-green-200',
-        chartFill: '#22C55E',
+        priorityColor: 'text-gray-500',
+        barColor: 'bg-gray-400',
+        badgeColor: 'bg-gray-100 text-gray-600 border-gray-200',
+        chartFill: '#9CA3AF',
       };
   }
 }
