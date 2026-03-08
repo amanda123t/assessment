@@ -76,7 +76,8 @@ export function lockSubprocess(
   participant: Participant,
 ): AssessmentSession {
   const current = session.subprocessStates[subprocessId];
-  if (current && current.status !== 'open') return session;
+  // Never override a completed answer; in_progress subprocesses can be taken over
+  if (current?.status === 'completed') return session;
   return {
     ...session,
     subprocessStates: {

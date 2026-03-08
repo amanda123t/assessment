@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { CheckCircle2, Clock, Circle, AlertTriangle } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { CheckCircle2, Clock, Circle } from 'lucide-react';
 import {
   AssessmentSession,
   Participant,
@@ -19,6 +19,7 @@ import {
 } from '@/lib/session';
 import ParticipantFormModal from './ParticipantFormModal';
 import Questionnaire from './Questionnaire';
+import RankingScreen from './RankingScreen';
 
 const GAS_ENDPOINT =
   'https://script.google.com/macros/s/AKfycbzn23DipnagQMTtSSs8F40Sdn_a-MAir-CCAxvUSq6OMmhwzVJCOQAwAtQulQO3prSl/exec';
@@ -57,7 +58,7 @@ function StatusBadge({ status, assignedTo }: { status: SubprocessStatus; assigne
     return (
       <span className="inline-flex items-center gap-1 text-xs text-green-700 font-medium">
         <CheckCircle2 size={13} strokeWidth={2} className="text-green-500" />
-        Concluído
+        Respondido
       </span>
     );
   }
@@ -84,14 +85,29 @@ interface Props {
   onSessionChange: (session: AssessmentSession) => void;
 }
 
-type View = 'identify' | 'list' | 'answering';
+type View = 'identify' | 'list' | 'answering' | 'results';
 
 export default function CollaboratorView({ initialSession, onSessionChange }: Props) {
   const [session, setSession] = useState<AssessmentSession>(initialSession);
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [view, setView] = useState<View>('identify');
   const [activeItem, setActiveItem] = useState<SelectedSubprocessItem | null>(null);
-  const [lockedByOther, setLockedByOther] = useState<string | null>(null);
+
+  const participantKey = `oea_participant_${initialSession.sessionId}`;
+
+  // Restore participant from sessionStorage on mount so refreshes don't lose identity
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(participantKey);
+      if (saved) {
+        const p = JSON.parse(saved) as Participant;
+        setParticipant(p);
+        setView('list');
+      }
+    } catch {
+      // sessionStorage unavailable — fall through to identify view
+    }
+  }, [participantKey]);
 
   const persistSession = useCallback((updated: AssessmentSession) => {
     setSession(updated);
@@ -103,6 +119,11 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
 
   const handleIdentify = (p: Participant) => {
     setParticipant(p);
+    try {
+      sessionStorage.setItem(participantKey, JSON.stringify(p));
+    } catch {
+      // Non-critical
+    }
     const updated = addParticipantToSession(session, p);
     persistSession(updated);
     setView('list');
@@ -113,27 +134,11 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
   const handleSelectSubprocess = (item: SelectedSubprocessItem) => {
     if (!participant) return;
     const state = session.subprocessStates[item.subprocess.id];
+    if (state?.status === 'completed') return; // already answered — hard guard
 
-    if (state?.status === 'completed') return; // already done
-
-    if (state?.status === 'in_progress') {
-      const isOwn = state.assignedEmail === participant.email;
-      if (!isOwn) {
-        setLockedByOther(state.assignedTo ?? 'outro participante');
-        return;
-      }
-      // Own in-progress — allow resuming (go straight to questionnaire)
-      setActiveItem(item);
-      setLockedByOther(null);
-      setView('answering');
-      return;
-    }
-
-    // Lock the subprocess
     const updated = lockSubprocess(session, item.subprocess.id, participant);
     persistSession(updated);
     setActiveItem(item);
-    setLockedByOther(null);
     setView('answering');
   };
 
@@ -148,13 +153,19 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
     persistSession(updated);
     sendAnswerToGAS(session.sessionId, participant, assessment);
 
-    setView('list');
     setActiveItem(null);
+
+    // Navigate to results when every subprocess has been answered
+    const progress = getSessionProgress(updated);
+    if (progress.total > 0 && progress.answered === progress.total) {
+      setView('results');
+    } else {
+      setView('list');
+    }
   };
 
   const handleBackFromQuestionnaire = () => {
-    // If user bails out, keep the subprocess locked to their name
-    // (they can resume later) but go back to the list
+    // Keep the subprocess locked to this participant so they can resume later
     setView('list');
     setActiveItem(null);
   };
@@ -181,6 +192,17 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
     );
   }
 
+  if (view === 'results') {
+    return (
+      <RankingScreen
+        assessments={session.answers}
+        diagnosticId={session.sessionId}
+        diagnosticMode="collaborative"
+        onRestart={() => setView('list')}
+      />
+    );
+  }
+
   // ── List view ────────────────────────────────────────────────────────────────
 
   const progress = getSessionProgress(session);
@@ -195,7 +217,7 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
         </p>
         <h2 className="text-2xl font-bold text-gray-900">Subprocessos do diagnóstico</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Selecione um subprocesso ainda não iniciado para respondê-lo. Olá, <strong>{participant?.name}</strong>.
+          Selecione um subprocesso para respondê-lo. Olá, <strong>{participant?.name}</strong>.
         </p>
       </div>
 
@@ -223,14 +245,6 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
         </div>
       </div>
 
-      {/* Lock-by-other warning */}
-      {lockedByOther && (
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-sm text-amber-800">
-          <AlertTriangle size={15} strokeWidth={1.75} className="text-amber-500 flex-shrink-0" />
-          Este subprocesso já está sendo respondido por <strong className="ml-1">{lockedByOther}</strong>.
-        </div>
-      )}
-
       {/* Subprocess list */}
       {items.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
@@ -243,20 +257,17 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
             const state = session.subprocessStates[item.subprocess.id];
             const status: SubprocessStatus = state?.status ?? 'open';
             const isCompleted = status === 'completed';
-            const isInProgressByOther =
-              status === 'in_progress' && state?.assignedEmail !== participant?.email;
-            const isClickable = !isCompleted && !isInProgressByOther;
 
             return (
               <button
                 key={item.subprocess.id}
-                onClick={() => isClickable && handleSelectSubprocess(item)}
-                disabled={!isClickable}
+                onClick={() => !isCompleted && handleSelectSubprocess(item)}
+                disabled={isCompleted}
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl border text-left transition-all ${
                   isCompleted
                     ? 'bg-green-50 border-green-200 opacity-80 cursor-default'
-                    : isInProgressByOther
-                    ? 'bg-amber-50 border-amber-200 opacity-70 cursor-not-allowed'
+                    : status === 'in_progress'
+                    ? 'bg-amber-50 border-amber-200 hover:border-violet-400 hover:shadow-sm cursor-pointer'
                     : 'bg-white border-gray-200 hover:border-violet-400 hover:shadow-sm cursor-pointer'
                 }`}
               >
