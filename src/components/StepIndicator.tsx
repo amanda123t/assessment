@@ -3,14 +3,12 @@
 import { AssessmentState } from '@/types';
 
 const STEPS = [
-  { key: 'macroprocess', label: 'Macroprocesso' },
-  { key: 'process', label: 'Processo' },
-  { key: 'subprocess', label: 'Subprocessos' },
+  { key: 'explore', label: 'Seleção' },
   { key: 'questionnaire', label: 'Avaliação' },
   { key: 'ranking', label: 'Resultados' },
 ] as const;
 
-const STEP_ORDER = ['macroprocess', 'process', 'subprocess', 'questionnaire', 'ranking'];
+const STEP_ORDER = ['explore', 'questionnaire', 'ranking'];
 
 interface Props {
   step: AssessmentState['step'];
@@ -24,7 +22,7 @@ export default function StepIndicator({ step }: Props) {
   return (
     <div className="w-full bg-white border-b border-gray-100 px-6 py-4">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-center max-w-sm mx-auto">
           {STEPS.map((s, idx) => {
             const isCompleted = idx < currentIndex;
             const isActive = idx === currentIndex;

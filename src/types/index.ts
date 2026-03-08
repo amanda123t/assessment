@@ -53,13 +53,11 @@ export interface SelectedSubprocessItem {
 }
 
 export interface AssessmentState {
-  selectedMacroprocess: Macroprocess | null;
-  selectedProcess: Process | null;
-  /** Global accumulator — persists across macroprocess/process navigation. */
+  /** Global accumulator — persists across all navigation. */
   globalSelectedSubprocesses: SelectedSubprocessItem[];
   assessments: SubprocessAssessment[];
   currentSubprocessIndex: number;
-  step: 'start' | 'macroprocess' | 'process' | 'subprocess' | 'questionnaire' | 'ranking';
+  step: 'start' | 'explore' | 'questionnaire' | 'ranking';
 }
 
 export const CRITERIA = [
