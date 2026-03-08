@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { CheckCircle2, Clock, ChevronRight, ArrowLeft } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { CheckCircle2, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
 import {
   AssessmentSession,
   Participant,
@@ -12,13 +12,10 @@ import {
 } from '@/types';
 import { createAssessment } from '@/lib/assessmentEngine';
 import {
-  lockSubprocess,
-  completeSubprocessInSession,
   addParticipantToSession,
   saveSession,
-  loadSession,
-  getSessionProgress,
 } from '@/lib/session';
+import { fetchAnsweredSubareas, insertResponse } from '@/lib/supabase';
 import ParticipantFormModal from './ParticipantFormModal';
 import Questionnaire from './Questionnaire';
 
@@ -68,24 +65,36 @@ interface Props {
 }
 
 export default function CollaboratorView({ initialSession, onSessionChange }: Props) {
-  const [session, setSession]                     = useState<AssessmentSession>(initialSession);
-  const [participant, setParticipant]             = useState<Participant | null>(null);
-  const [step, setStep]                           = useState<Step>('select-area');
+  const [session, setSession]                           = useState<AssessmentSession>(initialSession);
+  const [participant, setParticipant]                   = useState<Participant | null>(null);
+  const [step, setStep]                                 = useState<Step>('select-area');
   const [selectedMacroprocess, setSelectedMacroprocess] = useState<Macroprocess | null>(null);
-  const [selectedProcess, setSelectedProcess]     = useState<Process | null>(null);
-  const [currentSubprocess, setCurrentSubprocess] = useState<SelectedSubprocessItem | null>(null);
+  const [selectedProcess, setSelectedProcess]           = useState<Process | null>(null);
+  const [currentSubprocess, setCurrentSubprocess]       = useState<SelectedSubprocessItem | null>(null);
 
-  const participantKey = `oea_participant_${initialSession.sessionId}`;
+  // ── Supabase-driven answer state ──────────────────────────────────────────
+  // answeredSubareas is the single source of truth for which subareas are locked.
+  const [answeredSubareas, setAnsweredSubareas] = useState<string[]>([]);
+  const [loadingAnswers, setLoadingAnswers]     = useState(false);
+
+  const refreshAnswered = useCallback(async () => {
+    setLoadingAnswers(true);
+    const ids = await fetchAnsweredSubareas(initialSession.sessionId);
+    setAnsweredSubareas(ids);
+    setLoadingAnswers(false);
+  }, [initialSession.sessionId]);
 
   // ── Participant identification ─────────────────────────────────────────────
 
-  const handleIdentify = (p: Participant) => {
+  const handleIdentify = async (p: Participant) => {
     setParticipant(p);
-    try { sessionStorage.setItem(participantKey, JSON.stringify(p)); } catch { /* non-critical */ }
+    try { sessionStorage.setItem(`oea_participant_${initialSession.sessionId}`, JSON.stringify(p)); } catch { /* non-critical */ }
     const updated = addParticipantToSession(session, p);
     setSession(updated);
     saveSession(updated);
     onSessionChange(updated);
+    // Fetch answered subareas immediately so the UI is up-to-date.
+    await refreshAnswered();
     // Always lands on select-area — nothing opens automatically.
   };
 
@@ -112,7 +121,7 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
     return [...seen.values()];
   })();
 
-  /** Subareas (subprocesses) within the selected macroprocess + process. */
+  /** Subareas within the selected macroprocess + process, annotated with answered status. */
   const subareas = (() => {
     if (!selectedMacroprocess || !selectedProcess) return [];
     return session.subprocessItems
@@ -123,7 +132,7 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
       )
       .map((item) => ({
         item,
-        state: session.subprocessStates[item.subprocess.id],
+        isAnswered: answeredSubareas.includes(item.subprocess.id),
       }));
   })();
 
@@ -134,38 +143,45 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
     setStep('select-process');
   };
 
-  const handleSelectProcess = (proc: Process) => {
+  /** Refresh answered list just before showing subareas so the view is always current. */
+  const handleSelectProcess = async (proc: Process) => {
     setSelectedProcess(proc);
     setStep('select-subarea');
+    await refreshAnswered();
   };
 
   const handleSelectSubarea = (item: SelectedSubprocessItem) => {
-    // Only completed subareas are locked — in_progress ones are still selectable.
-    const state = session.subprocessStates[item.subprocess.id];
-    if (state?.status === 'completed') return;
-
-    const fresh = loadSession(initialSession.sessionId) ?? session;
-    const updated = lockSubprocess(fresh, item.subprocess.id, participant!);
-    setSession(updated);
-    saveSession(updated);
-    onSessionChange(updated);
+    // Supabase is the source of truth — only answered subareas are locked.
+    if (answeredSubareas.includes(item.subprocess.id)) return;
+    // Start a fresh questionnaire; no locking/in_progress state needed.
     setCurrentSubprocess(item);
     setStep('questionnaire');
   };
 
-  const handleComplete = (scores: CriteriaScores) => {
+  // ── Questionnaire completion ──────────────────────────────────────────────
+
+  const handleComplete = async (scores: CriteriaScores) => {
     if (!currentSubprocess || !participant) return;
     const { macroprocess, process, subprocess, isCustom } = currentSubprocess;
     const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
 
-    const fresh = loadSession(initialSession.sessionId) ?? session;
-    const updated = completeSubprocessInSession(fresh, subprocess.id, assessment);
-    setSession(updated);
-    saveSession(updated);
-    onSessionChange(updated);
+    // Insert into Supabase — this is the authoritative write.
+    await insertResponse({
+      session_id:        initialSession.sessionId,
+      area:              macroprocess.name,
+      process:           process.name,
+      subarea_id:        subprocess.id,
+      score:             assessment.totalScore,
+      participant_email: participant.email,
+    });
+
+    // Fire-and-forget to GAS (non-critical secondary sink).
     sendAnswerToGAS(initialSession.sessionId, participant, assessment);
 
-    // Always return to area selection so user starts fresh.
+    // Refresh answered list so UI reflects the new state immediately.
+    await refreshAnswered();
+
+    // Reset selection — user always starts from Area.
     setCurrentSubprocess(null);
     setSelectedMacroprocess(null);
     setSelectedProcess(null);
@@ -211,11 +227,14 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
 
   // ── Selection views ───────────────────────────────────────────────────────
 
-  const progress = getSessionProgress(session);
+  const answeredInSession = session.subprocessIds.filter((id) =>
+    answeredSubareas.includes(id),
+  ).length;
+  const totalInSession = session.subprocessIds.length;
 
   const stepTitle =
-    step === 'select-area'    ? 'Selecione uma Área'     :
-    step === 'select-process' ? 'Selecione um Processo'  :
+    step === 'select-area'    ? 'Selecione uma Área'    :
+    step === 'select-process' ? 'Selecione um Processo' :
                                 'Selecione uma Subárea';
 
   return (
@@ -237,11 +256,11 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
         <div>
           <p className="text-sm font-semibold text-gray-800">
             Subprocessos respondidos:&nbsp;
-            <span className={progress.answered === progress.total ? 'text-green-600' : 'text-blue-600'}>
-              {progress.answered} / {progress.total} concluídos
+            <span className={answeredInSession === totalInSession ? 'text-green-600' : 'text-blue-600'}>
+              {answeredInSession} / {totalInSession} concluídos
             </span>
           </p>
-          {progress.answered === progress.total && progress.total > 0 && (
+          {answeredInSession === totalInSession && totalInSession > 0 && (
             <p className="text-xs text-green-600 mt-0.5 font-medium">
               ✅ Todos os subprocessos foram respondidos!
             </p>
@@ -250,7 +269,7 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
         <div className="w-24 bg-gray-100 rounded-full h-1.5 ml-6">
           <div
             className="bg-blue-600 h-1.5 rounded-full transition-all"
-            style={{ width: progress.total > 0 ? `${(progress.answered / progress.total) * 100}%` : '0%' }}
+            style={{ width: totalInSession > 0 ? `${(answeredInSession / totalInSession) * 100}%` : '0%' }}
           />
         </div>
       </div>
@@ -324,51 +343,42 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
       {/* ── Step: Select Subarea ── */}
       {step === 'select-subarea' && (
         <div className="space-y-2">
-          {subareas.length === 0 ? (
+          {loadingAnswers ? (
+            <div className="flex justify-center py-12">
+              <Loader2 size={22} className="animate-spin text-gray-400" />
+            </div>
+          ) : subareas.length === 0 ? (
             <div className="text-center py-16 text-gray-400 text-sm">
               <p>Nenhuma subárea encontrada para este processo.</p>
             </div>
           ) : (
-            subareas.map(({ item, state }) => {
-              const isCompleted   = state?.status === 'completed';
-              const isInProgress  = state?.status === 'in_progress';
-
-              return (
-                <button
-                  key={item.subprocess.id}
-                  onClick={() => handleSelectSubarea(item)}
-                  disabled={isCompleted}
-                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl border text-left transition-all ${
-                    isCompleted
-                      ? 'bg-green-50 border-green-200 opacity-80 cursor-default'
-                      : isInProgress
-                      ? 'bg-amber-50 border-amber-200 hover:border-violet-400 hover:shadow-sm cursor-pointer'
-                      : 'bg-white border-gray-200 hover:border-violet-400 hover:shadow-sm cursor-pointer'
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold truncate ${isCompleted ? 'text-gray-500' : 'text-gray-800'}`}>
-                      {item.subprocess.name}
+            subareas.map(({ item, isAnswered }) => (
+              <button
+                key={item.subprocess.id}
+                onClick={() => handleSelectSubarea(item)}
+                disabled={isAnswered}
+                className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl border text-left transition-all ${
+                  isAnswered
+                    ? 'bg-green-50 border-green-200 opacity-80 cursor-default'
+                    : 'bg-white border-gray-200 hover:border-violet-400 hover:shadow-sm cursor-pointer'
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold truncate ${isAnswered ? 'text-gray-500' : 'text-gray-800'}`}>
+                    {item.subprocess.name}
+                  </p>
+                  {isAnswered && (
+                    <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
+                      <CheckCircle2 size={11} />
+                      Respondido
                     </p>
-                    {isCompleted && (
-                      <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
-                        <CheckCircle2 size={11} />
-                        Respondido{state?.assignedTo ? ` por ${state.assignedTo}` : ''}
-                      </p>
-                    )}
-                    {isInProgress && state?.assignedTo && (
-                      <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1">
-                        <Clock size={11} />
-                        Em andamento por {state.assignedTo}
-                      </p>
-                    )}
-                  </div>
-                  {!isCompleted && (
-                    <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
                   )}
-                </button>
-              );
-            })
+                </div>
+                {!isAnswered && (
+                  <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+                )}
+              </button>
+            ))
           )}
         </div>
       )}
