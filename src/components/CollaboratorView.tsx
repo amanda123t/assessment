@@ -15,6 +15,7 @@ import {
   completeSubprocessInSession,
   addParticipantToSession,
   saveSession,
+  loadSession,
   getSessionProgress,
 } from '@/lib/session';
 import ParticipantFormModal from './ParticipantFormModal';
@@ -58,7 +59,7 @@ function StatusBadge({ status, assignedTo }: { status: SubprocessStatus; assigne
     return (
       <span className="inline-flex items-center gap-1 text-xs text-green-700 font-medium">
         <CheckCircle2 size={13} strokeWidth={2} className="text-green-500" />
-        Respondido
+        Respondido{assignedTo ? ` por ${assignedTo}` : ''}
       </span>
     );
   }
@@ -109,6 +110,14 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
     }
   }, [participantKey]);
 
+  // Re-sync session from localStorage whenever the list view becomes active so
+  // completions by other participants (on the same device/tab) are always visible.
+  useEffect(() => {
+    if (view !== 'list') return;
+    const fresh = loadSession(initialSession.sessionId);
+    if (fresh) setSession(fresh);
+  }, [view, initialSession.sessionId]);
+
   const persistSession = useCallback((updated: AssessmentSession) => {
     setSession(updated);
     saveSession(updated);
@@ -133,10 +142,15 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
 
   const handleSelectSubprocess = (item: SelectedSubprocessItem) => {
     if (!participant) return;
-    const state = session.subprocessStates[item.subprocess.id];
-    if (state?.status === 'completed') return; // already answered — hard guard
 
-    const updated = lockSubprocess(session, item.subprocess.id, participant);
+    // Always read the freshest session from localStorage before locking so that
+    // a completion by another participant (or another tab) is respected.
+    const fresh = loadSession(initialSession.sessionId) ?? session;
+    if (fresh !== session) setSession(fresh);
+
+    if (fresh.subprocessStates[item.subprocess.id]?.status === 'completed') return;
+
+    const updated = lockSubprocess(fresh, item.subprocess.id, participant);
     persistSession(updated);
     setActiveItem(item);
     setView('answering');
@@ -149,9 +163,11 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
     const { macroprocess, process, subprocess, isCustom } = activeItem;
     const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
 
-    const updated = completeSubprocessInSession(session, subprocess.id, assessment);
+    // Merge onto the freshest session so we never overwrite another participant's answers.
+    const fresh = loadSession(initialSession.sessionId) ?? session;
+    const updated = completeSubprocessInSession(fresh, subprocess.id, assessment);
     persistSession(updated);
-    sendAnswerToGAS(session.sessionId, participant, assessment);
+    sendAnswerToGAS(initialSession.sessionId, participant, assessment);
 
     setActiveItem(null);
 
