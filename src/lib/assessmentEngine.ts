@@ -20,7 +20,8 @@ export function createAssessment(
   macroprocess: Macroprocess,
   process: Process,
   subprocess: Subprocess,
-  scores: CriteriaScores
+  scores: CriteriaScores,
+  isCustom?: boolean,
 ): SubprocessAssessment {
   const totalScore = calculateTotalScore(scores);
   const automationScore = calculateAutomationScore(scores);
@@ -41,6 +42,7 @@ export function createAssessment(
     annualHours,
     automationSavingsHours,
     financialImpact,
+    isCustom,
   };
 }
 

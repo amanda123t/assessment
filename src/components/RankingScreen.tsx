@@ -63,13 +63,18 @@ function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () =>
           </button>
         </div>
 
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
           <span className={`text-2xl font-extrabold ${item.priorityColor}`}>
             {item.totalScore}
           </span>
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
             {item.priority} Prioridade
           </span>
+          {item.isCustom && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-blue-50 text-blue-700 border-blue-200">
+              Personalizado
+            </span>
+          )}
         </div>
 
         {/* Impact summary in modal */}
@@ -288,9 +293,16 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                     #{i + 1}
                   </span>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${item.badgeColor}`}>
-                    {item.priority}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {item.isCustom && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200">
+                        Custom
+                      </span>
+                    )}
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${item.badgeColor}`}>
+                      {item.priority}
+                    </span>
+                  </div>
                 </div>
                 <p className="font-semibold text-gray-900 text-sm leading-snug mb-1">
                   {item.subprocessName}
@@ -372,6 +384,7 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Subprocesso</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Score</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Automação</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Tipo</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Esforço Anual</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Economia Pot.</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Impacto Fin.</th>
@@ -420,6 +433,17 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
                       {item.automationScore}
                       <span className="text-xs font-normal text-gray-400">/100</span>
                     </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-center">
+                    {item.isCustom ? (
+                      <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full border bg-blue-50 text-blue-700 border-blue-200">
+                        Personalizado
+                      </span>
+                    ) : (
+                      <span className="inline-block text-xs font-semibold px-2.5 py-1 rounded-full border bg-gray-50 text-gray-500 border-gray-200">
+                        Padrão
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3.5 text-center">
                     <span className="text-gray-700 font-medium text-sm">

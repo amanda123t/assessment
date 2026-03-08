@@ -86,6 +86,23 @@ export default function AssessmentPage() {
     setState((s) => ({ ...s, globalSelectedSubprocesses: [] }));
   }, []);
 
+  const addCustomSubprocess = useCallback((item: SelectedSubprocessItem) => {
+    setState((s) => {
+      const customCount = s.globalSelectedSubprocesses.filter((i) => i.isCustom).length;
+      if (customCount >= 3) return s;
+      return { ...s, globalSelectedSubprocesses: [...s.globalSelectedSubprocesses, item] };
+    });
+  }, []);
+
+  const removeCustomSubprocess = useCallback((subprocessId: string) => {
+    setState((s) => ({
+      ...s,
+      globalSelectedSubprocesses: s.globalSelectedSubprocesses.filter(
+        (i) => i.subprocess.id !== subprocessId
+      ),
+    }));
+  }, []);
+
   // ── Start evaluation ────────────────────────────────────────────────────────
 
   const startEvaluation = useCallback(() => {
@@ -96,9 +113,9 @@ export default function AssessmentPage() {
 
   const completeQuestionnaire = useCallback((scores: CriteriaScores) => {
     setState((s) => {
-      const { macroprocess, process, subprocess } =
+      const { macroprocess, process, subprocess, isCustom } =
         s.globalSelectedSubprocesses[s.currentSubprocessIndex];
-      const assessment = createAssessment(macroprocess, process, subprocess, scores);
+      const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
       const updatedAssessments = addAssessment(s.assessments, assessment);
       const done = isAssessmentComplete(
         s.globalSelectedSubprocesses.map((i) => i.subprocess),
@@ -137,6 +154,11 @@ export default function AssessmentPage() {
     [state.globalSelectedSubprocesses]
   );
 
+  const customSubprocesses = useMemo(
+    () => state.globalSelectedSubprocesses.filter((i) => i.isCustom),
+    [state.globalSelectedSubprocesses]
+  );
+
   const currentItem = state.globalSelectedSubprocesses[state.currentSubprocessIndex];
 
   return (
@@ -168,8 +190,11 @@ export default function AssessmentPage() {
             {state.step === 'explore' && (
               <SubprocessExplorer
                 selectedIds={selectedIds}
+                customSubprocesses={customSubprocesses}
                 onToggle={toggleSubprocess}
                 onToggleAll={toggleAllInProcess}
+                onAddCustom={addCustomSubprocess}
+                onRemoveCustom={removeCustomSubprocess}
                 onBack={goBackToStart}
               />
             )}

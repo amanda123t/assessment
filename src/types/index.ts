@@ -49,6 +49,8 @@ export interface SubprocessAssessment {
   automationSavingsHours: number;
   /** Estimated financial impact of automation savings (hourly cost × savings hours). */
   financialImpact: number;
+  /** True for subprocesses created at runtime (not in processLibrary). */
+  isCustom?: boolean;
 }
 
 /** A subprocess together with the full context of its parent hierarchy. */
@@ -56,6 +58,8 @@ export interface SelectedSubprocessItem {
   macroprocess: Macroprocess;
   process: Process;
   subprocess: Subprocess;
+  /** True for subprocesses created at runtime, not present in processLibrary. */
+  isCustom?: boolean;
 }
 
 export interface AssessmentState {
