@@ -240,7 +240,7 @@ export default function RankingScreen({
       .set({
         margin: 20,
         filename: "diagnostico-automacao.pdf",
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       })
       .from(element)
@@ -290,7 +290,13 @@ export default function RankingScreen({
       </div>
 
       {/* ── PDF content container ─────────────────────────────────────── */}
-      <div id="diagnostic-results">
+      <div
+        id="diagnostic-results"
+        style={{
+          color: "#111827",
+          backgroundColor: "#ffffff"
+        }}
+      >
 
         {/* ── Collaborative session banner ──────────────────────────── */}
         {diagnosticMode === 'collaborative' && diagnosticId && (
