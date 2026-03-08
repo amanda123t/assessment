@@ -7,10 +7,10 @@ interface Props {
 }
 
 const features = [
-  { icon: ClipboardList, title: 'Avaliação Estruturada',    desc: 'Avalie subprocessos com 6 critérios objetivos' },
-  { icon: BarChart3,     title: 'Ranking de Oportunidades', desc: 'Identifique onde estão os maiores ganhos de eficiência' },
-  { icon: TrendingUp,    title: 'Visualização Gráfica',     desc: 'Gráficos interativos para facilitar a tomada de decisão' },
-  { icon: FileDown,      title: 'Exportação Excel',         desc: 'Exporte o relatório completo para apresentações' },
+  { icon: ClipboardList, title: 'Diagnóstico em minutos',      desc: 'Avalie múltiplos subprocessos com 6 critérios objetivos e obtenha resultados imediatos' },
+  { icon: BarChart3,     title: 'Priorize o que importa',      desc: 'Descubra quais processos geram mais desperdício e onde automatizar primeiro' },
+  { icon: TrendingUp,    title: 'Decisões baseadas em dados',  desc: 'Visualize o potencial de automação e o impacto financeiro de cada oportunidade' },
+  { icon: FileDown,      title: 'Relatório pronto para usar',  desc: 'Exporte para Excel e apresente o diagnóstico para liderança sem retrabalho' },
 ];
 
 const criteria = [
@@ -43,12 +43,16 @@ export default function StartScreen({ onStart }: Props) {
             Consultoria de Eficiência
           </span>
           <h2 className="text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
-            Avaliação de{' '}
-            <span className="text-blue-600">Eficiência Operacional</span>
+            Identifique oportunidades de{' '}
+            <span className="text-blue-600">automação e eficiência operacional</span>
+            {' '}em minutos
           </h2>
-          <p className="text-lg text-gray-500 mb-10 max-w-xl mx-auto">
-            Identifique subprocessos com alto potencial de melhoria e priorize iniciativas
-            de transformação com base em dados objetivos.
+          <p className="text-lg text-gray-500 mb-4 max-w-xl mx-auto">
+            Avalie seus processos, descubra gargalos operacionais e priorize as iniciativas
+            de automação com maior retorno — com base em critérios objetivos.
+          </p>
+          <p className="text-sm text-gray-400 mb-10">
+            Diagnóstico gratuito &bull; leva menos de 3 minutos &bull; relatório exportável
           </p>
 
           <button
@@ -57,6 +61,7 @@ export default function StartScreen({ onStart }: Props) {
           >
             Iniciar Avaliação
           </button>
+          <p className="text-xs text-gray-400 mt-3">Sem cadastro inicial</p>
         </div>
 
         {/* Feature cards */}
