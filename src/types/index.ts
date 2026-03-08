@@ -67,18 +67,6 @@ export type DiagnosticMode = 'individual' | 'collaborative';
 
 // ── Collaborative session types ──────────────────────────────────────────────
 
-export type SubprocessStatus = 'open' | 'in_progress' | 'completed';
-
-export interface SubprocessState {
-  subprocessId: string;
-  status: SubprocessStatus;
-  /** Display name of the participant currently answering this subprocess. */
-  assignedTo?: string;
-  assignedEmail?: string;
-  startedAt?: string;
-  completedAt?: string;
-}
-
 export interface Participant {
   participantId: string;
   name: string;
@@ -102,8 +90,6 @@ export interface AssessmentSession {
    * on the same device can look up names/hierarchy without re-querying processLibrary.
    */
   subprocessItems: SelectedSubprocessItem[];
-  /** Per-subprocess answering state (open / in_progress / completed). */
-  subprocessStates: Record<string, SubprocessState>;
   /** Accumulated answers from all participants. */
   answers: SubprocessAssessment[];
   /** Participants who have joined (identified themselves). */

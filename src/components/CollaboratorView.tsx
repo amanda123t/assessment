@@ -153,12 +153,18 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
   };
 
   const handleSelectSubarea = (item: SelectedSubprocessItem) => {
-    // Supabase is the source of truth — only answered subareas are locked.
+    // Answered subareas are disabled at the button level; guard here too.
     if (answeredSubareas.includes(item.subprocess.id)) return;
+    // Always reset to null first so React sees a state change even if the
+    // same subprocess is selected twice (forces Questionnaire remount).
+    setCurrentSubprocess(null);
     setSubmitError(null);
-    // Start a fresh questionnaire; no locking/in_progress state needed.
-    setCurrentSubprocess(item);
-    setStep('questionnaire');
+    // Use a microtask so the null flush lands before the new item is set,
+    // guaranteeing key={id} changes and a completely fresh Questionnaire.
+    Promise.resolve().then(() => {
+      setCurrentSubprocess(item);
+      setStep('questionnaire');
+    });
   };
 
   // ── Questionnaire completion ──────────────────────────────────────────────
@@ -207,6 +213,8 @@ export default function CollaboratorView({ initialSession, onSessionChange }: Pr
     if (step === 'questionnaire') {
       setCurrentSubprocess(null);
       setStep('select-subarea');
+      // Refresh so the list reflects any concurrent answers.
+      refreshAnswered();
     } else if (step === 'select-subarea') {
       setSelectedProcess(null);
       setStep('select-process');
