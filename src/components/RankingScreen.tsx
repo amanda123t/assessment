@@ -228,22 +228,23 @@ export default function RankingScreen({
   };
 
   const handleDownloadPDF = async () => {
+    console.log('[PDF] handleDownloadPDF triggered');
     setGeneratingPdf(true);
     try {
-      // Dynamic import keeps this browser-only code out of the SSR bundle
       const html2pdf = (await import('html2pdf.js')).default;
       const element = document.getElementById('diagnostic-results');
+      console.log('[PDF] element found:', !!element);
       if (!element) return;
       await html2pdf()
+        .from(element)
         .set({
-          margin: [20, 20, 20, 20],
+          margin: 20,
           filename: 'diagnostico-automacao.pdf',
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
+          html2canvas: { scale: 2 },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         })
-        .from(element)
         .save();
+      console.log('[PDF] save() called successfully');
     } finally {
       setGeneratingPdf(false);
     }
