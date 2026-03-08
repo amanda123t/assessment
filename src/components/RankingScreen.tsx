@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
 } from 'recharts';
-import { Trophy, BarChart2, Download, RotateCcw, X, Activity, Lightbulb, Clock, TrendingUp, DollarSign, Zap, Target, Map } from 'lucide-react';
+import { Trophy, BarChart2, Download, RotateCcw, X, Activity, Lightbulb, Clock, TrendingUp, DollarSign, Zap, Target, Map, FileText, CheckCircle2 } from 'lucide-react';
 import { SubprocessAssessment, CRITERIA } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 
@@ -115,6 +115,160 @@ function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () =>
     </div>
   );
 }
+
+// ─── Lead Capture ──────────────────────────────────────────────────────────
+
+const LEAD_KEY = 'oea_lead';
+
+interface LeadData {
+  name: string;
+  company: string;
+  email: string;
+  role: string;
+  createdAt: number;
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+function loadStoredLead(): LeadData | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(LEAD_KEY);
+    return raw ? (JSON.parse(raw) as LeadData) : null;
+  } catch {
+    return null;
+  }
+}
+
+function LeadCaptureSection({
+  onGenerate,
+}: {
+  onGenerate: (data: LeadData) => void;
+}) {
+  const stored = loadStoredLead();
+
+  const [name, setName]       = useState(stored?.name ?? '');
+  const [company, setCompany] = useState(stored?.company ?? '');
+  const [email, setEmail]     = useState(stored?.email ?? '');
+  const [role, setRole]       = useState(stored?.role ?? '');
+  const [submitted, setSubmitted] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<'name' | 'company' | 'email', string>>>({});
+
+  const validate = (): boolean => {
+    const next: typeof errors = {};
+    if (!name.trim())    next.name    = 'Nome é obrigatório';
+    if (!company.trim()) next.company = 'Empresa é obrigatória';
+    if (!email.trim())       next.email = 'E-mail é obrigatório';
+    else if (!isValidEmail(email)) next.email = 'E-mail inválido';
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (!validate()) return;
+    const data: LeadData = {
+      name: name.trim(),
+      company: company.trim(),
+      email: email.trim(),
+      role: role.trim(),
+      createdAt: Date.now(),
+    };
+    localStorage.setItem(LEAD_KEY, JSON.stringify(data));
+    setSubmitted(true);
+    onGenerate(data);
+  };
+
+  const field = (
+    id: string,
+    label: string,
+    value: string,
+    setter: (v: string) => void,
+    placeholder: string,
+    optional = false,
+    error?: string,
+  ) => (
+    <div>
+      <label htmlFor={id} className="block text-xs font-semibold text-gray-600 mb-1.5">
+        {label}
+        {optional
+          ? <span className="ml-1 text-gray-400 font-normal">(opcional)</span>
+          : <span className="ml-0.5 text-red-400">*</span>
+        }
+      </label>
+      <input
+        id={id}
+        type={id === 'lead-email' ? 'email' : 'text'}
+        value={value}
+        onChange={(e) => {
+          setter(e.target.value);
+          if (error) setErrors((prev) => ({ ...prev, [id.replace('lead-', '')]: undefined }));
+        }}
+        onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+        placeholder={placeholder}
+        className={`w-full border rounded-lg px-3 py-2.5 text-sm text-gray-800 placeholder-gray-300
+          focus:outline-none focus:ring-2 focus:border-transparent transition-colors
+          ${error
+            ? 'border-red-300 focus:ring-red-400 bg-red-50/30'
+            : 'border-gray-200 focus:ring-blue-500 bg-white'
+          }`}
+      />
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+
+  if (submitted) {
+    return (
+      <section className="mb-8 bg-green-50 border border-green-100 rounded-2xl p-6 flex items-center gap-4">
+        <CheckCircle2 size={24} className="text-green-500 flex-shrink-0" strokeWidth={1.75} />
+        <div>
+          <p className="font-semibold text-gray-800">Relatório gerado com sucesso!</p>
+          <p className="text-sm text-gray-500 mt-0.5">O download do arquivo Excel foi iniciado.</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mb-8 bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      {/* Section header */}
+      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-6 py-5">
+        <div className="flex items-center gap-2 mb-1">
+          <FileText size={16} className="text-blue-200" strokeWidth={1.75} />
+          <h3 className="font-semibold text-white">Receba o relatório completo do diagnóstico</h3>
+        </div>
+        <p className="text-blue-200 text-sm">
+          Preencha seus dados para gerar e baixar o relatório em Excel com todos os resultados.
+        </p>
+      </div>
+
+      {/* Form */}
+      <div className="p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          {field('lead-name',    'Nome',    name,    setName,    'Seu nome completo',            false, errors.name)}
+          {field('lead-company', 'Empresa', company, setCompany, 'Nome da empresa',              false, errors.company)}
+          {field('lead-email',   'E-mail',  email,   setEmail,   'seu@email.com.br',             false, errors.email)}
+          {field('lead-role',    'Cargo',   role,    setRole,    'Ex: Gerente de Operações',     true)}
+        </div>
+
+        <button
+          onClick={handleSubmit}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 mt-2"
+        >
+          <Download size={15} strokeWidth={1.75} />
+          Gerar relatório
+        </button>
+
+        <p className="text-xs text-gray-400 text-center mt-3">
+          Seus dados são armazenados localmente e não serão compartilhados.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ─── Insights ───────────────────────────────────────────────────────────────
 
 interface Insight {
   text: string;
@@ -290,6 +444,9 @@ function buildRoadmap(ranked: RankedAssessment[]): RoadmapGroup[] {
 export default function RankingScreen({ assessments, onExport, onRestart }: Props) {
   const [selected, setSelected] = useState<RankedAssessment | null>(null);
   const [exporting, setExporting] = useState(false);
+  // Lead is considered captured if a previous session already stored it
+  const [leadCaptured, setLeadCaptured] = useState(() => !!loadStoredLead());
+  const leadFormRef = useRef<HTMLElement>(null);
 
   const ranked = buildRanking(assessments);
   const chartData = buildChartData(ranked);
@@ -309,6 +466,19 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
     setExporting(false);
   };
 
+  const handleTopExportClick = () => {
+    if (!leadCaptured) {
+      leadFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    handleExport();
+  };
+
+  const handleLeadGenerate = (_data: LeadData) => {
+    setLeadCaptured(true);
+    handleExport();
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
 
@@ -325,12 +495,17 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
         </div>
         <div className="flex gap-3 ml-6 flex-shrink-0">
           <button
-            onClick={handleExport}
+            onClick={handleTopExportClick}
             disabled={exporting}
-            className="inline-flex items-center gap-2 bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 text-gray-600 font-medium px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            title={leadCaptured ? undefined : 'Preencha o formulário abaixo para exportar'}
+            className={`inline-flex items-center gap-2 border font-medium px-4 py-2.5 rounded-lg text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed
+              ${leadCaptured
+                ? 'bg-white border-gray-200 hover:border-blue-400 hover:text-blue-600 text-gray-600'
+                : 'bg-gray-50 border-gray-200 text-gray-400 cursor-pointer'
+              }`}
           >
             <Download size={14} strokeWidth={1.75} />
-            {exporting ? 'Exportando...' : 'Exportar Excel'}
+            {exporting ? 'Exportando...' : leadCaptured ? 'Exportar Excel' : 'Exportar Excel ↓'}
           </button>
           <button
             onClick={onRestart}
@@ -724,6 +899,21 @@ export default function RankingScreen({ assessments, onExport, onRestart }: Prop
           </div>
         </section>
       )}
+
+      {/* ── Lead Capture / Report Download ──────────────────────────── */}
+      <section ref={leadFormRef}>
+        {leadCaptured ? (
+          <div className="mb-8 bg-green-50 border border-green-100 rounded-2xl px-6 py-4 flex items-center gap-3">
+            <CheckCircle2 size={18} className="text-green-500 flex-shrink-0" strokeWidth={1.75} />
+            <div className="flex-1">
+              <p className="font-medium text-gray-800 text-sm">Relatório disponível para download</p>
+              <p className="text-xs text-gray-500 mt-0.5">Use o botão "Exportar Excel" acima para baixar novamente.</p>
+            </div>
+          </div>
+        ) : (
+          <LeadCaptureSection onGenerate={handleLeadGenerate} />
+        )}
+      </section>
 
       {selected && <DetailModal item={selected} onClose={() => setSelected(null)} />}
     </div>
