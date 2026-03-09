@@ -99,29 +99,36 @@ export default function SessionPage({
     setSubmitting(true);
     setNotice(null);
 
-    const { error: insertError } = await supabase.from('responses').insert({
-      session_id: sessionId,
-      area: selectedArea.name,
-      process: selectedProcess.name,
-      subarea_id: selectedSubarea.id,
-      score: scores,
-      participant_email: email.trim(),
-    });
-
     let nextNotice: Notice;
-    if (insertError?.code === '23505') {
-      nextNotice = {
-        type: 'error',
-        message: 'Este subprocesso já foi respondido por outro participante.',
-      };
-    } else if (insertError) {
+    try {
+      const { error: insertError } = await supabase.from('responses').insert({
+        session_id: sessionId,
+        area: selectedArea.name,
+        process: selectedProcess.name,
+        subarea_id: selectedSubarea.id,
+        score: scores,
+        participant_email: email.trim(),
+      });
+
+      if (insertError?.code === '23505') {
+        // Already answered by another participant — refresh so it shows as locked
+        await fetchAnswered();
+        nextNotice = {
+          type: 'error',
+          message: 'Este subprocesso já foi respondido por outro participante.',
+        };
+      } else if (insertError) {
+        nextNotice = { type: 'error', message: 'Erro ao salvar. Tente novamente.' };
+      } else {
+        nextNotice = { type: 'success', message: 'Resposta salva com sucesso!' };
+        await fetchAnswered();
+      }
+    } catch {
       nextNotice = { type: 'error', message: 'Erro ao salvar. Tente novamente.' };
-    } else {
-      nextNotice = { type: 'success', message: 'Resposta salva com sucesso!' };
-      await fetchAnswered();
     }
 
-    // Always return to subarea list — never auto-open next
+    // Always return to the subarea list — selectedArea and selectedProcess are
+    // intentionally kept so the user can answer other subprocesses in the same process.
     setSelectedSubarea(null);
     setSubmitting(false);
     setNotice(nextNotice);
