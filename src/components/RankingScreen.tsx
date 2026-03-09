@@ -773,6 +773,34 @@ export default function RankingScreen({
           </section>
         )}
 
+      {/* ── Próximos Passos (CTA) ─────────────────────────────────────── */}
+      <section className="mb-8 bg-blue-50 border border-blue-100 rounded-2xl p-6">
+        <h3 className="text-base font-semibold text-gray-900 mb-2">Próximos Passos</h3>
+        <p className="text-sm text-gray-700 mb-1">Este diagnóstico identificou processos com alto potencial de automação.</p>
+        <p className="text-sm text-gray-700 mb-4">A Meta pode apoiar sua organização nas próximas etapas com:</p>
+        <ul className="space-y-1 mb-6">
+          {[
+            'Análise e redesenho de processos',
+            'Automação com RPA e Inteligência Artificial',
+            'Implementação de programas de automação',
+            'Gestão da mudança para transformação digital',
+          ].map((item) => (
+            <li key={item} className="flex items-start gap-2 text-sm text-gray-700">
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+              {item}
+            </li>
+          ))}
+        </ul>
+        <a
+          href="https://www.meta.com.br"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-3 rounded-lg transition-colors"
+        >
+          Falar com a Meta sobre automação
+        </a>
+      </section>
+
       </div>{/* end #diagnostic-results */}
 
       {/* Modals */}

@@ -177,6 +177,48 @@ const s = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
   },
 
+  // ── CTA ───────────────────────────────────────────────────────────────────
+  ctaBox: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderStyle: 'solid',
+    borderRadius: 6,
+    padding: 16,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  ctaTitle: {
+    fontSize: 13,
+    fontFamily: 'Helvetica-Bold',
+    color: '#1e3a5f',
+    marginBottom: 6,
+  },
+  ctaText: {
+    fontSize: 10,
+    color: '#374151',
+    marginBottom: 2,
+  },
+  ctaBullet: {
+    fontSize: 10,
+    color: '#374151',
+    marginBottom: 3,
+    marginLeft: 8,
+  },
+  ctaButton: {
+    marginTop: 10,
+    backgroundColor: '#2563eb',
+    borderRadius: 4,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    alignSelf: 'flex-start',
+  },
+  ctaButtonText: {
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    color: '#ffffff',
+  },
+
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
     marginTop: 24,
@@ -347,6 +389,24 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap, iden
             ))}
           </View>
         ))}
+
+        {/* ── Próximos Passos (CTA) ───────────────────────────────────────── */}
+        <View style={s.ctaBox}>
+          <Text style={s.ctaTitle}>Próximos Passos</Text>
+          <Text style={s.ctaText}>Este diagnóstico identificou processos com alto potencial de automação.</Text>
+          <Text style={s.ctaText}>A Meta pode apoiar sua organização nas próximas etapas com:</Text>
+          {[
+            'Análise e redesenho de processos',
+            'Automação com RPA e Inteligência Artificial',
+            'Implementação de programas de automação',
+            'Gestão da mudança para transformação digital',
+          ].map((item) => (
+            <Text key={item} style={s.ctaBullet}>• {item}</Text>
+          ))}
+          <View style={s.ctaButton}>
+            <Text style={s.ctaButtonText}>Falar com a Meta sobre automação — www.meta.com.br</Text>
+          </View>
+        </View>
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         <View style={s.footer}>
