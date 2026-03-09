@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
-import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
+import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
@@ -111,6 +111,24 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
     .map((i) => i.text);
 }
 
+// ─── Roadmap label maps ──────────────────────────────────────────────────────
+
+const ROADMAP_LABELS: Record<RoadmapCategory, string> = {
+  'quick-wins':     'Quick Win',
+  'strategic':      'Iniciativa Estratégica',
+  'transformation': 'Transformação Operacional',
+};
+
+const ROADMAP_BADGE: Record<RoadmapCategory, string> = {
+  'quick-wins':     'bg-emerald-50 text-emerald-800 border-emerald-200',
+  'strategic':      'bg-blue-50 text-blue-800 border-blue-200',
+  'transformation': 'bg-violet-50 text-violet-800 border-violet-200',
+};
+
+// ─── Card style constant ─────────────────────────────────────────────────────
+
+const CARD = 'bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6';
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function RankingScreen({
@@ -119,17 +137,17 @@ export default function RankingScreen({
   generatedAt,
   onRestart,
 }: Props) {
-  const [expandedRoadmapSections, setExpandedRoadmapSections] = useState<Set<RoadmapCategory>>(new Set());
-  const [generatingPdf, setGeneratingPdf] = useState(false);
   const [insightsOpen, setInsightsOpen] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  const toggleRoadmapSection = (cat: RoadmapCategory) => {
-    setExpandedRoadmapSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat); else next.add(cat);
-      return next;
-    });
-  };
+  const ranked = buildRanking(assessments);
+  const summary = buildPrioritySummary(ranked);
+  const insights = buildInsights(ranked);
+  const autoRoadmap = buildAutomationRoadmap(assessments);
+
+  const totalAnnualHours    = assessments.reduce((s, a) => s + a.annualHours, 0);
+  const totalSavingsHours   = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
+  const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
 
   const handleDownloadPDF = async () => {
     setGeneratingPdf(true);
@@ -140,6 +158,7 @@ export default function RankingScreen({
           assessments={assessments}
           ranked={ranked}
           roadmap={autoRoadmap}
+          insights={insights}
           identification={identification}
           generatedAt={generatedAt}
         />
@@ -155,29 +174,11 @@ export default function RankingScreen({
     }
   };
 
-  const ranked = buildRanking(assessments);
-  const summary = buildPrioritySummary(ranked);
-  const insights = buildInsights(ranked);
-  const autoRoadmap = buildAutomationRoadmap(assessments);
-
-  const totalAnnualHours = assessments.reduce((s, a) => s + a.annualHours, 0);
-  const totalSavingsHours = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
-  const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
-
-  // Category config for the roadmap section
-  const categoryConfig: Record<RoadmapCategory, {
-    label: string; timeline: string; color: string; badge: string; bar: string; dot: string;
-  }> = {
-    'quick-wins':     { label: 'Quick Wins',               timeline: '0–3 meses',  color: 'bg-emerald-50 border-emerald-200',  badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', bar: 'bg-emerald-500', dot: 'bg-emerald-500' },
-    'strategic':      { label: 'Iniciativas Estratégicas', timeline: '3–6 meses',  color: 'bg-blue-50 border-blue-200',         badge: 'bg-blue-100 text-blue-800 border-blue-200',          bar: 'bg-blue-500',    dot: 'bg-blue-500'    },
-    'transformation': { label: 'Transformação Operacional', timeline: '6–12 meses', color: 'bg-violet-50 border-violet-200',   badge: 'bg-violet-100 text-violet-800 border-violet-200',    bar: 'bg-violet-500',  dot: 'bg-violet-500'  },
-  };
-
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
 
-      {/* ── Action bar (excluded from PDF) ───────────────────────────── */}
-      <div className="flex justify-end gap-3 mb-6">
+      {/* ── Action bar ────────────────────────────────────────────────── */}
+      <div className="flex justify-end gap-3 mb-8">
         <button
           onClick={handleDownloadPDF}
           disabled={generatingPdf}
@@ -195,16 +196,10 @@ export default function RankingScreen({
         </button>
       </div>
 
-      {/* ── PDF content container ─────────────────────────────────────── */}
-      <div
-        id="diagnostic-results"
-        style={{
-          color: "#111827",
-          backgroundColor: "#ffffff"
-        }}
-      >
+      {/* ── Results content ───────────────────────────────────────────── */}
+      <div id="diagnostic-results" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
 
-        {/* ── Page title ───────────────────────────────────────────── */}
+        {/* Page title */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900">
             Oportunidades de Eficiência Operacional
@@ -215,71 +210,76 @@ export default function RankingScreen({
           </p>
           {(identification || generatedAt) && (
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-              {identification?.company && <span>Empresa: <span className="font-medium text-gray-600">{identification.company}</span></span>}
-              {identification?.area && <span>Área: <span className="font-medium text-gray-600">{identification.area}</span></span>}
+              {identification?.company      && <span>Empresa: <span className="font-medium text-gray-600">{identification.company}</span></span>}
+              {identification?.area         && <span>Área: <span className="font-medium text-gray-600">{identification.area}</span></span>}
               {identification?.respondentName && <span>Respondente: <span className="font-medium text-gray-600">{identification.respondentName}</span></span>}
-              {generatedAt && <span>Gerado em: <span className="font-medium text-gray-600">{generatedAt}</span></span>}
+              {generatedAt                  && <span>Gerado em: <span className="font-medium text-gray-600">{generatedAt}</span></span>}
             </div>
           )}
         </div>
 
-        {/* ── 1. Diagnóstico ───────────────────────────────────────── */}
-        <section className="mb-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white">
-          <div className="flex items-center gap-2 mb-5">
-            <Activity size={18} strokeWidth={1.75} />
-            <h3 className="font-semibold text-base">Diagnóstico de Eficiência Operacional</h3>
-          </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="bg-white/10 rounded-xl p-4">
-              <p className="text-blue-100 text-xs mb-1">Subprocessos avaliados</p>
-              <p className="text-3xl font-extrabold">{assessments.length}</p>
+        {/* ── 1. Diagnóstico ───────────────────────────────────────────── */}
+        <section className="mb-6">
+          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-sm">
+            <div className="flex items-center gap-2 mb-5">
+              <Activity size={18} strokeWidth={1.75} />
+              <h3 className="font-semibold text-base">Diagnóstico de Eficiência Operacional</h3>
             </div>
-            <div className="bg-white/10 rounded-xl p-4">
-              <div className="flex items-center gap-1 mb-1">
-                <Clock size={12} className="text-blue-200" />
-                <p className="text-blue-100 text-xs">Esforço operacional analisado</p>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="bg-white/10 rounded-xl p-4">
+                <p className="text-blue-100 text-xs mb-1">Subprocessos avaliados</p>
+                <p className="text-3xl font-extrabold">{assessments.length}</p>
               </div>
-              <p className="text-3xl font-extrabold">{fmt(totalAnnualHours)}</p>
-              <p className="text-blue-200 text-xs mt-0.5">horas/ano</p>
-            </div>
-            <div className="bg-white/10 rounded-xl p-4">
-              <div className="flex items-center gap-1 mb-1">
-                <TrendingUp size={12} className="text-blue-200" />
-                <p className="text-blue-100 text-xs">Oportunidade de automação</p>
+              <div className="bg-white/10 rounded-xl p-4">
+                <div className="flex items-center gap-1 mb-1">
+                  <Clock size={12} className="text-blue-200" />
+                  <p className="text-blue-100 text-xs">Esforço operacional analisado</p>
+                </div>
+                <p className="text-3xl font-extrabold">{fmt(totalAnnualHours)}</p>
+                <p className="text-blue-200 text-xs mt-0.5">horas/ano</p>
               </div>
-              <p className="text-3xl font-extrabold">{fmt(totalSavingsHours)}</p>
-              <p className="text-blue-200 text-xs mt-0.5">horas/ano</p>
-            </div>
-            <div className="bg-white/10 rounded-xl p-4">
-              <div className="flex items-center gap-1 mb-1">
-                <DollarSign size={12} className="text-blue-200" />
-                <p className="text-blue-100 text-xs">Economia operacional estimada</p>
+              <div className="bg-white/10 rounded-xl p-4">
+                <div className="flex items-center gap-1 mb-1">
+                  <TrendingUp size={12} className="text-blue-200" />
+                  <p className="text-blue-100 text-xs">Oportunidade de automação</p>
+                </div>
+                <p className="text-3xl font-extrabold">{fmt(totalSavingsHours)}</p>
+                <p className="text-blue-200 text-xs mt-0.5">horas/ano</p>
               </div>
-              <p className="text-2xl font-extrabold">{fmtCurrency(totalFinancialImpact)}</p>
-              <p className="text-blue-200 text-xs mt-0.5">por ano</p>
+              <div className="bg-white/10 rounded-xl p-4">
+                <div className="flex items-center gap-1 mb-1">
+                  <DollarSign size={12} className="text-blue-200" />
+                  <p className="text-blue-100 text-xs">Economia operacional estimada</p>
+                </div>
+                <p className="text-2xl font-extrabold">{fmtCurrency(totalFinancialImpact)}</p>
+                <p className="text-blue-200 text-xs mt-0.5">por ano</p>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* ── 2. Distribuição de Prioridades ───────────────────────── */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {[
-            { label: 'Alta Prioridade',  count: summary.alta,  bg: 'bg-red-50    border-red-100',    text: 'text-red-600',    bar: 'bg-red-500' },
-            { label: 'Média Prioridade', count: summary.media, bg: 'bg-orange-50 border-orange-100', text: 'text-orange-600', bar: 'bg-orange-400' },
-            { label: 'Baixa Prioridade', count: summary.baixa, bg: 'bg-gray-50   border-gray-200',   text: 'text-gray-600',   bar: 'bg-gray-400' },
-          ].map((card) => (
-            <div key={card.label} className={`${card.bg} border rounded-xl p-4`}>
-              <div className="flex items-center gap-2 mb-1">
-                <div className={`w-2 h-2 rounded-full ${card.bar}`} />
-                <span className="text-xs text-gray-500 font-medium">{card.label}</span>
+        {/* ── 2. Distribuição de Prioridades ───────────────────────────── */}
+        <section className={CARD}>
+          <h3 className="text-base font-semibold text-gray-800 mb-4">Distribuição de Prioridades</h3>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'Alta Prioridade',  count: summary.alta,  bg: 'bg-red-50    border-red-100',    text: 'text-red-600',    dot: 'bg-red-500' },
+              { label: 'Média Prioridade', count: summary.media, bg: 'bg-orange-50 border-orange-100', text: 'text-orange-600', dot: 'bg-orange-400' },
+              { label: 'Baixa Prioridade', count: summary.baixa, bg: 'bg-gray-50   border-gray-200',   text: 'text-gray-600',   dot: 'bg-gray-400' },
+            ].map((card) => (
+              <div key={card.label} className={`${card.bg} border rounded-xl p-4`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-2 h-2 rounded-full ${card.dot}`} />
+                  <span className="text-xs text-gray-500 font-medium">{card.label}</span>
+                </div>
+                <p className={`text-3xl font-extrabold ${card.text}`}>{card.count}</p>
               </div>
-              <p className={`text-3xl font-extrabold ${card.text}`}>{card.count}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
 
-        {/* ── 3. Ranking de Potencial de Automação ─────────────────── */}
-        <section className="mb-8">
+        {/* ── 3. Ranking de Potencial de Automação ─────────────────────── */}
+        <section className={CARD}>
           <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Trophy size={16} className="text-blue-600" strokeWidth={1.75} />
             Ranking de Potencial de Automação
@@ -315,180 +315,81 @@ export default function RankingScreen({
           </div>
         </section>
 
-        {/* ── 4. Matriz de Priorização de Automação ────────────────── */}
-        {(() => {
-          const matrixQuadrants = [
-            { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: 'bg-red-50',    border: 'border-red-200',    title: 'text-red-700',    badge: 'bg-red-100 text-red-700 border-red-200' },
-            { label: 'Alta Prioridade',           min: 20, max: 24,       bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700', badge: 'bg-orange-100 text-orange-700 border-orange-200' },
-            { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: 'bg-blue-50',   border: 'border-blue-200',   title: 'text-blue-700',   badge: 'bg-blue-100 text-blue-700 border-blue-200' },
-            { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: 'bg-gray-50',   border: 'border-gray-200',   title: 'text-gray-600',   badge: 'bg-gray-100 text-gray-600 border-gray-200' },
-          ];
-          return (
-            <section className="mb-8">
-              <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <Target size={16} className="text-blue-600" strokeWidth={1.75} />
-                Matriz de Priorização de Automação
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                {matrixQuadrants.map(({ label, min, max, bg, border, title, badge }) => {
-                  const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
-                  return (
-                    <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
-                      <div className={`text-xs font-bold uppercase tracking-wide mb-3 ${title}`}>{label}</div>
-                      {items.length === 0 ? (
-                        <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {items.map(r => (
-                            <li key={r.subprocessId} className="flex items-center justify-between gap-2">
-                              <span className="text-xs text-gray-800 leading-snug flex-1">{r.subprocessName}</span>
-                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge}`}>{r.totalScore}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* ── 5. Roadmap de Automação Sugerido ─────────────────────── */}
-        {autoRoadmap.length > 0 && (() => {
-          const quickWins = autoRoadmap.filter((r) => r.roadmapCategory === 'quick-wins');
-          const strategic = autoRoadmap.filter((r) => r.roadmapCategory === 'strategic');
-          const transform  = autoRoadmap.filter((r) => r.roadmapCategory === 'transformation');
-
-          const SubprocessRow = ({ item }: { item: RoadmapItem }) => {
-            const cfg = categoryConfig[item.roadmapCategory];
-            return (
-              <div className="flex items-center gap-3 py-3.5 border-b border-gray-100 last:border-b-0">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{item.subprocessName}</p>
-                  <p className="text-xs text-gray-400 truncate mt-0.5">{item.macroprocessName} › {item.processName}</p>
+        {/* ── 4. Matriz de Priorização de Automação ────────────────────── */}
+        <section className={CARD}>
+          <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Target size={16} className="text-blue-600" strokeWidth={1.75} />
+            Matriz de Priorização de Automação
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: 'bg-red-50',    border: 'border-red-200',    title: 'text-red-700',    badge: 'bg-red-100 text-red-700 border-red-200' },
+              { label: 'Alta Prioridade',           min: 20, max: 24,       bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700', badge: 'bg-orange-100 text-orange-700 border-orange-200' },
+              { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: 'bg-blue-50',   border: 'border-blue-200',   title: 'text-blue-700',   badge: 'bg-blue-100 text-blue-700 border-blue-200' },
+              { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: 'bg-gray-50',   border: 'border-gray-200',   title: 'text-gray-600',   badge: 'bg-gray-100 text-gray-600 border-gray-200' },
+            ].map(({ label, min, max, bg, border, title, badge }) => {
+              const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
+              return (
+                <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
+                  <div className={`text-xs font-bold uppercase tracking-wide mb-3 ${title}`}>{label}</div>
+                  {items.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {items.map(r => (
+                        <li key={r.subprocessId} className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-gray-800 leading-snug flex-1">{r.subprocessName}</span>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge}`}>{r.totalScore}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-                <div className="flex items-center gap-4 flex-shrink-0">
-                  {/* Automation score */}
-                  <div className="text-right w-20 hidden sm:block">
-                    <p className="text-xs text-gray-400">Potencial de Automação</p>
-                    <p className="text-sm font-semibold text-blue-600">{item.automationScore}<span className="text-xs font-normal text-gray-400">/100</span></p>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ── 5. Roadmap de Automação Sugerido ─────────────────────────── */}
+        {autoRoadmap.length > 0 && (
+          <section className={CARD}>
+            <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+              <Target size={16} className="text-blue-500" strokeWidth={1.75} />
+              Roadmap de Automação Sugerido
+            </h3>
+            <p className="text-xs text-gray-400 mb-4">
+              Iniciativas ordenadas por horizonte de implementação e potencial de impacto
+            </p>
+            <div className="space-y-3">
+              {autoRoadmap.map((item, i) => (
+                <div
+                  key={item.subprocessId}
+                  className="flex gap-4 items-start p-4 rounded-xl bg-gray-50 border border-gray-100"
+                >
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    {i + 1}
                   </div>
-                  {/* Effort score */}
-                  <div className="text-right w-20 hidden sm:block">
-                    <p className="text-xs text-gray-400">Esforço Estimado</p>
-                    <div className="flex items-center justify-end gap-1 mt-0.5">
-                      <div className="w-12 bg-gray-100 rounded-full h-1.5">
-                        <div className={`${cfg.bar} h-1.5 rounded-full opacity-60`} style={{ width: `${item.effortScore}%` }} />
-                      </div>
-                      <span className="text-xs font-medium text-gray-600">{item.effortScore}</span>
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-800 text-sm">{item.subprocessName}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {ROADMAP_LABELS[item.roadmapCategory]} · Economia est.: {fmtCurrency(item.estimatedSavings)}
+                    </p>
                   </div>
-                  {/* Estimated savings */}
-                  <div className="text-right w-28 hidden sm:block">
-                    <p className="text-xs text-gray-400">Economia Anual Estimada</p>
-                    <p className="text-xs font-semibold text-green-700">{fmtCurrency(item.estimatedSavings)}</p>
-                  </div>
-                  {/* Timeline badge */}
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-gray-400 mb-0.5 hidden sm:block">Prazo de Implementação</p>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${cfg.badge}`}>
-                      {item.timeline}
-                    </span>
-                  </div>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 ${ROADMAP_BADGE[item.roadmapCategory]}`}>
+                    {item.timeline}
+                  </span>
                 </div>
-              </div>
-            );
-          };
+              ))}
+            </div>
+          </section>
+        )}
 
-          const groups: { category: RoadmapCategory; items: RoadmapItem[] }[] = (
-            [
-              { category: 'quick-wins' as const, items: quickWins },
-              { category: 'strategic' as const, items: strategic },
-              { category: 'transformation' as const, items: transform },
-            ] as const
-          ).filter((g) => g.items.length > 0);
-
-          const prioritisedSavings = [...quickWins, ...strategic]
-            .reduce((s, r) => s + r.estimatedSavings, 0);
-
-          return (
-            <section className="mb-8">
-              <div className="flex items-center gap-2 mb-4">
-                <Target size={16} className="text-blue-500" strokeWidth={1.75} />
-                <div>
-                  <h3 className="font-semibold text-gray-800">Roadmap de Automação Sugerido</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Clique em cada categoria para expandir as iniciativas
-                  </p>
-                </div>
-              </div>
-
-              {prioritisedSavings > 0 && (
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl px-5 py-4 mb-5 text-white">
-                  <p className="text-xs font-semibold uppercase tracking-widest opacity-80 mb-1">
-                    Impacto potencial estimado das iniciativas priorizadas
-                  </p>
-                  <p className="text-sm leading-relaxed">
-                    O diagnóstico identificou{' '}
-                    <strong>{quickWins.length + strategic.length}</strong> oportunidades de
-                    automação que podem gerar até{' '}
-                    <strong>{fmtCurrency(prioritisedSavings)}</strong> em ganhos operacionais anuais.
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {groups.map(({ category, items }) => {
-                  const cfg = categoryConfig[category];
-                  const isOpen = expandedRoadmapSections.has(category);
-                  return (
-                    <div key={category} className={`rounded-xl border ${cfg.color} overflow-hidden`}>
-                      {/* Accordion header */}
-                      <button
-                        onClick={() => toggleRoadmapSection(category)}
-                        className="w-full flex items-center justify-between px-5 py-3.5 cursor-pointer hover:brightness-95 transition-all"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
-                          <span className="font-semibold text-gray-800 text-sm">{cfg.label}</span>
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${cfg.badge}`}>
-                            {cfg.timeline}
-                          </span>
-                          <span className="text-xs text-gray-500 font-medium">
-                            {items.length} iniciativa{items.length !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                        <ChevronDown
-                          size={16}
-                          strokeWidth={2.5}
-                          className={`text-blue-600 transition-transform duration-300 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-
-                      {/* Collapsible items */}
-                      {isOpen && (
-                        <div className="px-5 border-t border-gray-200/50">
-                          {items.map((item) => (
-                            <SubprocessRow key={item.subprocessId} item={item} />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* ── 6. Insights do Diagnóstico (collapsed by default) ────── */}
+        {/* ── 6. Insights do Diagnóstico (collapsed by default) ─────────── */}
         {insights.length > 0 && (
-          <section className="mb-8 bg-amber-50 border border-amber-100 rounded-2xl overflow-hidden">
+          <section className="bg-white rounded-2xl border border-amber-100 shadow-sm mb-6 overflow-hidden">
             <button
               onClick={() => setInsightsOpen((v) => !v)}
-              className="w-full flex items-center justify-between px-6 py-5 cursor-pointer hover:brightness-95 transition-all"
+              className="w-full flex items-center justify-between px-6 py-5 hover:bg-amber-50 transition-colors"
             >
               <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
                 <Lightbulb size={16} className="text-amber-500" strokeWidth={1.75} />
@@ -515,8 +416,8 @@ export default function RankingScreen({
           </section>
         )}
 
-        {/* ── Próximos Passos (CTA) ─────────────────────────────────── */}
-        <section className="mb-8 bg-blue-50 border border-blue-100 rounded-2xl p-6">
+        {/* ── Próximos Passos (CTA) ──────────────────────────────────────── */}
+        <section className="mb-6 bg-blue-50 border border-blue-100 rounded-2xl p-6">
           <h3 className="text-base font-semibold text-gray-900 mb-2">Próximos Passos</h3>
           <p className="text-sm text-gray-700 mb-1">Este diagnóstico identificou processos com alto potencial de automação.</p>
           <p className="text-sm text-gray-700 mb-4">A Meta pode apoiar sua organização nas próximas etapas com:</p>

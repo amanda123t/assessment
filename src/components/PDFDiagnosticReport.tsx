@@ -9,32 +9,15 @@ interface Props {
   assessments: SubprocessAssessment[];
   ranked: RankedAssessment[];
   roadmap: RoadmapItem[];
+  insights?: string[];
   identification?: AssessmentIdentification;
   generatedAt?: string;
 }
 
 const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
-  'quick-wins':     'Quick Wins — 0 a 3 meses',
-  'strategic':      'Iniciativas Estratégicas — 3 a 6 meses',
-  'transformation': 'Transformação Operacional — 6 a 12 meses',
-};
-
-const CATEGORY_BG: Record<RoadmapCategory, string> = {
-  'quick-wins':     '#f0fdf4',
-  'strategic':      '#eff6ff',
-  'transformation': '#f5f3ff',
-};
-
-const CATEGORY_TEXT: Record<RoadmapCategory, string> = {
-  'quick-wins':     '#166534',
-  'strategic':      '#1e40af',
-  'transformation': '#5b21b6',
-};
-
-const PRIORITY_COLOR: Record<string, string> = {
-  Alta:  '#dc2626',
-  Média: '#d97706',
-  Baixa: '#6b7280',
+  'quick-wins':     'Quick Win',
+  'strategic':      'Iniciativa Estratégica',
+  'transformation': 'Transformação Operacional',
 };
 
 function getPotentialLabel(score: number): { label: string; color: string } {
@@ -50,15 +33,15 @@ const s = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Helvetica',
     color: '#111827',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f9fafb',
   },
 
   // ── Header ────────────────────────────────────────────────────────────────
   header: {
     backgroundColor: '#1e40af',
-    borderRadius: 4,
+    borderRadius: 6,
     padding: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   headerTitle: {
     fontSize: 18,
@@ -71,73 +54,90 @@ const s = StyleSheet.create({
     color: '#bfdbfe',
     marginBottom: 2,
   },
-  headerDate: {
+  headerMeta: {
     fontSize: 9,
     color: '#93c5fd',
+    marginTop: 1,
   },
 
-  // ── Section title ─────────────────────────────────────────────────────────
-  sectionTitle: {
-    fontSize: 13,
-    fontFamily: 'Helvetica-Bold',
-    color: '#1e40af',
-    marginTop: 16,
-    marginBottom: 8,
-    paddingBottom: 4,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#e5e7eb',
-    borderBottomStyle: 'solid',
-  },
-
-  // ── Summary cards row ─────────────────────────────────────────────────────
-  cardsRow: {
-    flexDirection: 'row',
-    marginBottom: 10,
-  },
-  card: {
-    flex: 1,
+  // ── Section card ──────────────────────────────────────────────────────────
+  sectionCard: {
+    backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderStyle: 'solid',
+    borderRadius: 6,
+    padding: 14,
+    marginBottom: 14,
+  },
+  sectionCardTitle: {
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    color: '#111827',
+    marginBottom: 10,
+  },
+
+  // ── 1. Diagnóstico card (blue) ─────────────────────────────────────────────
+  diagnosticoCard: {
+    backgroundColor: '#1e40af',
+    borderRadius: 6,
+    padding: 14,
+    marginBottom: 14,
+  },
+  diagnosticoTitle: {
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    color: '#ffffff',
+    marginBottom: 10,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+  },
+  metricBox: {
+    flex: 1,
+    backgroundColor: '#2563eb',
     borderRadius: 4,
     padding: 8,
-    alignItems: 'center',
     marginRight: 6,
   },
-  cardLast: {
+  metricBoxLast: {
     marginRight: 0,
   },
-  cardValue: {
-    fontSize: 16,
+  metricValue: {
+    fontSize: 14,
+    fontFamily: 'Helvetica-Bold',
+    color: '#ffffff',
+    marginBottom: 2,
+  },
+  metricLabel: {
+    fontSize: 7,
+    color: '#bfdbfe',
+  },
+
+  // ── 2. Distribuição de Prioridades ─────────────────────────────────────────
+  priorityRow: {
+    flexDirection: 'row',
+  },
+  priorityBox: {
+    flex: 1,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderRadius: 4,
+    padding: 10,
+    marginRight: 6,
+    alignItems: 'center',
+  },
+  priorityBoxLast: {
+    marginRight: 0,
+  },
+  priorityCount: {
+    fontSize: 20,
     fontFamily: 'Helvetica-Bold',
     marginBottom: 2,
   },
-  cardLabel: {
+  priorityLabel: {
     fontSize: 8,
     color: '#6b7280',
-  },
-
-  // ── Indicator cards ───────────────────────────────────────────────────────
-  indicatorCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderStyle: 'solid',
-    borderRadius: 4,
-    padding: 8,
-    marginRight: 6,
-  },
-  indicatorCardLast: {
-    marginRight: 0,
-  },
-  indicatorLabel: {
-    fontSize: 8,
-    color: '#6b7280',
-    marginBottom: 3,
-  },
-  indicatorValue: {
-    fontSize: 13,
-    fontFamily: 'Helvetica-Bold',
   },
 
   // ── Table ─────────────────────────────────────────────────────────────────
@@ -148,11 +148,12 @@ const s = StyleSheet.create({
     borderBottomColor: '#e5e7eb',
     borderBottomStyle: 'solid',
     paddingVertical: 5,
+    borderRadius: 2,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#f3f4f6',
     borderBottomStyle: 'solid',
     paddingVertical: 5,
   },
@@ -171,24 +172,10 @@ const s = StyleSheet.create({
     color: '#111827',
   },
 
-  // ── Roadmap ───────────────────────────────────────────────────────────────
-  categoryBadge: {
-    borderRadius: 4,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  categoryBadgeText: {
-    fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
-  },
-
   // ── Matrix ────────────────────────────────────────────────────────────────
   matrixGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 8,
   },
   matrixQuadrant: {
     width: '48%',
@@ -225,6 +212,66 @@ const s = StyleSheet.create({
     color: '#9ca3af',
   },
 
+  // ── Roadmap flat list ──────────────────────────────────────────────────────
+  roadmapStep: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    borderStyle: 'solid',
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 6,
+  },
+  roadmapStepCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    flexShrink: 0,
+  },
+  roadmapStepNumber: {
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    color: '#ffffff',
+    textAlign: 'center',
+  },
+  roadmapStepContent: {
+    flex: 1,
+  },
+  roadmapStepTitle: {
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  roadmapStepDesc: {
+    fontSize: 8,
+    color: '#6b7280',
+  },
+
+  // ── Insights ───────────────────────────────────────────────────────────────
+  insightItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  insightBullet: {
+    fontSize: 10,
+    color: '#f59e0b',
+    marginRight: 6,
+  },
+  insightText: {
+    fontSize: 9,
+    color: '#374151',
+    flex: 1,
+    lineHeight: 1.4,
+  },
+
   // ── CTA ───────────────────────────────────────────────────────────────────
   ctaBox: {
     backgroundColor: '#eff6ff',
@@ -233,43 +280,29 @@ const s = StyleSheet.create({
     borderStyle: 'solid',
     borderRadius: 6,
     padding: 16,
-    marginTop: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   ctaTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Helvetica-Bold',
     color: '#1e3a5f',
     marginBottom: 6,
   },
   ctaText: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#374151',
     marginBottom: 2,
   },
   ctaBullet: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#374151',
     marginBottom: 3,
     marginLeft: 8,
   },
-  ctaButton: {
-    marginTop: 10,
-    backgroundColor: '#2563eb',
-    borderRadius: 4,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    alignSelf: 'flex-start',
-  },
-  ctaButtonText: {
-    fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
-    color: '#ffffff',
-  },
 
   // ── Footer ────────────────────────────────────────────────────────────────
   footer: {
-    marginTop: 24,
+    marginTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     borderTopStyle: 'solid',
@@ -290,7 +323,14 @@ function fmtCurrency(n: number): string {
   return `R$ ${n.toLocaleString('pt-BR')}`;
 }
 
-export default function PDFDiagnosticReport({ assessments, ranked, roadmap, identification, generatedAt }: Props) {
+export default function PDFDiagnosticReport({
+  assessments,
+  ranked,
+  roadmap,
+  insights,
+  identification,
+  generatedAt,
+}: Props) {
   const summary = {
     alta:  ranked.filter(r => r.priority === 'Alta').length,
     media: ranked.filter(r => r.priority === 'Média').length,
@@ -301,191 +341,158 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap, iden
   const totalSavingsHours    = assessments.reduce((acc, a) => acc + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((acc, a) => acc + a.financialImpact, 0);
 
-
-  const roadmapGroups = (['quick-wins', 'strategic', 'transformation'] as RoadmapCategory[])
-    .map(cat => ({ cat, items: roadmap.filter(r => r.roadmapCategory === cat) }))
-    .filter(g => g.items.length > 0);
-
   return (
     <Document>
       <Page size="A4" style={s.page}>
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
+        {/* ── Header ──────────────────────────────────────────────────── */}
         <View style={s.header}>
           <Text style={s.headerTitle}>Diagnóstico de Automação Operacional</Text>
           <Text style={s.headerSubtitle}>Relatório de Oportunidades de Automação</Text>
           {identification && (
             <>
-              <Text style={s.headerDate}>
+              <Text style={s.headerMeta}>
                 Empresa: {identification.company}  ·  Área: {identification.area}
               </Text>
-              <Text style={s.headerDate}>
+              <Text style={s.headerMeta}>
                 Respondente: {identification.respondentName}
               </Text>
             </>
           )}
           {generatedAt && (
-            <Text style={s.headerDate}>Gerado em: {generatedAt}</Text>
+            <Text style={s.headerMeta}>Gerado em: {generatedAt}</Text>
           )}
         </View>
 
-        {/* ── Resumo do Diagnóstico ───────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Resumo do Diagnóstico</Text>
-        <View style={s.cardsRow}>
-          {([
-            { label: 'Prioridade Alta',  value: String(summary.alta),   color: '#dc2626' },
-            { label: 'Prioridade Média', value: String(summary.media),  color: '#d97706' },
-            { label: 'Prioridade Baixa', value: String(summary.baixa),  color: '#6b7280' },
-            { label: 'Total Avaliados',  value: String(ranked.length),  color: '#111827' },
-          ] as const).map(({ label, value, color }, i, arr) => (
-            <View key={label} style={[s.card, i === arr.length - 1 ? s.cardLast : {}]}>
-              <Text style={[s.cardValue, { color }]}>{value}</Text>
-              <Text style={s.cardLabel}>{label}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── Indicadores ────────────────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Indicadores</Text>
-        <View style={s.cardsRow}>
-          {([
-            { label: 'Horas Anuais Mapeadas',      value: `${fmt(totalAnnualHours)} h`,      color: '#111827' },
-            { label: 'Potencial de Economia',       value: `${fmt(totalSavingsHours)} h/ano`, color: '#059669' },
-            { label: 'Impacto Financeiro Estimado', value: fmtCurrency(totalFinancialImpact), color: '#059669' },
-          ] as const).map(({ label, value, color }, i, arr) => (
-            <View key={label} style={[s.indicatorCard, i === arr.length - 1 ? s.indicatorCardLast : {}]}>
-              <Text style={s.indicatorLabel}>{label}</Text>
-              <Text style={[s.indicatorValue, { color }]}>{value}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── Ranking de Processos ────────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Ranking de Processos</Text>
-        <View style={s.tableHeaderRow}>
-          <Text style={[s.th, { width: '5%' }]}>#</Text>
-          <Text style={[s.th, { width: '30%' }]}>Processo</Text>
-          <Text style={[s.th, { width: '37%' }]}>Subprocesso</Text>
-          <Text style={[s.th, { width: '12%', textAlign: 'center' }]}>Score</Text>
-          <Text style={[s.th, { width: '16%', textAlign: 'center' }]}>Prioridade</Text>
-        </View>
-        {ranked.map((item, i) => {
-          const prLabel = item.totalScore >= 20 ? 'Alta' : item.totalScore >= 14 ? 'Média' : 'Baixa';
-          const prColor = item.totalScore >= 20 ? '#dc2626' : item.totalScore >= 14 ? '#d97706' : '#6b7280';
-          return (
-            <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-              <Text style={[s.td, { width: '5%', color: '#6b7280' }]}>{item.rank}</Text>
-              <Text style={[s.td, { width: '30%' }]}>{item.processName}</Text>
-              <Text style={[s.td, { width: '37%' }]}>{item.subprocessName}</Text>
-              <Text style={[s.td, { width: '12%', textAlign: 'center', color: prColor }]}>{item.totalScore}</Text>
-              <Text style={[s.td, { width: '16%', textAlign: 'center', color: prColor }]}>{prLabel}</Text>
-            </View>
-          );
-        })}
-
-        {/* ── Ranking de Oportunidades ────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Ranking de Oportunidades</Text>
-        <View style={s.tableHeaderRow}>
-          <Text style={[s.th, { width: '5%' }]}>#</Text>
-          <Text style={[s.th, { width: '33%' }]}>Subprocesso</Text>
-          <Text style={[s.th, { width: '24%' }]}>Macroprocesso</Text>
-          <Text style={[s.th, { width: '10%', textAlign: 'center' }]}>Score</Text>
-          <Text style={[s.th, { width: '12%', textAlign: 'center' }]}>Prioridade</Text>
-          <Text style={[s.th, { width: '16%', textAlign: 'right' }]}>Economia Est.</Text>
-        </View>
-        {ranked.map((item, i) => (
-          <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-            <Text style={[s.td, { width: '5%', color: '#6b7280' }]}>{item.rank}</Text>
-            <Text style={[s.td, { width: '33%' }]}>{item.subprocessName}</Text>
-            <Text style={[s.td, { width: '24%', color: '#6b7280' }]}>{item.macroprocessName}</Text>
-            <Text style={[s.td, { width: '10%', textAlign: 'center', color: PRIORITY_COLOR[item.priority] ?? '#111827' }]}>
-              {item.totalScore}
-            </Text>
-            <Text style={[s.td, { width: '12%', textAlign: 'center', color: PRIORITY_COLOR[item.priority] ?? '#111827' }]}>
-              {item.priority}
-            </Text>
-            <Text style={[s.td, { width: '16%', textAlign: 'right', color: '#059669' }]}>
-              {fmtCurrency(item.financialImpact)}
-            </Text>
-          </View>
-        ))}
-
-        {/* ── Roadmap de Automação ────────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Roadmap de Automação</Text>
-        {roadmapGroups.map(({ cat, items }) => (
-          <View key={cat}>
-            <View style={[s.categoryBadge, { backgroundColor: CATEGORY_BG[cat] }]}>
-              <Text style={[s.categoryBadgeText, { color: CATEGORY_TEXT[cat] }]}>
-                {CATEGORY_LABELS[cat]}
-              </Text>
-            </View>
-            <View style={s.tableHeaderRow}>
-              <Text style={[s.th, { width: '42%' }]}>Subprocesso</Text>
-              <Text style={[s.th, { width: '16%', textAlign: 'center' }]}>Automação</Text>
-              <Text style={[s.th, { width: '16%', textAlign: 'center' }]}>Impacto</Text>
-              <Text style={[s.th, { width: '26%', textAlign: 'right' }]}>Economia Est.</Text>
-            </View>
-            {items.map((item, i) => (
-              <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-                <Text style={[s.td, { width: '42%' }]}>{item.subprocessName}</Text>
-                <Text style={[s.td, { width: '16%', textAlign: 'center' }]}>{item.automationScore}%</Text>
-                <Text style={[s.td, { width: '16%', textAlign: 'center' }]}>{item.impactScore}%</Text>
-                <Text style={[s.td, { width: '26%', textAlign: 'right', color: '#059669' }]}>
-                  {fmtCurrency(item.estimatedSavings)}
-                </Text>
+        {/* ── 1. Diagnóstico ──────────────────────────────────────────── */}
+        <View style={s.diagnosticoCard}>
+          <Text style={s.diagnosticoTitle}>Diagnóstico de Eficiência Operacional</Text>
+          <View style={s.metricsRow}>
+            {([
+              { label: 'Subprocessos avaliados',       value: String(assessments.length) },
+              { label: 'Esforço operacional (h/ano)',   value: fmt(totalAnnualHours) },
+              { label: 'Oportunidade automação (h/ano)',value: fmt(totalSavingsHours) },
+              { label: 'Economia estimada (R$/ano)',    value: fmtCurrency(totalFinancialImpact) },
+            ] as const).map(({ label, value }, i, arr) => (
+              <View key={label} style={[s.metricBox, i === arr.length - 1 ? s.metricBoxLast : {}]}>
+                <Text style={s.metricValue}>{value}</Text>
+                <Text style={s.metricLabel}>{label}</Text>
               </View>
             ))}
           </View>
-        ))}
+        </View>
 
-        {/* ── Matriz de Priorização de Automação ──────────────────────────── */}
-        <Text style={s.sectionTitle}>Matriz de Priorização de Automação</Text>
-        <View style={s.matrixGrid}>
-          {([
-            { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: '#fef2f2', border: '#fecaca', color: '#b91c1c' },
-            { label: 'Alta Prioridade',           min: 20, max: 24,       bg: '#fff7ed', border: '#fed7aa', color: '#c2410c' },
-            { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
-            { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: '#f9fafb', border: '#e5e7eb', color: '#6b7280' },
-          ] as { label: string; min: number; max: number; bg: string; border: string; color: string }[]).map(({ label, min, max, bg, border, color }) => {
-            const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
+        {/* ── 2. Distribuição de Prioridades ──────────────────────────── */}
+        <View style={s.sectionCard}>
+          <Text style={s.sectionCardTitle}>Distribuição de Prioridades</Text>
+          <View style={s.priorityRow}>
+            {([
+              { label: 'Alta Prioridade',  count: summary.alta,  color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+              { label: 'Média Prioridade', count: summary.media, color: '#d97706', bg: '#fff7ed', border: '#fed7aa' },
+              { label: 'Baixa Prioridade', count: summary.baixa, color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' },
+            ] as const).map(({ label, count, color, bg, border }, i, arr) => (
+              <View
+                key={label}
+                style={[
+                  s.priorityBox,
+                  { backgroundColor: bg, borderColor: border },
+                  i === arr.length - 1 ? s.priorityBoxLast : {},
+                ]}
+              >
+                <Text style={[s.priorityCount, { color }]}>{count}</Text>
+                <Text style={s.priorityLabel}>{label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* ── 3. Ranking de Potencial de Automação ────────────────────── */}
+        <View style={s.sectionCard}>
+          <Text style={s.sectionCardTitle}>Ranking de Potencial de Automação</Text>
+          <View style={s.tableHeaderRow}>
+            <Text style={[s.th, { width: '8%', textAlign: 'center' }]}>Rank</Text>
+            <Text style={[s.th, { width: '54%' }]}>Processo</Text>
+            <Text style={[s.th, { width: '18%', textAlign: 'center' }]}>Pontuação</Text>
+            <Text style={[s.th, { width: '20%', textAlign: 'center' }]}>Potencial</Text>
+          </View>
+          {ranked.slice(0, 10).map((item, i) => {
+            const potential = getPotentialLabel(item.totalScore);
             return (
-              <View key={label} style={[s.matrixQuadrant, { backgroundColor: bg, borderColor: border }]}>
-                <Text style={[s.matrixQuadrantTitle, { color }]}>{label}</Text>
-                {items.length === 0
-                  ? <Text style={s.matrixEmpty}>Nenhum processo nesta categoria</Text>
-                  : items.map(r => (
-                    <View key={r.subprocessId} style={s.matrixItem}>
-                      <Text style={s.matrixItemName}>{r.subprocessName}</Text>
-                      <Text style={[s.matrixItemScore, { color }]}>{r.totalScore}</Text>
-                    </View>
-                  ))
-                }
+              <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+                <Text style={[s.td, { width: '8%', textAlign: 'center', color: '#9ca3af' }]}>{item.rank}</Text>
+                <Text style={[s.td, { width: '54%' }]}>{item.subprocessName}</Text>
+                <Text style={[s.td, { width: '18%', textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>{item.totalScore}</Text>
+                <Text style={[s.td, { width: '20%', textAlign: 'center', fontFamily: 'Helvetica-Bold', color: potential.color }]}>
+                  {potential.label}
+                </Text>
               </View>
             );
           })}
         </View>
 
-        {/* ── Ranking de Potencial de Automação ───────────────────────────── */}
-        <Text style={s.sectionTitle}>Ranking de Potencial de Automação</Text>
-        <View style={s.tableHeaderRow}>
-          <Text style={[s.th, { width: '8%', textAlign: 'center' }]}>Rank</Text>
-          <Text style={[s.th, { width: '54%' }]}>Processo</Text>
-          <Text style={[s.th, { width: '18%', textAlign: 'center' }]}>Pontuação</Text>
-          <Text style={[s.th, { width: '20%', textAlign: 'center' }]}>Potencial</Text>
+        {/* ── 4. Matriz de Priorização de Automação ───────────────────── */}
+        <View style={s.sectionCard}>
+          <Text style={s.sectionCardTitle}>Matriz de Priorização de Automação</Text>
+          <View style={s.matrixGrid}>
+            {([
+              { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: '#fef2f2', border: '#fecaca', color: '#b91c1c' },
+              { label: 'Alta Prioridade',           min: 20, max: 24,       bg: '#fff7ed', border: '#fed7aa', color: '#c2410c' },
+              { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
+              { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: '#f9fafb', border: '#e5e7eb', color: '#6b7280' },
+            ] as { label: string; min: number; max: number; bg: string; border: string; color: string }[]).map(({ label, min, max, bg, border, color }) => {
+              const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
+              return (
+                <View key={label} style={[s.matrixQuadrant, { backgroundColor: bg, borderColor: border }]}>
+                  <Text style={[s.matrixQuadrantTitle, { color }]}>{label}</Text>
+                  {items.length === 0
+                    ? <Text style={s.matrixEmpty}>Nenhum processo nesta categoria</Text>
+                    : items.map(r => (
+                      <View key={r.subprocessId} style={s.matrixItem}>
+                        <Text style={s.matrixItemName}>{r.subprocessName}</Text>
+                        <Text style={[s.matrixItemScore, { color }]}>{r.totalScore}</Text>
+                      </View>
+                    ))
+                  }
+                </View>
+              );
+            })}
+          </View>
         </View>
-        {ranked.slice(0, 10).map((item, i) => {
-          const potential = getPotentialLabel(item.totalScore);
-          return (
-            <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-              <Text style={[s.td, { width: '8%', textAlign: 'center', color: '#9ca3af' }]}>{item.rank}</Text>
-              <Text style={[s.td, { width: '54%' }]}>{item.subprocessName}</Text>
-              <Text style={[s.td, { width: '18%', textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>{item.totalScore}</Text>
-              <Text style={[s.td, { width: '20%', textAlign: 'center', fontFamily: 'Helvetica-Bold', color: potential.color }]}>{potential.label}</Text>
-            </View>
-          );
-        })}
 
-        {/* ── Próximos Passos (CTA) ───────────────────────────────────────── */}
+        {/* ── 5. Roadmap de Automação Sugerido ────────────────────────── */}
+        {roadmap.length > 0 && (
+          <View style={s.sectionCard}>
+            <Text style={s.sectionCardTitle}>Roadmap de Automação Sugerido</Text>
+            {roadmap.map((item, i) => (
+              <View key={item.subprocessId} style={s.roadmapStep}>
+                <View style={s.roadmapStepCircle}>
+                  <Text style={s.roadmapStepNumber}>{i + 1}</Text>
+                </View>
+                <View style={s.roadmapStepContent}>
+                  <Text style={s.roadmapStepTitle}>{item.subprocessName}</Text>
+                  <Text style={s.roadmapStepDesc}>
+                    {CATEGORY_LABELS[item.roadmapCategory]} · {item.timeline} · Economia est.: {fmtCurrency(item.estimatedSavings)}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* ── 6. Insights do Diagnóstico ──────────────────────────────── */}
+        {insights && insights.length > 0 && (
+          <View style={[s.sectionCard, { borderColor: '#fde68a' }]}>
+            <Text style={s.sectionCardTitle}>Insights do Diagnóstico</Text>
+            {insights.map((insight, i) => (
+              <View key={i} style={s.insightItem}>
+                <Text style={s.insightBullet}>•</Text>
+                <Text style={s.insightText}>{insight}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* ── Próximos Passos (CTA) ────────────────────────────────────── */}
         <View style={s.ctaBox}>
           <Text style={s.ctaTitle}>Próximos Passos</Text>
           <Text style={s.ctaText}>Este diagnóstico identificou processos com alto potencial de automação.</Text>
@@ -498,15 +505,12 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap, iden
           ].map((item) => (
             <Text key={item} style={s.ctaBullet}>• {item}</Text>
           ))}
-          <View style={s.ctaButton}>
-            <Text style={s.ctaButtonText}>Falar com a Meta sobre automação — meta.com.br/contato</Text>
-          </View>
         </View>
 
-        {/* ── Footer ─────────────────────────────────────────────────────── */}
+        {/* ── Footer ──────────────────────────────────────────────────── */}
         <View style={s.footer}>
           <Text style={s.footerText}>
-            Relatório gerado automaticamente — Diagnóstico de Automação Operacional
+            Relatório gerado automaticamente — Diagnóstico de Automação Operacional — meta.com.br/contato
           </Text>
         </View>
 
