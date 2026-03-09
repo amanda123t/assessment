@@ -10,6 +10,7 @@ interface Props {
   ranked: RankedAssessment[];
   roadmap: RoadmapItem[];
   identification?: AssessmentIdentification;
+  generatedAt?: string;
 }
 
 const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
@@ -199,7 +200,7 @@ function fmtCurrency(n: number): string {
   return `R$ ${n.toLocaleString('pt-BR')}`;
 }
 
-export default function PDFDiagnosticReport({ assessments, ranked, roadmap, identification }: Props) {
+export default function PDFDiagnosticReport({ assessments, ranked, roadmap, identification, generatedAt }: Props) {
   const summary = {
     alta:  ranked.filter(r => r.priority === 'Alta').length,
     media: ranked.filter(r => r.priority === 'Média').length,
@@ -210,10 +211,6 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap, iden
   const totalSavingsHours    = assessments.reduce((acc, a) => acc + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((acc, a) => acc + a.financialImpact, 0);
 
-  const generatedAt = new Date().toLocaleDateString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
 
   const roadmapGroups = (['quick-wins', 'strategic', 'transformation'] as RoadmapCategory[])
     .map(cat => ({ cat, items: roadmap.filter(r => r.roadmapCategory === cat) }))
@@ -233,11 +230,13 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap, iden
                 Empresa: {identification.company}  ·  Área: {identification.area}
               </Text>
               <Text style={s.headerDate}>
-                Respondente: {identification.respondentName}  ·  Data: {identification.date.split('-').reverse().join('/')}
+                Respondente: {identification.respondentName}
               </Text>
             </>
           )}
-          <Text style={s.headerDate}>Gerado em: {generatedAt}</Text>
+          {generatedAt && (
+            <Text style={s.headerDate}>Gerado em: {generatedAt}</Text>
+          )}
         </View>
 
         {/* ── Resumo do Diagnóstico ───────────────────────────────────────── */}

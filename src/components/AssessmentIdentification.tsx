@@ -9,17 +9,12 @@ interface Props {
   onBack: () => void;
 }
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export default function AssessmentIdentificationScreen({ onComplete, onBack }: Props) {
   const [company, setCompany] = useState('');
   const [area, setArea] = useState('');
   const [respondentName, setRespondentName] = useState('');
-  const [date, setDate] = useState(today);
 
-  const canSubmit = company.trim() && area.trim() && respondentName.trim() && date;
+  const canSubmit = company.trim() && area.trim() && respondentName.trim();
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -27,7 +22,6 @@ export default function AssessmentIdentificationScreen({ onComplete, onBack }: P
       company: company.trim(),
       area: area.trim(),
       respondentName: respondentName.trim(),
-      date,
     });
   };
 
@@ -84,18 +78,6 @@ export default function AssessmentIdentificationScreen({ onComplete, onBack }: P
             onChange={(e) => setRespondentName(e.target.value)}
             placeholder="Seu nome completo"
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-            Data <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
       </div>

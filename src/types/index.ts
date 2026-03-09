@@ -66,7 +66,6 @@ export interface AssessmentIdentification {
   company: string;
   area: string;
   respondentName: string;
-  date: string; // YYYY-MM-DD
 }
 
 export interface AssessmentState {
@@ -76,6 +75,8 @@ export interface AssessmentState {
   currentSubprocessIndex: number;
   step: 'start' | 'explore' | 'identification' | 'questionnaire' | 'ranking';
   identification?: AssessmentIdentification;
+  /** DD/MM/YYYY string set automatically when the diagnostic starts. */
+  generatedAt?: string;
 }
 
 export const CRITERIA = [

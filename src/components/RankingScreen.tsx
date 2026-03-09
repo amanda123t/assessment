@@ -17,6 +17,7 @@ import PDFDiagnosticReport from './PDFDiagnosticReport';
 interface Props {
   assessments: SubprocessAssessment[];
   identification?: AssessmentIdentification;
+  generatedAt?: string;
   onRestart: () => void;
 }
 
@@ -203,6 +204,7 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
 export default function RankingScreen({
   assessments,
   identification,
+  generatedAt,
   onRestart,
 }: Props) {
   const [selected, setSelected] = useState<RankedAssessment | null>(null);
@@ -236,6 +238,7 @@ export default function RankingScreen({
           ranked={ranked}
           roadmap={autoRoadmap}
           identification={identification}
+          generatedAt={generatedAt}
         />
       ).toBlob();
       const url = URL.createObjectURL(blob);
@@ -309,6 +312,14 @@ export default function RankingScreen({
             Subprocessos com maiores scores indicam maior potencial de melhoria operacional.
             Os resultados abaixo foram ordenados do maior para o menor score.
           </p>
+          {(identification || generatedAt) && (
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+              {identification?.company && <span>Empresa: <span className="font-medium text-gray-600">{identification.company}</span></span>}
+              {identification?.area && <span>Área: <span className="font-medium text-gray-600">{identification.area}</span></span>}
+              {identification?.respondentName && <span>Respondente: <span className="font-medium text-gray-600">{identification.respondentName}</span></span>}
+              {generatedAt && <span>Gerado em: <span className="font-medium text-gray-600">{generatedAt}</span></span>}
+            </div>
+          )}
         </div>
 
         {/* ── Executive Summary ────────────────────────────────────── */}

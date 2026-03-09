@@ -118,7 +118,10 @@ export default function AssessmentPage() {
   }, []);
 
   const handleIdentificationComplete = useCallback((data: AssessmentIdentification) => {
-    setState((s) => ({ ...s, identification: data, step: 'questionnaire' }));
+    const generatedAt = new Date().toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    });
+    setState((s) => ({ ...s, identification: data, generatedAt, step: 'questionnaire' }));
   }, []);
 
   // ── Questionnaire ────────────────────────────────────────────────────────────
@@ -234,6 +237,7 @@ export default function AssessmentPage() {
               <RankingScreen
                 assessments={state.assessments}
                 identification={state.identification}
+                generatedAt={state.generatedAt}
                 onRestart={restart}
               />
             )}
