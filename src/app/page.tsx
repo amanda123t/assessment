@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import ModeSelector from '@/components/ModeSelector';
 
 export default function Home() {
-  redirect("/assessment");
+  return <ModeSelector />;
 }
