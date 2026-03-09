@@ -54,7 +54,7 @@ export default function AssessmentPage() {
 
     client
       .from('responses')
-      .insert(rows)
+      .upsert(rows, { onConflict: 'session_id,subarea_id' })
       .then(({ error }) => {
         if (error) console.error('[Supabase] Failed to save responses:', error);
       });
