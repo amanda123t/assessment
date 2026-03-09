@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import {
   AssessmentState,
   Macroprocess, Process, Subprocess, CriteriaScores,
-  SelectedSubprocessItem, ProcessMap,
+  SelectedSubprocessItem,
 } from '@/types';
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 
@@ -22,7 +22,6 @@ const INITIAL_STATE: AssessmentState = {
   assessments: [],
   currentSubprocessIndex: 0,
   step: 'start',
-  processMaps: [],
 };
 
 // ── Page component ───────────────────────────────────────────────────────────
@@ -154,16 +153,6 @@ export default function AssessmentPage() {
     setState(INITIAL_STATE);
   }, []);
 
-  // ── Process maps ─────────────────────────────────────────────────────────
-
-  const addProcessMap = useCallback((map: ProcessMap) => {
-    setState((s) => ({ ...s, processMaps: [...s.processMaps, map] }));
-  }, []);
-
-  const removeProcessMap = useCallback((id: string) => {
-    setState((s) => ({ ...s, processMaps: s.processMaps.filter((m) => m.id !== id) }));
-  }, []);
-
   // ── Derived values ───────────────────────────────────────────────────────────
 
   const selectedIds = useMemo(
@@ -232,9 +221,6 @@ export default function AssessmentPage() {
             {state.step === 'ranking' && (
               <RankingScreen
                 assessments={state.assessments}
-                processMaps={state.processMaps}
-                onAddProcessMap={addProcessMap}
-                onRemoveProcessMap={removeProcessMap}
                 onRestart={restart}
               />
             )}

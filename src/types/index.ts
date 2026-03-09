@@ -69,31 +69,12 @@ export interface AssessmentIdentification {
   email: string;
 }
 
-export interface ProcessMap {
-  id: string;
-  /** Human-readable process name */
-  name: string;
-  /** What the process aims to accomplish */
-  objective: string;
-  /** Department or team responsible */
-  responsibleArea: string;
-  /** How often the process runs (e.g. "Diária", "Semanal") */
-  frequency: string;
-  /** List of inputs (triggers, documents, data) */
-  inputs: string[];
-  /** List of outputs (results, documents, data) */
-  outputs: string[];
-  /** ISO timestamp */
-  createdAt: string;
-}
-
 export interface AssessmentState {
   /** Global accumulator — persists across all navigation. */
   globalSelectedSubprocesses: SelectedSubprocessItem[];
   assessments: SubprocessAssessment[];
   currentSubprocessIndex: number;
   step: 'start' | 'explore' | 'questionnaire' | 'ranking';
-  processMaps: ProcessMap[];
   identification?: AssessmentIdentification;
   /** DD/MM/YYYY string set automatically when the diagnostic starts. */
   generatedAt?: string;
