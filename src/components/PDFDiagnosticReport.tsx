@@ -31,6 +31,7 @@ const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
   'quick-wins':     'Quick Win',
   'strategic':      'Iniciativa Estratégica',
   'transformation': 'Transformação Operacional',
+  'low-priority':   'Baixa Prioridade',
 };
 
 function getPotential(score: number): { label: string; color: string } {
@@ -494,30 +495,45 @@ export default function PDFDiagnosticReport({
         {/* ── 04 Matriz de Priorização ─────────────────────────────────────── */}
         <SectionHeader num="04" title="Matriz de Priorização de Automação" />
 
-        <View style={s.matGrid}>
-          {([
-            { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: '#fef2f2', border: '#fecaca', color: '#b91c1c' },
-            { label: 'Alta Prioridade',           min: 20, max: 24,       bg: '#fff7ed', border: '#fed7aa', color: '#c2410c' },
-            { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
-            { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: '#f9fafb', border: '#e5e7eb', color: '#6b7280' },
-          ] as { label: string; min: number; max: number; bg: string; border: string; color: string }[]).map(({ label, min, max, bg, border, color }) => {
-            const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
-            return (
-              <View key={label} style={[s.matQuad, { backgroundColor: bg, borderColor: border }]}>
-                <Text style={[s.matTitle, { color }]}>{label}</Text>
-                {items.length === 0
-                  ? <Text style={s.matEmpty}>Nenhum processo nesta categoria</Text>
-                  : items.map(r => (
-                    <View key={r.subprocessId} style={s.matItem}>
-                      <Text style={s.matName}>{r.subprocessName}</Text>
-                      <Text style={[s.matBadge, { color, backgroundColor: bg }]}>{r.totalScore}</Text>
-                    </View>
-                  ))
-                }
-              </View>
-            );
-          })}
-        </View>
+        {(() => {
+          // 2-axis matrix: X = automationScore (≥60 high), Y = impactScore (log(annualHours+1))
+          const impactValues = ranked.map(r => r.impactScore);
+          const sortedImpact = [...impactValues].sort((a, b) => a - b);
+          const mid = Math.floor(sortedImpact.length / 2);
+          const medianImpact = sortedImpact.length === 0 ? 0
+            : sortedImpact.length % 2 !== 0
+              ? sortedImpact[mid]
+              : (sortedImpact[mid - 1] + sortedImpact[mid]) / 2;
+
+          const quadrants = [
+            { label: 'Prioridade Imediata',             bg: '#fef2f2', border: '#fecaca', color: '#b91c1c', filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore >= medianImpact },
+            { label: 'Quick Wins',                      bg: '#fff7ed', border: '#fed7aa', color: '#c2410c', filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore < medianImpact },
+            { label: 'Avaliar Engenharia / Integração', bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8', filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore >= medianImpact },
+            { label: 'Baixa Prioridade',                bg: '#f9fafb', border: '#e5e7eb', color: '#6b7280', filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore < medianImpact },
+          ];
+
+          return (
+            <View style={s.matGrid}>
+              {quadrants.map(({ label, bg, border, color, filter }) => {
+                const items = ranked.filter(filter);
+                return (
+                  <View key={label} style={[s.matQuad, { backgroundColor: bg, borderColor: border }]}>
+                    <Text style={[s.matTitle, { color }]}>{label}</Text>
+                    {items.length === 0
+                      ? <Text style={s.matEmpty}>Nenhum processo nesta categoria</Text>
+                      : items.map(r => (
+                        <View key={r.subprocessId} style={s.matItem}>
+                          <Text style={s.matName}>{r.subprocessName}</Text>
+                          <Text style={[s.matBadge, { color, backgroundColor: bg }]}>{r.automationScore}</Text>
+                        </View>
+                      ))
+                    }
+                  </View>
+                );
+              })}
+            </View>
+          );
+        })()}
 
         {/* ── 05 Roadmap ───────────────────────────────────────────────────── */}
         {roadmap.length > 0 && (

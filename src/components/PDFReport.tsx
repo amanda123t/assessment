@@ -14,12 +14,14 @@ const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
   'quick-wins':     'Quick Wins — 0 a 3 meses',
   'strategic':      'Iniciativas Estratégicas — 3 a 6 meses',
   'transformation': 'Transformação Operacional — 6 a 12 meses',
+  'low-priority':   'Baixa Prioridade — 6 a 12 meses',
 };
 
 const CATEGORY_COLORS: Record<RoadmapCategory, { bg: string; border: string; text: string }> = {
   'quick-wins':     { bg: '#f0fdf4', border: '#86efac', text: '#166534' },
   'strategic':      { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af' },
   'transformation': { bg: '#f5f3ff', border: '#c4b5fd', text: '#5b21b6' },
+  'low-priority':   { bg: '#f9fafb', border: '#e5e7eb', text: '#6b7280' },
 };
 
 const PRIORITY_COLOR: Record<string, string> = {
