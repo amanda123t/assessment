@@ -22,7 +22,6 @@ const INITIAL_STATE: AssessmentState = {
   assessments: [],
   currentSubprocessIndex: 0,
   step: 'start',
-  diagnosticMode: 'individual',
 };
 
 // ── Page component ───────────────────────────────────────────────────────────
@@ -188,7 +187,6 @@ export default function AssessmentPage() {
           {state.step === 'explore' && (
             <SelectedSubprocessesPanel
               count={state.globalSelectedSubprocesses.length}
-              mode={state.diagnosticMode}
               onStart={startEvaluation}
               onClear={clearSelection}
             />
@@ -215,7 +213,6 @@ export default function AssessmentPage() {
                 subprocess={currentItem.subprocess}
                 currentIndex={state.currentSubprocessIndex}
                 total={state.globalSelectedSubprocesses.length}
-                diagnosticMode={state.diagnosticMode}
                 onComplete={completeQuestionnaire}
                 onBack={goBackInQuestionnaire}
               />
@@ -224,7 +221,6 @@ export default function AssessmentPage() {
             {state.step === 'ranking' && (
               <RankingScreen
                 assessments={state.assessments}
-                diagnosticMode={state.diagnosticMode}
                 onRestart={restart}
               />
             )}

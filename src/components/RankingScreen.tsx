@@ -9,15 +9,13 @@ import {
   Trophy, BarChart2, FileDown, RotateCcw, X, Activity,
   Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown,
 } from 'lucide-react';
-import { SubprocessAssessment, CRITERIA, DiagnosticMode } from '@/types';
+import { SubprocessAssessment, CRITERIA } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
   assessments: SubprocessAssessment[];
-  diagnosticId?: string | null;
-  diagnosticMode?: DiagnosticMode;
   onRestart: () => void;
 }
 
@@ -203,8 +201,6 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
 
 export default function RankingScreen({
   assessments,
-  diagnosticId,
-  diagnosticMode = 'individual',
   onRestart,
 }: Props) {
   const [selected, setSelected] = useState<RankedAssessment | null>(null);
@@ -300,24 +296,6 @@ export default function RankingScreen({
           backgroundColor: "#ffffff"
         }}
       >
-
-        {/* ── Collaborative session banner ──────────────────────────── */}
-        {diagnosticMode === 'collaborative' && diagnosticId && (
-          <div className="flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-xl px-4 py-3 mb-6">
-            <span className="text-violet-600 flex-shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-violet-800">Diagnóstico colaborativo</p>
-              <p className="text-xs text-violet-600 mt-0.5">
-                Subprocessos respondidos: {assessments.length} &nbsp;·&nbsp; ID: <span className="font-mono">{diagnosticId.slice(0, 8)}…</span>
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* ── Page title ───────────────────────────────────────────── */}
         <div className="mb-8">

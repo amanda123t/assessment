@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ClipboardCheck, Users } from 'lucide-react';
-import { Macroprocess, Process, Subprocess, CriteriaScores, CRITERIA, DiagnosticMode } from '@/types';
+import { ClipboardCheck } from 'lucide-react';
+import { Macroprocess, Process, Subprocess, CriteriaScores, CRITERIA } from '@/types';
 import { getEmptyScores, calculateTotalScore } from '@/lib/scoring';
 
 interface Props {
@@ -11,9 +11,6 @@ interface Props {
   subprocess: Subprocess;
   currentIndex: number;
   total: number;
-  /** Number of already-answered subprocesses (from collaborative pre-load). */
-  answeredCount?: number;
-  diagnosticMode?: DiagnosticMode;
   onComplete: (scores: CriteriaScores) => void;
   onBack: () => void;
 }
@@ -24,8 +21,6 @@ export default function Questionnaire({
   subprocess,
   currentIndex,
   total,
-  answeredCount = 0,
-  diagnosticMode = 'individual',
   onComplete,
   onBack,
 }: Props) {
@@ -67,14 +62,6 @@ export default function Questionnaire({
           />
         </div>
 
-        {/* Collaborative progress pill */}
-        {diagnosticMode === 'collaborative' && (
-          <div className="inline-flex items-center gap-1.5 bg-violet-50 border border-violet-200 text-violet-700 text-xs font-medium px-2.5 py-1 rounded-full mb-3">
-            <Users size={12} strokeWidth={1.75} />
-            Subprocessos respondidos: {answeredCount + currentIndex} / {answeredCount + total}
-          </div>
-        )}
-
         {/* Breadcrumb */}
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">
           {macroprocess.name} › {process.name}
@@ -92,7 +79,7 @@ export default function Questionnaire({
 
       {/* Criteria cards */}
       <div className="space-y-4">
-        {CRITERIA.map((criterion, idx) => {
+        {CRITERIA.map((criterion) => {
           const currentScore = scores[criterion.key];
           return (
             <div key={criterion.key} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
