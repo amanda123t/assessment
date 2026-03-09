@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import {
   ChevronRight, CheckCircle2, Circle, Users,
   ArrowLeft, AlertCircle, CheckCircle,
@@ -21,12 +22,14 @@ interface Notice {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function SessionPage({
-  params,
-}: {
-  params: Promise<{ sessionId: string }>;
-}) {
-  const { sessionId } = use(params);
+export default function SessionPage() {
+  const params = useParams();
+  // Persist the session ID in state immediately so it never changes or goes
+  // undefined during client-side navigation within the same session.
+  const [sessionId] = useState<string>(() => {
+    const raw = params.sessionId;
+    return Array.isArray(raw) ? raw[0] : (raw ?? '');
+  });
 
   // ── State machine ───────────────────────────────────────────────────────────
   const [view, setView] = useState<View>('email');
@@ -98,6 +101,13 @@ export default function SessionPage({
     if (!selectedArea || !selectedProcess || !selectedSubarea) return;
     setSubmitting(true);
     setNotice(null);
+
+    if (!sessionId) {
+      console.error('Missing session ID — insert aborted');
+      setSubmitting(false);
+      setNotice({ type: 'error', message: 'Erro: sessão inválida. Recarregue a página.' });
+      return;
+    }
 
     let nextNotice: Notice;
     try {
