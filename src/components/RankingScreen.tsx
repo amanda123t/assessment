@@ -306,10 +306,9 @@ export default function RankingScreen({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {top3.map((item, i) => (
-                <button
+                <div
                   key={item.subprocessId}
-                  onClick={() => setSelected(item)}
-                  className="text-left bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
+                  className="text-left bg-white rounded-xl border border-gray-100 shadow-sm p-5"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
@@ -343,7 +342,7 @@ export default function RankingScreen({
                       <span className="font-medium text-green-600">{fmtCurrency(item.financialImpact)}</span> pot. economia
                     </p>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </section>
