@@ -9,15 +9,16 @@ import {
   Trophy, BarChart2, FileDown, RotateCcw, X, Activity,
   Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown,
 } from 'lucide-react';
-import { SubprocessAssessment, CRITERIA, DiagnosticMode } from '@/types';
+import { SubprocessAssessment, CRITERIA, AssessmentIdentification } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
+import ProcessRanking from './ProcessRanking';
 
 interface Props {
   assessments: SubprocessAssessment[];
-  diagnosticId?: string | null;
-  diagnosticMode?: DiagnosticMode;
+  identification?: AssessmentIdentification;
+  generatedAt?: string;
   onRestart: () => void;
 }
 
@@ -203,8 +204,8 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
 
 export default function RankingScreen({
   assessments,
-  diagnosticId,
-  diagnosticMode = 'individual',
+  identification,
+  generatedAt,
   onRestart,
 }: Props) {
   const [selected, setSelected] = useState<RankedAssessment | null>(null);
@@ -237,6 +238,8 @@ export default function RankingScreen({
           assessments={assessments}
           ranked={ranked}
           roadmap={autoRoadmap}
+          identification={identification}
+          generatedAt={generatedAt}
         />
       ).toBlob();
       const url = URL.createObjectURL(blob);
@@ -301,24 +304,6 @@ export default function RankingScreen({
         }}
       >
 
-        {/* ── Collaborative session banner ──────────────────────────── */}
-        {diagnosticMode === 'collaborative' && diagnosticId && (
-          <div className="flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-xl px-4 py-3 mb-6">
-            <span className="text-violet-600 flex-shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-violet-800">Diagnóstico colaborativo</p>
-              <p className="text-xs text-violet-600 mt-0.5">
-                Subprocessos respondidos: {assessments.length} &nbsp;·&nbsp; ID: <span className="font-mono">{diagnosticId.slice(0, 8)}…</span>
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* ── Page title ───────────────────────────────────────────── */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900">
@@ -328,7 +313,18 @@ export default function RankingScreen({
             Subprocessos com maiores scores indicam maior potencial de melhoria operacional.
             Os resultados abaixo foram ordenados do maior para o menor score.
           </p>
+          {(identification || generatedAt) && (
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+              {identification?.company && <span>Empresa: <span className="font-medium text-gray-600">{identification.company}</span></span>}
+              {identification?.area && <span>Área: <span className="font-medium text-gray-600">{identification.area}</span></span>}
+              {identification?.respondentName && <span>Respondente: <span className="font-medium text-gray-600">{identification.respondentName}</span></span>}
+              {generatedAt && <span>Gerado em: <span className="font-medium text-gray-600">{generatedAt}</span></span>}
+            </div>
+          )}
         </div>
+
+        {/* ── Process Ranking ──────────────────────────────────────── */}
+        <ProcessRanking ranked={ranked} />
 
         {/* ── Executive Summary ────────────────────────────────────── */}
         <section className="mb-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white">

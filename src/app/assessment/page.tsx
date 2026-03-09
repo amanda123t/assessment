@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import {
-  AssessmentState,
+  AssessmentState, AssessmentIdentification,
   Macroprocess, Process, Subprocess, CriteriaScores,
   SelectedSubprocessItem,
 } from '@/types';
@@ -13,6 +13,7 @@ import StartScreen from '@/components/StartScreen';
 import SubprocessExplorer from '@/components/SubprocessExplorer';
 import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
 import Questionnaire from '@/components/Questionnaire';
+import AssessmentIdentificationScreen from '@/components/AssessmentIdentification';
 import RankingScreen from '@/components/RankingScreen';
 
 // ── Initial state ────────────────────────────────────────────────────────────
@@ -22,7 +23,6 @@ const INITIAL_STATE: AssessmentState = {
   assessments: [],
   currentSubprocessIndex: 0,
   step: 'start',
-  diagnosticMode: 'individual',
 };
 
 // ── Page component ───────────────────────────────────────────────────────────
@@ -114,7 +114,14 @@ export default function AssessmentPage() {
   // ── Start evaluation ─────────────────────────────────────────────────────────
 
   const startEvaluation = useCallback(() => {
-    setState((s) => ({ ...s, currentSubprocessIndex: 0, step: 'questionnaire' }));
+    setState((s) => ({ ...s, currentSubprocessIndex: 0, step: 'identification' }));
+  }, []);
+
+  const handleIdentificationComplete = useCallback((data: AssessmentIdentification) => {
+    const generatedAt = new Date().toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    });
+    setState((s) => ({ ...s, identification: data, generatedAt, step: 'questionnaire' }));
   }, []);
 
   // ── Questionnaire ────────────────────────────────────────────────────────────
@@ -188,7 +195,6 @@ export default function AssessmentPage() {
           {state.step === 'explore' && (
             <SelectedSubprocessesPanel
               count={state.globalSelectedSubprocesses.length}
-              mode={state.diagnosticMode}
               onStart={startEvaluation}
               onClear={clearSelection}
             />
@@ -207,6 +213,13 @@ export default function AssessmentPage() {
               />
             )}
 
+            {state.step === 'identification' && (
+              <AssessmentIdentificationScreen
+                onComplete={handleIdentificationComplete}
+                onBack={() => setState((s) => ({ ...s, step: 'explore' }))}
+              />
+            )}
+
             {state.step === 'questionnaire' && currentItem && (
               <Questionnaire
                 key={currentItem.subprocess.id}
@@ -215,7 +228,6 @@ export default function AssessmentPage() {
                 subprocess={currentItem.subprocess}
                 currentIndex={state.currentSubprocessIndex}
                 total={state.globalSelectedSubprocesses.length}
-                diagnosticMode={state.diagnosticMode}
                 onComplete={completeQuestionnaire}
                 onBack={goBackInQuestionnaire}
               />
@@ -224,7 +236,8 @@ export default function AssessmentPage() {
             {state.step === 'ranking' && (
               <RankingScreen
                 assessments={state.assessments}
-                diagnosticMode={state.diagnosticMode}
+                identification={state.identification}
+                generatedAt={state.generatedAt}
                 onRestart={restart}
               />
             )}

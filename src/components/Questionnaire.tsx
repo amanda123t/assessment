@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ClipboardCheck, Users } from 'lucide-react';
-import { Macroprocess, Process, Subprocess, CriteriaScores, CRITERIA, DiagnosticMode } from '@/types';
+import { ClipboardCheck } from 'lucide-react';
+import { Macroprocess, Process, Subprocess, CriteriaScores, CRITERIA } from '@/types';
 import { getEmptyScores, calculateTotalScore } from '@/lib/scoring';
 
 interface Props {
@@ -11,9 +11,6 @@ interface Props {
   subprocess: Subprocess;
   currentIndex: number;
   total: number;
-  /** Number of already-answered subprocesses (from collaborative pre-load). */
-  answeredCount?: number;
-  diagnosticMode?: DiagnosticMode;
   onComplete: (scores: CriteriaScores) => void;
   onBack: () => void;
 }
@@ -24,8 +21,6 @@ export default function Questionnaire({
   subprocess,
   currentIndex,
   total,
-  answeredCount = 0,
-  diagnosticMode = 'individual',
   onComplete,
   onBack,
 }: Props) {
@@ -67,14 +62,6 @@ export default function Questionnaire({
           />
         </div>
 
-        {/* Collaborative progress pill */}
-        {diagnosticMode === 'collaborative' && (
-          <div className="inline-flex items-center gap-1.5 bg-violet-50 border border-violet-200 text-violet-700 text-xs font-medium px-2.5 py-1 rounded-full mb-3">
-            <Users size={12} strokeWidth={1.75} />
-            Subprocessos respondidos: {answeredCount + currentIndex} / {answeredCount + total}
-          </div>
-        )}
-
         {/* Breadcrumb */}
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">
           {macroprocess.name} › {process.name}
@@ -86,13 +73,13 @@ export default function Questionnaire({
         {/* Subheading with icon */}
         <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
           <ClipboardCheck size={14} className="text-gray-400" strokeWidth={1.75} />
-          Avalie cada critério de 1 a 5
+          Selecione uma opção para cada critério
         </p>
       </div>
 
       {/* Criteria cards */}
       <div className="space-y-4">
-        {CRITERIA.map((criterion, idx) => {
+        {CRITERIA.map((criterion) => {
           const currentScore = scores[criterion.key];
           return (
             <div key={criterion.key} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
@@ -101,7 +88,6 @@ export default function Questionnaire({
                 <p className="text-xs text-gray-500 mt-0.5">{criterion.description}</p>
               </div>
 
-              {/* Descriptive 4-option scale for impact estimation */}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {criterion.options.map((optLabel, optIdx) => {
                   const val = optIdx + 1;
@@ -110,16 +96,13 @@ export default function Questionnaire({
                     <button
                       key={val}
                       onClick={() => handleScore(criterion.key, val)}
-                      className={`flex flex-col items-center gap-1 px-2 py-3 rounded-lg border text-center transition-all duration-150
+                      className={`px-3 py-3.5 rounded-lg border text-center text-sm font-medium transition-all duration-150 leading-snug
                         ${isSelected
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300'
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm ring-2 ring-blue-300 ring-offset-1'
+                          : 'bg-white border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700'
                         }`}
                     >
-                      <span className="font-bold text-sm leading-none">{val}</span>
-                      <span className={`text-xs leading-tight ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
-                        {optLabel}
-                      </span>
+                      {optLabel}
                     </button>
                   );
                 })}

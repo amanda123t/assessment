@@ -1,7 +1,7 @@
 'use client';
 
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import { SubprocessAssessment } from '@/types';
+import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { RankedAssessment } from '@/lib/ranking';
 import { RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 
@@ -9,6 +9,8 @@ interface Props {
   assessments: SubprocessAssessment[];
   ranked: RankedAssessment[];
   roadmap: RoadmapItem[];
+  identification?: AssessmentIdentification;
+  generatedAt?: string;
 }
 
 const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
@@ -198,7 +200,7 @@ function fmtCurrency(n: number): string {
   return `R$ ${n.toLocaleString('pt-BR')}`;
 }
 
-export default function PDFDiagnosticReport({ assessments, ranked, roadmap }: Props) {
+export default function PDFDiagnosticReport({ assessments, ranked, roadmap, identification, generatedAt }: Props) {
   const summary = {
     alta:  ranked.filter(r => r.priority === 'Alta').length,
     media: ranked.filter(r => r.priority === 'Média').length,
@@ -209,10 +211,6 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap }: Pr
   const totalSavingsHours    = assessments.reduce((acc, a) => acc + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((acc, a) => acc + a.financialImpact, 0);
 
-  const generatedAt = new Date().toLocaleDateString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
 
   const roadmapGroups = (['quick-wins', 'strategic', 'transformation'] as RoadmapCategory[])
     .map(cat => ({ cat, items: roadmap.filter(r => r.roadmapCategory === cat) }))
@@ -226,7 +224,19 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap }: Pr
         <View style={s.header}>
           <Text style={s.headerTitle}>Diagnóstico de Automação Operacional</Text>
           <Text style={s.headerSubtitle}>Relatório de Oportunidades de Automação</Text>
-          <Text style={s.headerDate}>Gerado em: {generatedAt}</Text>
+          {identification && (
+            <>
+              <Text style={s.headerDate}>
+                Empresa: {identification.company}  ·  Área: {identification.area}
+              </Text>
+              <Text style={s.headerDate}>
+                Respondente: {identification.respondentName}
+              </Text>
+            </>
+          )}
+          {generatedAt && (
+            <Text style={s.headerDate}>Gerado em: {generatedAt}</Text>
+          )}
         </View>
 
         {/* ── Resumo do Diagnóstico ───────────────────────────────────────── */}
@@ -259,6 +269,29 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap }: Pr
             </View>
           ))}
         </View>
+
+        {/* ── Ranking de Processos ────────────────────────────────────────── */}
+        <Text style={s.sectionTitle}>Ranking de Processos</Text>
+        <View style={s.tableHeaderRow}>
+          <Text style={[s.th, { width: '5%' }]}>#</Text>
+          <Text style={[s.th, { width: '30%' }]}>Processo</Text>
+          <Text style={[s.th, { width: '37%' }]}>Subprocesso</Text>
+          <Text style={[s.th, { width: '12%', textAlign: 'center' }]}>Score</Text>
+          <Text style={[s.th, { width: '16%', textAlign: 'center' }]}>Prioridade</Text>
+        </View>
+        {ranked.map((item, i) => {
+          const prLabel = item.totalScore >= 20 ? 'Alta' : item.totalScore >= 14 ? 'Média' : 'Baixa';
+          const prColor = item.totalScore >= 20 ? '#dc2626' : item.totalScore >= 14 ? '#d97706' : '#6b7280';
+          return (
+            <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+              <Text style={[s.td, { width: '5%', color: '#6b7280' }]}>{item.rank}</Text>
+              <Text style={[s.td, { width: '30%' }]}>{item.processName}</Text>
+              <Text style={[s.td, { width: '37%' }]}>{item.subprocessName}</Text>
+              <Text style={[s.td, { width: '12%', textAlign: 'center', color: prColor }]}>{item.totalScore}</Text>
+              <Text style={[s.td, { width: '16%', textAlign: 'center', color: prColor }]}>{prLabel}</Text>
+            </View>
+          );
+        })}
 
         {/* ── Ranking de Oportunidades ────────────────────────────────────── */}
         <Text style={s.sectionTitle}>Ranking de Oportunidades</Text>

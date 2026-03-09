@@ -62,16 +62,21 @@ export interface SelectedSubprocessItem {
   isCustom?: boolean;
 }
 
-/** Whether the diagnostic is answered by a single user or collaboratively. */
-export type DiagnosticMode = 'individual' | 'collaborative';
+export interface AssessmentIdentification {
+  company: string;
+  area: string;
+  respondentName: string;
+}
 
 export interface AssessmentState {
   /** Global accumulator — persists across all navigation. */
   globalSelectedSubprocesses: SelectedSubprocessItem[];
   assessments: SubprocessAssessment[];
   currentSubprocessIndex: number;
-  step: 'start' | 'explore' | 'questionnaire' | 'ranking';
-  diagnosticMode: DiagnosticMode;
+  step: 'start' | 'explore' | 'identification' | 'questionnaire' | 'ranking';
+  identification?: AssessmentIdentification;
+  /** DD/MM/YYYY string set automatically when the diagnostic starts. */
+  generatedAt?: string;
 }
 
 export const CRITERIA = [
