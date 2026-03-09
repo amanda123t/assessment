@@ -1,6 +1,6 @@
 'use client';
 
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { RankedAssessment } from '@/lib/ranking';
 import { RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
@@ -222,7 +222,6 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap, iden
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={s.header}>
-          <Image src="/assets/meta-logo.png" style={{ height: 28, width: 'auto', marginBottom: 10 }} />
           <Text style={s.headerTitle}>Diagnóstico de Automação Operacional</Text>
           <Text style={s.headerSubtitle}>Relatório de Oportunidades de Automação</Text>
           {identification && (

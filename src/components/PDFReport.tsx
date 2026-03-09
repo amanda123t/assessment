@@ -61,7 +61,6 @@ export default function PDFReport({ assessments, ranked, roadmap }: Props) {
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div style={{ backgroundColor: '#1e40af', color: '#ffffff', padding: '24px 32px 20px' }}>
-        <img src="/assets/meta-logo.png" alt="Meta logo" style={{ height: '32px', width: 'auto', marginBottom: '12px', display: 'block' }} />
         <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#ffffff', marginBottom: '4px' }}>
           Diagnóstico de Automação Operacional
         </div>
