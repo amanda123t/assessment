@@ -173,6 +173,41 @@ export default function PDFReport({ assessments, ranked, roadmap }: Props) {
         })}
       </div>
 
+      {/* ── Matriz de Priorização de Automação ──────────────────────────── */}
+      {(() => {
+        const matrixQuadrants = [
+          { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: '#fef2f2', border: '#fecaca', title: '#b91c1c' },
+          { label: 'Alta Prioridade',           min: 20, max: 24,       bg: '#fff7ed', border: '#fed7aa', title: '#c2410c' },
+          { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8' },
+          { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: '#f9fafb', border: '#e5e7eb', title: '#6b7280' },
+        ];
+        return (
+          <div style={{ padding: '20px 32px 0' }}>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e40af', borderBottom: '2px solid #e5e7eb', paddingBottom: '6px', marginBottom: '14px' }}>
+              Matriz de Priorização de Automação
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {matrixQuadrants.map(({ label, min, max, bg, border, title }) => {
+                const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
+                return (
+                  <div key={label} style={{ backgroundColor: bg, border: `1px solid ${border}`, borderRadius: '6px', padding: '12px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: title, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{label}</div>
+                    {items.length === 0 ? (
+                      <div style={{ fontSize: '10px', color: '#9ca3af', fontStyle: 'italic' }}>Nenhum processo nesta categoria</div>
+                    ) : items.map(r => (
+                      <div key={r.subprocessId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '10px', color: '#111827', flex: 1, paddingRight: '8px' }}>{r.subprocessName}</span>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: title }}>{r.totalScore}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Ranking de Potencial de Automação ───────────────────────────── */}
       <div style={{ padding: '20px 32px 0' }}>
         <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e40af', borderBottom: '2px solid #e5e7eb', paddingBottom: '6px', marginBottom: '14px' }}>

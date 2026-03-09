@@ -184,6 +184,47 @@ const s = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
   },
 
+  // ── Matrix ────────────────────────────────────────────────────────────────
+  matrixGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 8,
+  },
+  matrixQuadrant: {
+    width: '48%',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 8,
+    marginRight: '2%',
+  },
+  matrixQuadrantTitle: {
+    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  matrixItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+  matrixItemName: {
+    fontSize: 8,
+    color: '#111827',
+    flex: 1,
+    paddingRight: 4,
+  },
+  matrixItemScore: {
+    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+  },
+  matrixEmpty: {
+    fontSize: 8,
+    color: '#9ca3af',
+  },
+
   // ── CTA ───────────────────────────────────────────────────────────────────
   ctaBox: {
     backgroundColor: '#eff6ff',
@@ -396,6 +437,33 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap, iden
             ))}
           </View>
         ))}
+
+        {/* ── Matriz de Priorização de Automação ──────────────────────────── */}
+        <Text style={s.sectionTitle}>Matriz de Priorização de Automação</Text>
+        <View style={s.matrixGrid}>
+          {([
+            { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: '#fef2f2', border: '#fecaca', color: '#b91c1c' },
+            { label: 'Alta Prioridade',           min: 20, max: 24,       bg: '#fff7ed', border: '#fed7aa', color: '#c2410c' },
+            { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
+            { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: '#f9fafb', border: '#e5e7eb', color: '#6b7280' },
+          ] as { label: string; min: number; max: number; bg: string; border: string; color: string }[]).map(({ label, min, max, bg, border, color }) => {
+            const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
+            return (
+              <View key={label} style={[s.matrixQuadrant, { backgroundColor: bg, borderColor: border }]}>
+                <Text style={[s.matrixQuadrantTitle, { color }]}>{label}</Text>
+                {items.length === 0
+                  ? <Text style={s.matrixEmpty}>Nenhum processo nesta categoria</Text>
+                  : items.map(r => (
+                    <View key={r.subprocessId} style={s.matrixItem}>
+                      <Text style={s.matrixItemName}>{r.subprocessName}</Text>
+                      <Text style={[s.matrixItemScore, { color }]}>{r.totalScore}</Text>
+                    </View>
+                  ))
+                }
+              </View>
+            );
+          })}
+        </View>
 
         {/* ── Ranking de Potencial de Automação ───────────────────────────── */}
         <Text style={s.sectionTitle}>Ranking de Potencial de Automação</Text>

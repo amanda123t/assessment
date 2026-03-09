@@ -780,6 +780,46 @@ export default function RankingScreen({
           </section>
         )}
 
+      {/* ── Matriz de Priorização de Automação ───────────────────────── */}
+      {(() => {
+        const matrixQuadrants = [
+          { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: 'bg-red-50',    border: 'border-red-200',    title: 'text-red-700',    badge: 'bg-red-100 text-red-700 border-red-200' },
+          { label: 'Alta Prioridade',           min: 20, max: 24,       bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700', badge: 'bg-orange-100 text-orange-700 border-orange-200' },
+          { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: 'bg-blue-50',   border: 'border-blue-200',   title: 'text-blue-700',   badge: 'bg-blue-100 text-blue-700 border-blue-200' },
+          { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: 'bg-gray-50',   border: 'border-gray-200',   title: 'text-gray-600',   badge: 'bg-gray-100 text-gray-600 border-gray-200' },
+        ];
+        return (
+          <section className="mb-8">
+            <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Target size={16} className="text-blue-600" strokeWidth={1.75} />
+              Matriz de Priorização de Automação
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              {matrixQuadrants.map(({ label, min, max, bg, border, title, badge }) => {
+                const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
+                return (
+                  <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
+                    <div className={`text-xs font-bold uppercase tracking-wide mb-3 ${title}`}>{label}</div>
+                    {items.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {items.map(r => (
+                          <li key={r.subprocessId} className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-gray-800 leading-snug flex-1">{r.subprocessName}</span>
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge}`}>{r.totalScore}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
+
       {/* ── Ranking de Potencial de Automação ────────────────────────── */}
       <section className="mb-8">
         <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
