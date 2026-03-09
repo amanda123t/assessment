@@ -73,7 +73,7 @@ export default function Questionnaire({
         {/* Subheading with icon */}
         <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
           <ClipboardCheck size={14} className="text-gray-400" strokeWidth={1.75} />
-          Avalie cada critério de 1 a 5
+          Selecione uma opção para cada critério
         </p>
       </div>
 
@@ -88,7 +88,6 @@ export default function Questionnaire({
                 <p className="text-xs text-gray-500 mt-0.5">{criterion.description}</p>
               </div>
 
-              {/* Descriptive 4-option scale for impact estimation */}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {criterion.options.map((optLabel, optIdx) => {
                   const val = optIdx + 1;
@@ -97,16 +96,13 @@ export default function Questionnaire({
                     <button
                       key={val}
                       onClick={() => handleScore(criterion.key, val)}
-                      className={`flex flex-col items-center gap-1 px-2 py-3 rounded-lg border text-center transition-all duration-150
+                      className={`px-3 py-3.5 rounded-lg border text-center text-sm font-medium transition-all duration-150 leading-snug
                         ${isSelected
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
-                          : 'bg-white border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300'
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm ring-2 ring-blue-300 ring-offset-1'
+                          : 'bg-white border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700'
                         }`}
                     >
-                      <span className="font-bold text-sm leading-none">{val}</span>
-                      <span className={`text-xs leading-tight ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
-                        {optLabel}
-                      </span>
+                      {optLabel}
                     </button>
                   );
                 })}
