@@ -3,15 +3,19 @@
 import { useState } from 'react';
 import {
   Trophy, FileDown, RotateCcw, Activity,
-  Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown, X,
+  Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown, X, GitBranch, Plus,
 } from 'lucide-react';
-import { SubprocessAssessment, AssessmentIdentification } from '@/types';
+import { SubprocessAssessment, AssessmentIdentification, ProcessMap } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
+import ProcessMappingForm from './ProcessMappingForm';
 
 interface Props {
   assessments: SubprocessAssessment[];
+  processMaps: ProcessMap[];
+  onAddProcessMap: (map: ProcessMap) => void;
+  onRemoveProcessMap: (id: string) => void;
   onRestart: () => void;
 }
 
@@ -144,8 +148,9 @@ const EMPTY_FORM: IdForm = { company: '', area: '', respondentName: '', email: '
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export default function RankingScreen({ assessments, onRestart }: Props) {
+export default function RankingScreen({ assessments, processMaps, onAddProcessMap, onRemoveProcessMap, onRestart }: Props) {
   const [insightsOpen, setInsightsOpen] = useState(false);
+  const [showProcessMapForm, setShowProcessMapForm] = useState(false);
   const [showIdModal, setShowIdModal] = useState(false);
   const [idForm, setIdForm] = useState<IdForm>(EMPTY_FORM);
   const [savedIdentification, setSavedIdentification] = useState<AssessmentIdentification | null>(null);
@@ -533,7 +538,83 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
           </a>
         </section>
 
+        {/* ── Process Mapping ────────────────────────────────────────────── */}
+        <section className={CARD}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <GitBranch size={16} className="text-blue-600" strokeWidth={1.75} />
+              <h3 className="text-base font-semibold text-gray-800">Mapeamento de Processos</h3>
+            </div>
+            <button
+              onClick={() => setShowProcessMapForm(true)}
+              className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Plus size={12} /> Novo processo
+            </button>
+          </div>
+
+          {processMaps.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-100 rounded-xl">
+              <GitBranch size={28} className="mx-auto mb-2 text-gray-200" strokeWidth={1.5} />
+              <p className="text-sm font-medium">Nenhum processo mapeado ainda</p>
+              <p className="text-xs mt-1">Clique em &quot;Novo processo&quot; para adicionar</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {processMaps.map((pm) => (
+                <div key={pm.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{pm.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{pm.responsibleArea} · {pm.frequency}</p>
+                    </div>
+                    <button
+                      onClick={() => onRemoveProcessMap(pm.id)}
+                      className="p-1 text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-3 leading-relaxed">{pm.objective}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Entradas</p>
+                      <ul className="space-y-0.5">
+                        {pm.inputs.map((inp, i) => (
+                          <li key={i} className="flex items-start gap-1.5 text-xs text-gray-700">
+                            <span className="mt-1.5 w-1 h-1 rounded-full bg-blue-400 flex-shrink-0" />
+                            {inp}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Saídas</p>
+                      <ul className="space-y-0.5">
+                        {pm.outputs.map((out, i) => (
+                          <li key={i} className="flex items-start gap-1.5 text-xs text-gray-700">
+                            <span className="mt-1.5 w-1 h-1 rounded-full bg-emerald-400 flex-shrink-0" />
+                            {out}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
       </div>{/* end #diagnostic-results */}
+
+      {/* ── Process Mapping Form modal ──────────────────────────────────── */}
+      {showProcessMapForm && (
+        <ProcessMappingForm
+          onSave={(map) => { onAddProcessMap(map); setShowProcessMapForm(false); }}
+          onCancel={() => setShowProcessMapForm(false)}
+        />
+      )}
 
     </div>
   );

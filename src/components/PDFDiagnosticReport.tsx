@@ -16,10 +16,9 @@ interface Props {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const NAVY   = '#1e3a8a';
-const BLUE   = '#2563eb';
-const LBLUE  = '#eff6ff';
-const DBLUE  = '#1e40af';
+const NAVY  = '#1e3a8a';
+const BLUE  = '#2563eb';
+const LBLUE = '#eff6ff';
 
 const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
   'quick-wins':     'Quick Win',
@@ -27,23 +26,11 @@ const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
   'transformation': 'Transformação Operacional',
 };
 
-const CATEGORY_COLOR: Record<RoadmapCategory, string> = {
-  'quick-wins':     '#059669',
-  'strategic':      '#2563eb',
-  'transformation': '#7c3aed',
-};
-
 function getPotential(score: number): { label: string; color: string } {
   if (score >= 24) return { label: 'Muito Alto', color: '#dc2626' };
   if (score >= 20) return { label: 'Alto',       color: '#d97706' };
   if (score >= 16) return { label: 'Médio',      color: '#a16207' };
   return               { label: 'Baixo',      color: '#6b7280' };
-}
-
-function priorityColor(p: string) {
-  if (p === 'Alta')  return '#dc2626';
-  if (p === 'Média') return '#d97706';
-  return '#6b7280';
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
@@ -54,8 +41,8 @@ const s = StyleSheet.create({
   coverPage: { padding: 0, fontFamily: 'Helvetica', backgroundColor: '#ffffff' },
   page: {
     paddingHorizontal: 44,
-    paddingTop: 40,
-    paddingBottom: 54,
+    paddingTop: 36,
+    paddingBottom: 50,
     fontFamily: 'Helvetica',
     fontSize: 10,
     color: '#111827',
@@ -89,11 +76,15 @@ const s = StyleSheet.create({
   secHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: 10,
-    marginBottom: 16,
+    paddingBottom: 8,
+    marginBottom: 10,
+    marginTop: 18,
     borderBottomWidth: 2,
     borderBottomColor: NAVY,
     borderBottomStyle: 'solid',
+  },
+  secHeaderFirst: {
+    marginTop: 0,
   },
   secNum: {
     fontSize: 8,
@@ -112,8 +103,8 @@ const s = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     color: '#374151',
     textTransform: 'uppercase',
-    marginTop: 18,
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 6,
   },
 
   // ── Summary paragraph ──────────────────────────────────────────────────────
@@ -125,13 +116,13 @@ const s = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: BLUE,
     borderLeftStyle: 'solid',
-    padding: 12,
+    padding: 10,
     borderRadius: 5,
-    marginBottom: 16,
+    marginBottom: 10,
   },
 
   // ── KPI cards ──────────────────────────────────────────────────────────────
-  kpiRow: { flexDirection: 'row', marginBottom: 16 },
+  kpiRow: { flexDirection: 'row', marginBottom: 10 },
   kpiCard: {
     flex: 1,
     backgroundColor: '#f8fafc',
@@ -142,13 +133,13 @@ const s = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderStyle: 'solid',
     borderRadius: 5,
-    padding: 10,
+    padding: 8,
     marginRight: 8,
     alignItems: 'center',
   },
   kpiCardLast: { marginRight: 0 },
-  kpiVal:      { fontSize: 18, fontFamily: 'Helvetica-Bold', color: NAVY, marginBottom: 3, textAlign: 'center' },
-  kpiLabel:    { fontSize: 7.5, color: '#6b7280', textAlign: 'center', lineHeight: 1.4 },
+  kpiVal:   { fontSize: 16, fontFamily: 'Helvetica-Bold', color: NAVY, marginBottom: 3, textAlign: 'center' },
+  kpiLabel: { fontSize: 7, color: '#6b7280', textAlign: 'center', lineHeight: 1.4 },
 
   // ── Top 3 ──────────────────────────────────────────────────────────────────
   top3Row: {
@@ -156,17 +147,17 @@ const s = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f8fafc',
     borderRadius: 5,
-    padding: 10,
-    marginBottom: 6,
+    padding: 8,
+    marginBottom: 5,
     borderLeftWidth: 3,
     borderLeftStyle: 'solid',
   },
-  top3Rank:    { width: 26, fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#d1d5db' },
+  top3Rank:    { width: 26, fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#d1d5db' },
   top3Content: { flex: 1, paddingRight: 8 },
-  top3Name:    { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#111827', marginBottom: 2 },
-  top3Meta:    { fontSize: 7.5, color: '#9ca3af' },
-  top3Score:   { fontSize: 18, fontFamily: 'Helvetica-Bold', textAlign: 'center', width: 34 },
-  top3Badge:   { fontSize: 7.5, fontFamily: 'Helvetica-Bold', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3, marginLeft: 8, color: '#ffffff' },
+  top3Name:    { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827', marginBottom: 2 },
+  top3Meta:    { fontSize: 7, color: '#9ca3af' },
+  top3Score:   { fontSize: 16, fontFamily: 'Helvetica-Bold', textAlign: 'center', width: 32 },
+  top3Badge:   { fontSize: 7, fontFamily: 'Helvetica-Bold', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3, marginLeft: 8, color: '#ffffff' },
 
   // ── Overview cards ─────────────────────────────────────────────────────────
   ovRow: { flexDirection: 'row' },
@@ -176,22 +167,22 @@ const s = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderStyle: 'solid',
     borderRadius: 5,
-    padding: 12,
+    padding: 10,
     marginRight: 8,
   },
   ovCardLast: { marginRight: 0 },
-  ovCardTitle: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#9ca3af', textTransform: 'uppercase', marginBottom: 10 },
+  ovCardTitle: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#9ca3af', textTransform: 'uppercase', marginBottom: 8 },
   ovDataRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderBottomWidth: 0.5,
     borderBottomColor: '#f3f4f6',
     borderBottomStyle: 'solid',
   },
-  ovDataLabel: { fontSize: 9, color: '#6b7280' },
-  ovDataVal:   { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827' },
+  ovDataLabel: { fontSize: 8.5, color: '#6b7280' },
+  ovDataVal:   { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#111827' },
 
   // ── Table ──────────────────────────────────────────────────────────────────
   tblWrap: {
@@ -199,17 +190,16 @@ const s = StyleSheet.create({
     borderColor: '#e5e7eb',
     borderStyle: 'solid',
     borderRadius: 5,
-    overflow: 'hidden',
   },
   tblHead: {
     flexDirection: 'row',
     backgroundColor: NAVY,
-    paddingVertical: 8,
+    paddingVertical: 7,
     paddingHorizontal: 6,
   },
   tblRow: {
     flexDirection: 'row',
-    paddingVertical: 7,
+    paddingVertical: 6,
     paddingHorizontal: 6,
     borderBottomWidth: 0.5,
     borderBottomColor: '#f3f4f6',
@@ -217,7 +207,7 @@ const s = StyleSheet.create({
   },
   tblRowAlt: { backgroundColor: '#f9fafb' },
   th: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#ffffff', paddingHorizontal: 3 },
-  td: { fontSize: 9, color: '#111827', paddingHorizontal: 3 },
+  td: { fontSize: 8.5, color: '#111827', paddingHorizontal: 3 },
 
   // ── Matrix ─────────────────────────────────────────────────────────────────
   matGrid: { flexDirection: 'row', flexWrap: 'wrap' },
@@ -226,33 +216,33 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'solid',
     borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
+    padding: 8,
+    marginBottom: 8,
     marginRight: '2%',
   },
-  matTitle: { fontSize: 8, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', marginBottom: 8 },
-  matItem:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-  matName:  { fontSize: 8, color: '#374151', flex: 1, paddingRight: 6 },
-  matBadge: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 },
+  matTitle: { fontSize: 8, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', marginBottom: 6 },
+  matItem:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  matName:  { fontSize: 7.5, color: '#374151', flex: 1, paddingRight: 6 },
+  matBadge: { fontSize: 7, fontFamily: 'Helvetica-Bold', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 3 },
   matEmpty: { fontSize: 7.5, color: '#9ca3af' },
 
   // ── Roadmap ────────────────────────────────────────────────────────────────
-  rmStep: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
+  rmStep: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
   rmCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: NAVY,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
     marginTop: 1,
     flexShrink: 0,
   },
-  rmNum:     { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#ffffff' },
-  rmContent: { flex: 1, borderBottomWidth: 0.5, borderBottomColor: '#f3f4f6', borderBottomStyle: 'solid', paddingBottom: 8 },
-  rmTitle:   { fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#111827', marginBottom: 2 },
-  rmDesc:    { fontSize: 8, color: '#6b7280' },
+  rmNum:     { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#ffffff' },
+  rmContent: { flex: 1, borderBottomWidth: 0.5, borderBottomColor: '#f3f4f6', borderBottomStyle: 'solid', paddingBottom: 6 },
+  rmTitle:   { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#111827', marginBottom: 2 },
+  rmDesc:    { fontSize: 7.5, color: '#6b7280' },
 
   // ── Insights ───────────────────────────────────────────────────────────────
   insightsBox: {
@@ -261,29 +251,29 @@ const s = StyleSheet.create({
     borderColor: '#fde68a',
     borderStyle: 'solid',
     borderRadius: 6,
-    padding: 14,
+    padding: 12,
   },
-  insRow:   { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
-  insDot:   { width: 6, height: 6, borderRadius: 3, backgroundColor: '#f59e0b', marginRight: 10, marginTop: 3, flexShrink: 0 },
-  insText:  { flex: 1, fontSize: 9.5, color: '#374151', lineHeight: 1.55 },
+  insRow:  { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
+  insDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: '#f59e0b', marginRight: 10, marginTop: 3, flexShrink: 0 },
+  insText: { flex: 1, fontSize: 9, color: '#374151', lineHeight: 1.5 },
 
   // ── CTA ────────────────────────────────────────────────────────────────────
-  ctaCard: { backgroundColor: NAVY, borderRadius: 8, padding: 24, marginTop: 8 },
-  ctaTitle: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#ffffff', marginBottom: 6 },
-  ctaText:  { fontSize: 9.5, color: '#bfdbfe', lineHeight: 1.5, marginBottom: 14 },
-  ctaBullet: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 5 },
+  ctaCard: { backgroundColor: NAVY, borderRadius: 8, padding: 20, marginTop: 6 },
+  ctaTitle: { fontSize: 13, fontFamily: 'Helvetica-Bold', color: '#ffffff', marginBottom: 5 },
+  ctaText:  { fontSize: 9, color: '#bfdbfe', lineHeight: 1.5, marginBottom: 10 },
+  ctaBullet: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
   ctaDot:    { width: 4, height: 4, borderRadius: 2, backgroundColor: '#60a5fa', marginRight: 8, marginTop: 4, flexShrink: 0 },
-  ctaBulletText: { fontSize: 9, color: '#dbeafe', flex: 1 },
+  ctaBulletText: { fontSize: 8.5, color: '#dbeafe', flex: 1 },
   ctaLink: {
-    marginTop: 16,
+    marginTop: 12,
     borderWidth: 1,
     borderColor: '#93c5fd',
     borderStyle: 'solid',
     borderRadius: 4,
-    padding: 10,
+    padding: 8,
     alignSelf: 'flex-start',
   },
-  ctaLinkText: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#93c5fd' },
+  ctaLinkText: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#93c5fd' },
 
   // ── Page footer ────────────────────────────────────────────────────────────
   pgFooter: {
@@ -293,14 +283,13 @@ const s = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: '#e5e7eb',
     borderTopStyle: 'solid',
-    paddingTop: 8,
-    marginTop: 'auto',
+    paddingTop: 6,
     position: 'absolute',
-    bottom: 24,
+    bottom: 20,
     left: 44,
     right: 44,
   },
-  pgFooterText: { fontSize: 7.5, color: '#9ca3af' },
+  pgFooterText: { fontSize: 7, color: '#9ca3af' },
 });
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -308,21 +297,21 @@ const s = StyleSheet.create({
 function fmt(n: number) { return n.toLocaleString('pt-BR'); }
 function fmtCurrency(n: number) { return `R$ ${n.toLocaleString('pt-BR')}`; }
 
-function SectionHeader({ num, title }: { num: string; title: string }) {
+function SectionHeader({ num, title, first }: { num: string; title: string; first?: boolean }) {
   return (
-    <View style={s.secHeader}>
+    <View style={[s.secHeader, first ? s.secHeaderFirst : {}]}>
       <Text style={s.secNum}>{num}</Text>
       <Text style={s.secTitle}>{title}</Text>
     </View>
   );
 }
 
-function PageFooter({ company, label }: { company?: string; label: string }) {
+function PageFooter({ company }: { company?: string }) {
   return (
     <View style={s.pgFooter} fixed>
       <Text style={s.pgFooterText}>{company ? `Confidencial · ${company}` : 'Confidencial'}</Text>
       <Text style={s.pgFooterText}>Diagnóstico de Eficiência Operacional</Text>
-      <Text style={s.pgFooterText}>{label}</Text>
+      <Text style={s.pgFooterText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
     </View>
   );
 }
@@ -347,7 +336,7 @@ export default function PDFDiagnosticReport({
   const totalSavingsHours    = assessments.reduce((a, x) => a + x.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((a, x) => a + x.financialImpact, 0);
 
-  const top3 = ranked.slice(0, 3);
+  const top3    = ranked.slice(0, 3);
   const company = identification?.company;
 
   return (
@@ -357,8 +346,6 @@ export default function PDFDiagnosticReport({
           PAGE 1 — COVER
       ════════════════════════════════════════════════════════════════════ */}
       <Page size="A4" style={s.coverPage}>
-
-        {/* Blue top section */}
         <View style={s.coverTop}>
           <View style={s.coverAccent} />
           <Text style={s.coverBrand}>META</Text>
@@ -366,7 +353,6 @@ export default function PDFDiagnosticReport({
           <Text style={s.coverSub}>Identificação de oportunidades de automação</Text>
         </View>
 
-        {/* White bottom section */}
         <View style={s.coverBottom}>
           <View style={s.coverInfoRow}>
             {identification && (
@@ -403,19 +389,18 @@ export default function PDFDiagnosticReport({
       </Page>
 
       {/* ════════════════════════════════════════════════════════════════════
-          PAGE 2 — EXECUTIVE SUMMARY + DIAGNOSTIC OVERVIEW
+          CONTENT PAGES — continuous flow
       ════════════════════════════════════════════════════════════════════ */}
       <Page size="A4" style={s.page}>
-        <PageFooter company={company} label="Sumário Executivo" />
+        <PageFooter company={company} />
 
-        <SectionHeader num="01" title="Sumário Executivo" />
+        {/* ── 01 Sumário Executivo ─────────────────────────────────────────── */}
+        <SectionHeader num="01" title="Sumário Executivo" first />
 
-        {/* Summary paragraph */}
         <Text style={s.summaryPara}>
           {`O presente diagnóstico avaliou ${assessments.length} subprocesso${assessments.length !== 1 ? 's' : ''} operacional${assessments.length !== 1 ? 'is' : ''}, identificando ${summary.alta} com alta prioridade para automação. A análise estima um potencial de economia de ${fmt(totalSavingsHours)} horas operacionais por ano, representando um impacto financeiro estimado de ${fmtCurrency(totalFinancialImpact)} anuais.`}
         </Text>
 
-        {/* KPI cards */}
         <View style={s.kpiRow}>
           {([
             { label: 'Subprocessos\navaliados',        value: String(assessments.length) },
@@ -430,7 +415,6 @@ export default function PDFDiagnosticReport({
           ))}
         </View>
 
-        {/* Top 3 */}
         <Text style={s.subsecTitle}>Principais Oportunidades de Automação</Text>
         {top3.map((item, i) => {
           const colors = ['#dc2626', '#d97706', '#6b7280'];
@@ -448,11 +432,10 @@ export default function PDFDiagnosticReport({
           );
         })}
 
-        {/* Diagnostic overview */}
+        {/* ── 02 Visão Geral ───────────────────────────────────────────────── */}
         <SectionHeader num="02" title="Visão Geral do Diagnóstico" />
 
         <View style={s.ovRow}>
-          {/* Priority distribution */}
           <View style={s.ovCard}>
             <Text style={s.ovCardTitle}>Distribuição de Prioridades</Text>
             {([
@@ -467,14 +450,13 @@ export default function PDFDiagnosticReport({
             ))}
           </View>
 
-          {/* Impact indicators */}
           <View style={[s.ovCard, s.ovCardLast]}>
             <Text style={s.ovCardTitle}>Indicadores de Impacto</Text>
             {([
-              { label: 'Processos analisados',     value: String(assessments.length) },
-              { label: 'Esforço mapeado (h/ano)',   value: `${fmt(totalAnnualHours)} h` },
-              { label: 'Potencial automação (h/ano)',value: `${fmt(totalSavingsHours)} h` },
-              { label: 'Economia estimada (R$/ano)', value: fmtCurrency(totalFinancialImpact) },
+              { label: 'Processos analisados',       value: String(assessments.length) },
+              { label: 'Esforço mapeado (h/ano)',     value: `${fmt(totalAnnualHours)} h` },
+              { label: 'Potencial automação (h/ano)', value: `${fmt(totalSavingsHours)} h` },
+              { label: 'Economia estimada (R$/ano)',  value: fmtCurrency(totalFinancialImpact) },
             ] as const).map(({ label, value }) => (
               <View key={label} style={s.ovDataRow}>
                 <Text style={s.ovDataLabel}>{label}</Text>
@@ -483,14 +465,8 @@ export default function PDFDiagnosticReport({
             ))}
           </View>
         </View>
-      </Page>
 
-      {/* ════════════════════════════════════════════════════════════════════
-          PAGE 3 — RANKING
-      ════════════════════════════════════════════════════════════════════ */}
-      <Page size="A4" style={s.page}>
-        <PageFooter company={company} label="Ranking de Potencial" />
-
+        {/* ── 03 Ranking ───────────────────────────────────────────────────── */}
         <SectionHeader num="03" title="Ranking de Potencial de Automação" />
 
         <View style={s.tblWrap}>
@@ -512,14 +488,8 @@ export default function PDFDiagnosticReport({
             );
           })}
         </View>
-      </Page>
 
-      {/* ════════════════════════════════════════════════════════════════════
-          PAGE 4 — PRIORITIZATION MATRIX
-      ════════════════════════════════════════════════════════════════════ */}
-      <Page size="A4" style={s.page}>
-        <PageFooter company={company} label="Matriz de Priorização" />
-
+        {/* ── 04 Matriz de Priorização ─────────────────────────────────────── */}
         <SectionHeader num="04" title="Matriz de Priorização de Automação" />
 
         <View style={s.matGrid}>
@@ -546,41 +516,30 @@ export default function PDFDiagnosticReport({
             );
           })}
         </View>
-      </Page>
 
-      {/* ════════════════════════════════════════════════════════════════════
-          PAGE 5 — ROADMAP
-      ════════════════════════════════════════════════════════════════════ */}
-      {roadmap.length > 0 && (
-        <Page size="A4" style={s.page}>
-          <PageFooter company={company} label="Roadmap de Automação" />
-
-          <SectionHeader num="05" title="Roadmap de Automação Sugerido" />
-
-          {roadmap.map((item, i) => (
-            <View key={item.subprocessId} style={s.rmStep}>
-              <View style={s.rmCircle}>
-                <Text style={s.rmNum}>{i + 1}</Text>
+        {/* ── 05 Roadmap ───────────────────────────────────────────────────── */}
+        {roadmap.length > 0 && (
+          <>
+            <SectionHeader num="05" title="Roadmap de Automação Sugerido" />
+            {roadmap.map((item, i) => (
+              <View key={item.subprocessId} style={s.rmStep}>
+                <View style={s.rmCircle}>
+                  <Text style={s.rmNum}>{i + 1}</Text>
+                </View>
+                <View style={s.rmContent}>
+                  <Text style={s.rmTitle}>{item.subprocessName}</Text>
+                  <Text style={s.rmDesc}>
+                    {CATEGORY_LABELS[item.roadmapCategory]}
+                    {' · '}{item.timeline}
+                    {' · '}Economia est.: {fmtCurrency(item.estimatedSavings)}
+                  </Text>
+                </View>
               </View>
-              <View style={s.rmContent}>
-                <Text style={s.rmTitle}>{item.subprocessName}</Text>
-                <Text style={s.rmDesc}>
-                  {CATEGORY_LABELS[item.roadmapCategory]}
-                  {' · '}{item.timeline}
-                  {' · '}Economia est.: {fmtCurrency(item.estimatedSavings)}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </Page>
-      )}
+            ))}
+          </>
+        )}
 
-      {/* ════════════════════════════════════════════════════════════════════
-          PAGE 6 — INSIGHTS + NEXT STEPS
-      ════════════════════════════════════════════════════════════════════ */}
-      <Page size="A4" style={s.page}>
-        <PageFooter company={company} label="Insights & Próximos Passos" />
-
+        {/* ── 06 Insights ──────────────────────────────────────────────────── */}
         {insights && insights.length > 0 && (
           <>
             <SectionHeader num="06" title="Insights do Diagnóstico" />
@@ -595,6 +554,7 @@ export default function PDFDiagnosticReport({
           </>
         )}
 
+        {/* ── 07 Próximos Passos ───────────────────────────────────────────── */}
         <SectionHeader
           num={insights && insights.length > 0 ? '07' : '06'}
           title="Próximos Passos"
@@ -621,6 +581,7 @@ export default function PDFDiagnosticReport({
             <Text style={s.ctaLinkText}>meta.com.br/contato</Text>
           </View>
         </View>
+
       </Page>
 
     </Document>
