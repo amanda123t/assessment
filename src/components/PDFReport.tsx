@@ -173,6 +173,39 @@ export default function PDFReport({ assessments, ranked, roadmap }: Props) {
         })}
       </div>
 
+      {/* ── Ranking de Potencial de Automação ───────────────────────────── */}
+      <div style={{ padding: '20px 32px 0' }}>
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e40af', borderBottom: '2px solid #e5e7eb', paddingBottom: '6px', marginBottom: '14px' }}>
+          Ranking de Potencial de Automação
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f3f4f6' }}>
+              {['Rank', 'Processo', 'Pontuação', 'Potencial'].map((h) => (
+                <th key={h} style={{ border: '1px solid #e5e7eb', padding: '6px 10px', textAlign: h === 'Pontuação' || h === 'Rank' || h === 'Potencial' ? 'center' : 'left', color: '#374151', fontWeight: 'bold' }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ranked.slice(0, 10).map((item, i) => {
+              const score = item.totalScore;
+              const potential = score >= 24 ? 'Muito Alto' : score >= 20 ? 'Alto' : score >= 16 ? 'Médio' : 'Baixo';
+              const potentialColor = score >= 24 ? '#dc2626' : score >= 20 ? '#d97706' : score >= 16 ? '#a16207' : '#6b7280';
+              return (
+                <tr key={item.subprocessId} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
+                  <td style={{ border: '1px solid #e5e7eb', padding: '6px 10px', textAlign: 'center', color: '#9ca3af', fontWeight: 'bold' }}>{item.rank}</td>
+                  <td style={{ border: '1px solid #e5e7eb', padding: '6px 10px', color: '#111827' }}>{item.subprocessName}</td>
+                  <td style={{ border: '1px solid #e5e7eb', padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: '#111827' }}>{item.totalScore}</td>
+                  <td style={{ border: '1px solid #e5e7eb', padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: potentialColor }}>{potential}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
       {/* ── Próximos Passos (CTA) ────────────────────────────────────────── */}
       <div style={{ margin: '24px 32px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '20px 24px' }}>
         <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e3a5f', marginBottom: '6px' }}>Próximos Passos</div>

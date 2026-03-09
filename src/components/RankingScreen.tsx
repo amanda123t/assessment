@@ -26,6 +26,13 @@ function fmt(n: number): string {
   return n.toLocaleString('pt-BR');
 }
 
+function getAutomationPotential(score: number): { label: string; color: string } {
+  if (score >= 24) return { label: 'Muito Alto', color: 'text-red-600 bg-red-50 border-red-200' };
+  if (score >= 20) return { label: 'Alto',       color: 'text-orange-600 bg-orange-50 border-orange-200' };
+  if (score >= 16) return { label: 'Médio',      color: 'text-yellow-700 bg-yellow-50 border-yellow-200' };
+  return               { label: 'Baixo',      color: 'text-gray-600 bg-gray-50 border-gray-200' };
+}
+
 function fmtCurrency(n: number): string {
   return `R$ ${n.toLocaleString('pt-BR')}`;
 }
@@ -772,6 +779,43 @@ export default function RankingScreen({
             </ul>
           </section>
         )}
+
+      {/* ── Ranking de Potencial de Automação ────────────────────────── */}
+      <section className="mb-8">
+        <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <Trophy size={16} className="text-blue-600" strokeWidth={1.75} />
+          Ranking de Potencial de Automação
+        </h3>
+        <div className="overflow-hidden rounded-xl border border-gray-200">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-12">Rank</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Processo</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-24">Pontuação</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-28">Potencial</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ranked.slice(0, 10).map((item, i) => {
+                const potential = getAutomationPotential(item.totalScore);
+                return (
+                  <tr key={item.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                    <td className="px-4 py-3 text-center font-bold text-gray-400 text-xs">{item.rank}</td>
+                    <td className="px-4 py-3 text-gray-900">{item.subprocessName}</td>
+                    <td className="px-4 py-3 text-center font-semibold text-gray-800">{item.totalScore}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${potential.color}`}>
+                        {potential.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {/* ── Próximos Passos (CTA) ─────────────────────────────────────── */}
       <section className="mb-8 bg-blue-50 border border-blue-100 rounded-2xl p-6">

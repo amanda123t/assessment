@@ -37,6 +37,13 @@ const PRIORITY_COLOR: Record<string, string> = {
   Baixa: '#6b7280',
 };
 
+function getPotentialLabel(score: number): { label: string; color: string } {
+  if (score >= 24) return { label: 'Muito Alto', color: '#dc2626' };
+  if (score >= 20) return { label: 'Alto',       color: '#d97706' };
+  if (score >= 16) return { label: 'Médio',      color: '#a16207' };
+  return               { label: 'Baixo',      color: '#6b7280' };
+}
+
 const s = StyleSheet.create({
   page: {
     padding: 32,
@@ -389,6 +396,26 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap, iden
             ))}
           </View>
         ))}
+
+        {/* ── Ranking de Potencial de Automação ───────────────────────────── */}
+        <Text style={s.sectionTitle}>Ranking de Potencial de Automação</Text>
+        <View style={s.tableHeaderRow}>
+          <Text style={[s.th, { width: '8%', textAlign: 'center' }]}>Rank</Text>
+          <Text style={[s.th, { width: '54%' }]}>Processo</Text>
+          <Text style={[s.th, { width: '18%', textAlign: 'center' }]}>Pontuação</Text>
+          <Text style={[s.th, { width: '20%', textAlign: 'center' }]}>Potencial</Text>
+        </View>
+        {ranked.slice(0, 10).map((item, i) => {
+          const potential = getPotentialLabel(item.totalScore);
+          return (
+            <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+              <Text style={[s.td, { width: '8%', textAlign: 'center', color: '#9ca3af' }]}>{item.rank}</Text>
+              <Text style={[s.td, { width: '54%' }]}>{item.subprocessName}</Text>
+              <Text style={[s.td, { width: '18%', textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>{item.totalScore}</Text>
+              <Text style={[s.td, { width: '20%', textAlign: 'center', fontFamily: 'Helvetica-Bold', color: potential.color }]}>{potential.label}</Text>
+            </View>
+          );
+        })}
 
         {/* ── Próximos Passos (CTA) ───────────────────────────────────────── */}
         <View style={s.ctaBox}>
