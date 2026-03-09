@@ -9,6 +9,7 @@ import {
 import { processLibrary } from '@/data/processLibrary';
 import { Macroprocess, Process, Subprocess, CriteriaScores } from '@/types';
 import { supabase } from '@/lib/supabaseClient';
+import { calculateTotalScore } from '@/lib/scoring';
 import Questionnaire from '@/components/Questionnaire';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ export default function SessionPage() {
         area: selectedArea.name,
         process: selectedProcess.name,
         subarea_id: selectedSubarea.id,
-        score: scores,
+        score: calculateTotalScore(scores),
         participant_email: email.trim(),
       });
 
