@@ -183,9 +183,12 @@ export default function AssessmentPage() {
         <>
           {/* Persistent header */}
           <header className="bg-white border-b border-gray-100 px-6 py-3 shadow-sm">
-            <div className="max-w-5xl mx-auto">
-              <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
-              <p className="text-xs text-gray-400">Operational Efficiency Assessment</p>
+            <div className="max-w-5xl mx-auto flex items-center gap-2">
+              <img src="/assets/meta-logo.png" alt="Meta logo" className="h-7 w-auto" />
+              <div>
+                <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
+                <p className="text-xs text-gray-400">Operational Efficiency Assessment</p>
+              </div>
             </div>
           </header>
 
