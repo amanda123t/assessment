@@ -7,7 +7,6 @@ import {
   SelectedSubprocessItem,
 } from '@/types';
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
-import { getSupabase } from '@/lib/supabaseClient';
 
 import StepIndicator from '@/components/StepIndicator';
 import StartScreen from '@/components/StartScreen';
