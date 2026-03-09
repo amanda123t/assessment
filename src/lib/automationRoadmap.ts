@@ -1,6 +1,6 @@
 import { SubprocessAssessment } from '@/types';
 
-export type RoadmapCategory = 'quick-wins' | 'strategic' | 'transformation';
+export type RoadmapCategory = 'quick-wins' | 'strategic' | 'transformation' | 'low-priority';
 
 export interface RoadmapItem {
   subprocessId: string;
@@ -8,11 +8,13 @@ export interface RoadmapItem {
   macroprocessName: string;
   processName: string;
   automationScore: number;
-  /** Composite 0–100: automation potential weighted 60%, normalised savings 40%. */
+  /** log(annualHours + 1) — normalized operational impact. */
   impactScore: number;
   /** Composite 0–100: proxy for implementation complexity derived from criteria scores. */
   effortScore: number;
   estimatedSavings: number;
+  /** automationScore × log(annualHours + 1) — composite priority metric. */
+  priorityScore: number;
   roadmapCategory: RoadmapCategory;
   timeline: '0–3 meses' | '3–6 meses' | '6–12 meses';
 }
@@ -42,47 +44,73 @@ export function calculateImpactScore(a: SubprocessAssessment, maxSavings: number
   return Math.round(a.automationScore * 0.6 + normalizedSavings * 0.4);
 }
 
-function classifyHorizon(
+function computeMedian(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Classify a subprocess into a roadmap phase.
+ *
+ * Phase 1 – Quick Wins:              high automation (≥60) + high impact (≥ median)
+ * Phase 2 – Strategic Automations:   high impact + medium automation (40–59)
+ * Phase 3 – Complex Transformations: high impact + low automation (<40)
+ * Phase 4 – Low Priority:            low impact (< median), regardless of automation
+ */
+function classifyPhase(
+  automationScore: number,
   impactScore: number,
-  effortScore: number,
+  medianImpactScore: number,
 ): Pick<RoadmapItem, 'roadmapCategory' | 'timeline'> {
-  if (impactScore >= 70 && effortScore <= 40)
-    return { roadmapCategory: 'quick-wins', timeline: '0–3 meses' };
-  if (impactScore >= 70 && effortScore > 40)
-    return { roadmapCategory: 'strategic', timeline: '3–6 meses' };
-  return { roadmapCategory: 'transformation', timeline: '6–12 meses' };
+  const highImpact = impactScore >= medianImpactScore;
+  const highAuto   = automationScore >= 60;
+  const medAuto    = automationScore >= 40;
+
+  if (highAuto && highImpact)  return { roadmapCategory: 'quick-wins',    timeline: '0–3 meses' };
+  if (highImpact && medAuto)   return { roadmapCategory: 'strategic',      timeline: '3–6 meses' };
+  if (highImpact)              return { roadmapCategory: 'transformation', timeline: '6–12 meses' };
+  return                              { roadmapCategory: 'low-priority',   timeline: '6–12 meses' };
 }
 
 const CATEGORY_ORDER: Record<RoadmapCategory, number> = {
-  'quick-wins': 0,
-  'strategic': 1,
+  'quick-wins':    0,
+  'strategic':     1,
   'transformation': 2,
+  'low-priority':  3,
 };
 
-/** Build the full automation roadmap sorted by horizon then by impact descending. */
+/** Build the full automation roadmap sorted by phase then by priorityScore descending. */
 export function buildAutomationRoadmap(assessments: SubprocessAssessment[]): RoadmapItem[] {
   if (assessments.length === 0) return [];
 
-  const maxSavings = Math.max(...assessments.map((a) => a.financialImpact));
-
-  const items: RoadmapItem[] = assessments.map((a) => {
-    const impactScore = calculateImpactScore(a, maxSavings);
-    const effortScore = calculateEffortScore(a);
-    return {
-      subprocessId: a.subprocessId,
-      subprocessName: a.subprocessName,
-      macroprocessName: a.macroprocessName,
-      processName: a.processName,
-      automationScore: a.automationScore,
-      impactScore,
-      effortScore,
-      estimatedSavings: a.financialImpact,
-      ...classifyHorizon(impactScore, effortScore),
-    };
+  // Compute log-based impact and priority scores for each assessment
+  const withScores = assessments.map((a) => {
+    const impactScore    = Math.log(a.annualHours + 1);
+    const priorityScore  = a.automationScore * impactScore;
+    return { assessment: a, impactScore, priorityScore };
   });
+
+  const medianImpactScore = computeMedian(withScores.map((x) => x.impactScore));
+
+  const items: RoadmapItem[] = withScores.map(({ assessment: a, impactScore, priorityScore }) => ({
+    subprocessId:    a.subprocessId,
+    subprocessName:  a.subprocessName,
+    macroprocessName: a.macroprocessName,
+    processName:     a.processName,
+    automationScore: a.automationScore,
+    impactScore,
+    effortScore:     calculateEffortScore(a),
+    estimatedSavings: a.financialImpact,
+    priorityScore,
+    ...classifyPhase(a.automationScore, impactScore, medianImpactScore),
+  }));
 
   return items.sort((a, b) => {
     const orderDiff = CATEGORY_ORDER[a.roadmapCategory] - CATEGORY_ORDER[b.roadmapCategory];
-    return orderDiff !== 0 ? orderDiff : b.impactScore - a.impactScore;
+    return orderDiff !== 0 ? orderDiff : b.priorityScore - a.priorityScore;
   });
 }

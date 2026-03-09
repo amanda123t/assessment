@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   AssessmentState,
   Macroprocess, Process, Subprocess, CriteriaScores,
   SelectedSubprocessItem,
 } from '@/types';
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
+import { getSupabase } from '@/lib/supabaseClient';
 
 import StepIndicator from '@/components/StepIndicator';
 import StartScreen from '@/components/StartScreen';
@@ -28,6 +29,38 @@ const INITIAL_STATE: AssessmentState = {
 
 export default function AssessmentPage() {
   const [state, setState] = useState<AssessmentState>(INITIAL_STATE);
+
+  // Stable session identifier — generated once per page mount.
+  const sessionId = useRef<string>(
+    typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2)
+  );
+
+  // Persist all assessments to Supabase when the ranking step is reached.
+  useEffect(() => {
+    if (state.step !== 'ranking' || state.assessments.length === 0) return;
+
+    const rows = state.assessments.map((a) => ({
+      session_id:  sessionId.current,
+      company:     '',
+      area:        '',
+      process:     a.processName,
+      subarea_id:  a.subprocessId,
+      score:       a.totalScore,
+      created_at:  new Date().toISOString(),
+    }));
+
+    const client = getSupabase();
+    if (!client) return;
+
+    client
+      .from('responses')
+      .insert(rows)
+      .then(({ error }) => {
+        if (error) console.error('[Supabase] Failed to save responses:', error);
+      });
+  // Run once when the step first transitions to 'ranking'.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.step]);
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 

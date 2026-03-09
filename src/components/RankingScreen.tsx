@@ -116,12 +116,14 @@ const ROADMAP_LABELS: Record<RoadmapCategory, string> = {
   'quick-wins':     'Quick Win',
   'strategic':      'Iniciativa Estratégica',
   'transformation': 'Transformação Operacional',
+  'low-priority':   'Baixa Prioridade',
 };
 
 const ROADMAP_BADGE: Record<RoadmapCategory, string> = {
   'quick-wins':     'bg-emerald-50 text-emerald-800 border-emerald-200',
   'strategic':      'bg-blue-50 text-blue-800 border-blue-200',
   'transformation': 'bg-violet-50 text-violet-800 border-violet-200',
+  'low-priority':   'bg-gray-50 text-gray-600 border-gray-200',
 };
 
 // ─── Card style constant ─────────────────────────────────────────────────────
@@ -395,8 +397,8 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
             Oportunidades de Eficiência Operacional
           </h2>
           <p className="text-gray-500 mt-2 max-w-2xl text-sm leading-relaxed">
-            Subprocessos com maiores scores indicam maior potencial de melhoria operacional.
-            Os resultados abaixo foram ordenados do maior para o menor score.
+            Subprocessos priorizados pelo índice composto de automação e impacto operacional.
+            A ordem combina potencial de automação (automationScore) com volume de horas anuais mapeadas.
           </p>
           {savedIdentification && (
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
@@ -691,39 +693,79 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
         </section>
 
         {/* ── 4. Matriz de Priorização de Automação ────────────────────── */}
-        <section className={CARD}>
-          <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Target size={16} className="text-blue-600" strokeWidth={1.75} />
-            Matriz de Priorização de Automação
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: 'bg-red-50',    border: 'border-red-200',    title: 'text-red-700',    badge: 'bg-red-100 text-red-700 border-red-200' },
-              { label: 'Alta Prioridade',           min: 20, max: 24,       bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700', badge: 'bg-orange-100 text-orange-700 border-orange-200' },
-              { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: 'bg-blue-50',   border: 'border-blue-200',   title: 'text-blue-700',   badge: 'bg-blue-100 text-blue-700 border-blue-200' },
-              { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: 'bg-gray-50',   border: 'border-gray-200',   title: 'text-gray-600',   badge: 'bg-gray-100 text-gray-600 border-gray-200' },
-            ].map(({ label, min, max, bg, border, title, badge }) => {
-              const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
-              return (
-                <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
-                  <div className={`text-xs font-bold uppercase tracking-wide mb-3 ${title}`}>{label}</div>
-                  {items.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {items.map(r => (
-                        <li key={r.subprocessId} className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-gray-800 leading-snug flex-1">{r.subprocessName}</span>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge}`}>{r.totalScore}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
+        {(() => {
+          // 2-axis matrix: X = automationScore, Y = impactScore (log(annualHours+1))
+          // Median impactScore is computed dynamically from the dataset
+          const impactValues = ranked.map(r => r.impactScore);
+          const sortedImpact = [...impactValues].sort((a, b) => a - b);
+          const mid = Math.floor(sortedImpact.length / 2);
+          const medianImpact = sortedImpact.length === 0 ? 0
+            : sortedImpact.length % 2 !== 0
+              ? sortedImpact[mid]
+              : (sortedImpact[mid - 1] + sortedImpact[mid]) / 2;
+
+          const quadrants = [
+            {
+              label: 'Prioridade Imediata',
+              desc: 'Alto potencial de automação + alto impacto operacional',
+              filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore >= medianImpact,
+              bg: 'bg-red-50', border: 'border-red-200', title: 'text-red-700', badge: 'bg-red-100 text-red-700 border-red-200',
+            },
+            {
+              label: 'Quick Wins',
+              desc: 'Alto potencial de automação + menor volume de horas',
+              filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore < medianImpact,
+              bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700', badge: 'bg-orange-100 text-orange-700 border-orange-200',
+            },
+            {
+              label: 'Avaliar Engenharia / Integração',
+              desc: 'Alto impacto operacional, mas automação mais complexa',
+              filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore >= medianImpact,
+              bg: 'bg-blue-50', border: 'border-blue-200', title: 'text-blue-700', badge: 'bg-blue-100 text-blue-700 border-blue-200',
+            },
+            {
+              label: 'Baixa Prioridade',
+              desc: 'Baixo potencial de automação e baixo impacto operacional',
+              filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore < medianImpact,
+              bg: 'bg-gray-50', border: 'border-gray-200', title: 'text-gray-600', badge: 'bg-gray-100 text-gray-600 border-gray-200',
+            },
+          ] as const;
+
+          return (
+            <section className={CARD}>
+              <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                <Target size={16} className="text-blue-600" strokeWidth={1.75} />
+                Matriz de Priorização de Automação
+              </h3>
+              <p className="text-xs text-gray-400 mb-4">
+                Eixo X: potencial de automação · Eixo Y: impacto operacional (horas anuais) · limiar Y = mediana do dataset
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                {quadrants.map(({ label, desc, filter, bg, border, title, badge }) => {
+                  const items = ranked.filter(filter);
+                  return (
+                    <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
+                      <div className={`text-xs font-bold uppercase tracking-wide mb-1 ${title}`}>{label}</div>
+                      <p className="text-xs text-gray-400 mb-3 leading-snug">{desc}</p>
+                      {items.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {items.map(r => (
+                            <li key={r.subprocessId} className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-gray-800 leading-snug flex-1">{r.subprocessName}</span>
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge}`}>{r.automationScore}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* ── 5. Roadmap de Automação Sugerido ─────────────────────────── */}
         {autoRoadmap.length > 0 && (

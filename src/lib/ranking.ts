@@ -2,10 +2,13 @@
  * Ranking Module
  *
  * Responsible for:
- * - Sorting subprocesses by total score (descending)
- * - Assigning priority labels (Alta / Média / Baixa)
+ * - Sorting subprocesses by priorityScore (descending)
+ * - Assigning priority labels (Alta / Média / Baixa) based on totalScore
  * - Computing priority color tokens for UI and charts
  * - Preparing chart-ready data arrays
+ *
+ * priorityScore = automationScore × log(annualHours + 1)
+ * impactScore   = log(annualHours + 1)
  *
  * No UI code here — only plain data transformations.
  */
@@ -21,6 +24,10 @@ export interface RankedAssessment extends SubprocessAssessment {
   barColor: string;        // Tailwind bg color class
   badgeColor: string;      // Tailwind badge class set
   scorePercent: number;    // 0–100 for progress bars
+  /** Natural-log of annualHours+1 — normalized operational impact for matrix/roadmap. */
+  impactScore: number;
+  /** automationScore × log(annualHours + 1) — composite ranking metric. */
+  priorityScore: number;
 }
 
 export interface ChartDataPoint {
@@ -30,6 +37,16 @@ export interface ChartDataPoint {
 }
 
 const MAX_SCORE = 30;
+
+/** Normalized operational impact: log(annualHours + 1). */
+export function computeImpactScore(annualHours: number): number {
+  return Math.log(annualHours + 1);
+}
+
+/** Composite priority: automationScore × log(annualHours + 1). */
+export function computePriorityScore(automationScore: number, annualHours: number): number {
+  return automationScore * Math.log(annualHours + 1);
+}
 
 function getPriority(score: number): Priority {
   const pct = score / MAX_SCORE;
@@ -64,10 +81,20 @@ function getPriorityColors(priority: Priority) {
   }
 }
 
-/** Sort assessments by score descending and enrich with ranking metadata. */
+/**
+ * Sort assessments by priorityScore descending and enrich with ranking metadata.
+ * priorityScore = automationScore × log(annualHours + 1)
+ * impactScore   = log(annualHours + 1)
+ * Priority label (Alta/Média/Baixa) continues to derive from totalScore for display consistency.
+ */
 export function buildRanking(assessments: SubprocessAssessment[]): RankedAssessment[] {
   return [...assessments]
-    .sort((a, b) => b.totalScore - a.totalScore)
+    .map((assessment) => ({
+      ...assessment,
+      impactScore: computeImpactScore(assessment.annualHours),
+      priorityScore: computePriorityScore(assessment.automationScore, assessment.annualHours),
+    }))
+    .sort((a, b) => b.priorityScore - a.priorityScore)
     .map((assessment, idx) => {
       const priority = getPriority(assessment.totalScore);
       const colors = getPriorityColors(priority);
