@@ -13,6 +13,7 @@ import { SubprocessAssessment, CRITERIA, AssessmentIdentification } from '@/type
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
+import ProcessRanking from './ProcessRanking';
 
 interface Props {
   assessments: SubprocessAssessment[];
@@ -321,6 +322,9 @@ export default function RankingScreen({
             </div>
           )}
         </div>
+
+        {/* ── Process Ranking ──────────────────────────────────────── */}
+        <ProcessRanking ranked={ranked} />
 
         {/* ── Executive Summary ────────────────────────────────────── */}
         <section className="mb-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white">

@@ -270,6 +270,29 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap, iden
           ))}
         </View>
 
+        {/* ── Ranking de Processos ────────────────────────────────────────── */}
+        <Text style={s.sectionTitle}>Ranking de Processos</Text>
+        <View style={s.tableHeaderRow}>
+          <Text style={[s.th, { width: '5%' }]}>#</Text>
+          <Text style={[s.th, { width: '30%' }]}>Processo</Text>
+          <Text style={[s.th, { width: '37%' }]}>Subprocesso</Text>
+          <Text style={[s.th, { width: '12%', textAlign: 'center' }]}>Score</Text>
+          <Text style={[s.th, { width: '16%', textAlign: 'center' }]}>Prioridade</Text>
+        </View>
+        {ranked.map((item, i) => {
+          const prLabel = item.totalScore >= 20 ? 'Alta' : item.totalScore >= 14 ? 'Média' : 'Baixa';
+          const prColor = item.totalScore >= 20 ? '#dc2626' : item.totalScore >= 14 ? '#d97706' : '#6b7280';
+          return (
+            <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+              <Text style={[s.td, { width: '5%', color: '#6b7280' }]}>{item.rank}</Text>
+              <Text style={[s.td, { width: '30%' }]}>{item.processName}</Text>
+              <Text style={[s.td, { width: '37%' }]}>{item.subprocessName}</Text>
+              <Text style={[s.td, { width: '12%', textAlign: 'center', color: prColor }]}>{item.totalScore}</Text>
+              <Text style={[s.td, { width: '16%', textAlign: 'center', color: prColor }]}>{prLabel}</Text>
+            </View>
+          );
+        })}
+
         {/* ── Ranking de Oportunidades ────────────────────────────────────── */}
         <Text style={s.sectionTitle}>Ranking de Oportunidades</Text>
         <View style={s.tableHeaderRow}>
