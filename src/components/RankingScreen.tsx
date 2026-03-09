@@ -6,14 +6,13 @@ import {
   ResponsiveContainer, Cell,
 } from 'recharts';
 import {
-  Trophy, BarChart2, FileDown, RotateCcw, X, Activity,
+  Trophy, BarChart2, FileDown, RotateCcw, Activity,
   Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown,
 } from 'lucide-react';
-import { SubprocessAssessment, CRITERIA, AssessmentIdentification } from '@/types';
+import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
-import ProcessRanking from './ProcessRanking';
 
 interface Props {
   assessments: SubprocessAssessment[];
@@ -47,83 +46,6 @@ function CustomTooltip({ active, payload }: {
     <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm">
       <p className="font-semibold text-gray-800 mb-1 max-w-[220px] leading-snug">{d.name}</p>
       <p className="text-blue-600 font-bold">Score: {d.score}</p>
-    </div>
-  );
-}
-
-function DetailModal({ item, onClose }: { item: RankedAssessment; onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <p className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">
-              {item.macroprocessName} › {item.processName}
-            </p>
-            <h3 className="text-lg font-bold text-gray-900">{item.subprocessName}</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors ml-4 flex-shrink-0"
-            aria-label="Fechar"
-          >
-            <X size={18} strokeWidth={1.75} />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className={`text-2xl font-extrabold ${item.priorityColor}`}>
-            {item.totalScore}
-          </span>
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
-            {item.priority} Prioridade
-          </span>
-          {item.isCustom && (
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-blue-50 text-blue-700 border-blue-200">
-              Personalizado
-            </span>
-          )}
-        </div>
-
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-gray-50 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-400 mb-0.5">Esforço anual</p>
-            <p className="font-bold text-gray-800 text-sm">{fmt(item.annualHours)}h</p>
-          </div>
-          <div className="bg-blue-50 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-400 mb-0.5">Economia pot.</p>
-            <p className="font-bold text-blue-700 text-sm">{fmt(item.automationSavingsHours)}h</p>
-          </div>
-          <div className="bg-green-50 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-400 mb-0.5">Impacto fin.</p>
-            <p className="font-bold text-green-700 text-sm">{fmtCurrency(item.financialImpact)}</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {CRITERIA.map((c) => {
-            const score = item.scores[c.key];
-            const pct = (score / 4) * 100;
-            return (
-              <div key={c.key}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-gray-600 font-medium">{c.label}</span>
-                  <span className="font-bold text-gray-800">{score}/4</span>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }
@@ -215,18 +137,8 @@ export default function RankingScreen({
   generatedAt,
   onRestart,
 }: Props) {
-  const [selected, setSelected] = useState<RankedAssessment | null>(null);
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandedRoadmapSections, setExpandedRoadmapSections] = useState<Set<RoadmapCategory>>(new Set());
   const [generatingPdf, setGeneratingPdf] = useState(false);
-
-  const toggleRow = (id: string) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
 
   const toggleRoadmapSection = (cat: RoadmapCategory) => {
     setExpandedRoadmapSections((prev) => {
@@ -329,9 +241,6 @@ export default function RankingScreen({
             </div>
           )}
         </div>
-
-        {/* ── Process Ranking ──────────────────────────────────────── */}
-        <ProcessRanking ranked={ranked} />
 
         {/* ── Executive Summary ────────────────────────────────────── */}
         <section className="mb-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white">
@@ -440,8 +349,8 @@ export default function RankingScreen({
           </section>
         )}
 
-        {/* ── Chart ────────────────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-8">
+        {/* ── Chart (shown only when there are more than 5 subprocesses) ── */}
+        {ranked.length > 5 && <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-8">
           <h3 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
             <BarChart2 size={16} className="text-blue-500" strokeWidth={1.75} />
             Score por Subprocesso{chartData.length < ranked.length ? ` (Top ${chartData.length})` : ''}
@@ -476,163 +385,7 @@ export default function RankingScreen({
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
-
-        {/* ── Ranking table (accordion) ─────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-8">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-800">Ranking Detalhado</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Clique em qualquer linha para expandir os critérios avaliados
-            </p>
-          </div>
-
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">#</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Subprocesso</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Score</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Automação</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Economia Potencial</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Prioridade</th>
-                <th className="w-10" />
-              </tr>
-            </thead>
-            <tbody>
-              {ranked.map((item) => {
-                const isExpanded = expandedRows.has(item.subprocessId);
-                return (
-                  <>
-                    {/* ── Level 1 — summary row ── */}
-                    <tr
-                      key={item.subprocessId}
-                      onClick={() => toggleRow(item.subprocessId)}
-                      className={`cursor-pointer transition-colors border-t border-gray-50 group ${
-                        isExpanded ? 'bg-blue-50/60' : 'hover:bg-blue-50/30'
-                      }`}
-                    >
-                      <td className="px-4 py-3.5">
-                        <span className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-xs font-bold ${
-                          item.rank <= 3 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {item.rank}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        <span className={`font-medium transition-colors ${isExpanded ? 'text-blue-700' : 'text-gray-800 group-hover:text-blue-600'}`}>
-                          {item.subprocessName}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3.5 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className={`font-extrabold ${item.priorityColor}`}>{item.totalScore}</span>
-                          <div className="w-14 bg-gray-100 rounded-full h-1">
-                            <div className={`${item.barColor} h-1 rounded-full`} style={{ width: `${item.scorePercent}%` }} />
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3.5 text-center">
-                        <span className="font-semibold text-blue-600">
-                          {item.automationScore}
-                          <span className="text-xs font-normal text-gray-400">/100</span>
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3.5 text-center">
-                        <span className="text-blue-700 font-medium">
-                          {fmt(item.automationSavingsHours)}
-                          <span className="text-xs font-normal text-gray-400"> h/ano</span>
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3.5 text-center">
-                        <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${item.badgeColor}`}>
-                          {item.priority}
-                        </span>
-                      </td>
-
-                      <td className="px-3 py-3.5 text-right">
-                        <ChevronDown
-                          size={16}
-                          strokeWidth={2.5}
-                          className={`text-blue-500 group-hover:text-blue-700 transition-all duration-300 ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </td>
-                    </tr>
-
-                    {/* ── Level 2 — expanded details ── */}
-                    {isExpanded && (
-                      <tr key={`${item.subprocessId}-details`}>
-                        <td colSpan={7} className="px-6 pb-5 pt-1 bg-blue-50/40 border-b border-blue-100">
-                          <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm mb-4 pt-2 sm:grid-cols-3">
-                            <div>
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Macroprocesso</p>
-                              <p className="text-gray-700 font-medium">{item.macroprocessName}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Processo</p>
-                              <p className="text-gray-700 font-medium">{item.processName}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Tipo</p>
-                              <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${
-                                item.isCustom
-                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                  : 'bg-gray-50 text-gray-500 border-gray-200'
-                              }`}>
-                                {item.isCustom ? 'Personalizado' : 'Padrão'}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Esforço Anual</p>
-                              <p className="text-gray-700 font-medium">
-                                {fmt(item.annualHours)}<span className="text-gray-400 font-normal"> h/ano</span>
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Impacto Financeiro</p>
-                              <p className="text-green-700 font-semibold">{fmtCurrency(item.financialImpact)}</p>
-                            </div>
-                          </div>
-                          {/* Criteria breakdown */}
-                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 mb-3">
-                            {CRITERIA.map((c) => {
-                              const score = item.scores[c.key];
-                              const pct = (score / 4) * 100;
-                              return (
-                                <div key={c.key} className="bg-white rounded-lg border border-blue-100 p-2.5">
-                                  <div className="flex justify-between text-xs mb-1.5">
-                                    <span className="text-gray-600 font-medium truncate pr-1">{c.label}</span>
-                                    <span className="font-bold text-gray-800 flex-shrink-0">{score}/4</span>
-                                  </div>
-                                  <div className="w-full bg-gray-100 rounded-full h-1.5">
-                                    <div className="bg-blue-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setSelected(item); }}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                          >
-                            Ver detalhamento completo →
-                          </button>
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        </div>}
 
         {/* ── Roadmap de Automação Sugerido (Impact × Effort, accordion) ── */}
         {autoRoadmap.length > 0 && (() => {
@@ -887,8 +640,6 @@ export default function RankingScreen({
 
       </div>{/* end #diagnostic-results */}
 
-      {/* Modals */}
-      {selected && <DetailModal item={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
