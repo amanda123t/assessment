@@ -8,7 +8,7 @@ import {
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
-import { FTE_HOURS_YEAR, HOURLY_COST } from '@/lib/impactCalculator';
+import { FTE_HOURS_YEAR, HOURLY_COST, calculateAutomationSavings } from '@/lib/impactCalculator';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
@@ -126,6 +126,9 @@ const ROADMAP_BADGE: Record<RoadmapCategory, string> = {
 
 // ─── Card style constant ─────────────────────────────────────────────────────
 
+/** Back-calculation divisors — must mirror PEOPLE_MAP in impactCalculator.ts */
+const PEOPLE_DIVISORS: Record<number, number> = { 1: 1.0, 2: 1.4, 3: 1.8, 4: 2.2 };
+
 const CARD = 'bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6';
 
 // ─── Identification modal ────────────────────────────────────────────────────
@@ -151,6 +154,11 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
   const [idForm, setIdForm] = useState<IdForm>(EMPTY_FORM);
   const [savedIdentification, setSavedIdentification] = useState<AssessmentIdentification | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [refineForm, setRefineForm] = useState({ people: '', hourlyCost: String(HOURLY_COST) });
+  const [refinedImpact, setRefinedImpact] = useState<{
+    annualHours: number; savingsHours: number; fteEquivalent: number;
+    capacityGain: number; financialImpact: number; hourlyCost: number;
+  } | null>(null);
 
   const ranked = buildRanking(assessments);
   const summary = buildPrioritySummary(ranked);
@@ -165,6 +173,48 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
   const totalCapacityGain  = totalAnnualHours > 0
     ? Math.round((totalSavingsHours / totalAnnualHours) * 100)
     : 0;
+
+  // Display values — fall back to model defaults when no refinement has been applied
+  const dispAnnualHours     = refinedImpact?.annualHours     ?? totalAnnualHours;
+  const dispSavingsHours    = refinedImpact?.savingsHours    ?? totalSavingsHours;
+  const dispFteEquivalent   = refinedImpact?.fteEquivalent   ?? totalFteEquivalent;
+  const dispCapacityGain    = refinedImpact?.capacityGain    ?? totalCapacityGain;
+  const dispFinancialImpact = refinedImpact?.financialImpact ?? totalFinancialImpact;
+  const dispHourlyCost      = refinedImpact?.hourlyCost      ?? HOURLY_COST;
+
+  const handleRecalculate = () => {
+    const realPeople = parseFloat(refineForm.people);
+    const hourlyCost = parseFloat(refineForm.hourlyCost);
+    const usePeople  = !isNaN(realPeople) && realPeople > 0;
+    const useCost    = !isNaN(hourlyCost) && hourlyCost > 0;
+    const effectiveCost = useCost ? hourlyCost : HOURLY_COST;
+
+    let newAnnualTotal  = 0;
+    let newSavingsTotal = 0;
+
+    assessments.forEach((a) => {
+      const currentMultiplier = PEOPLE_DIVISORS[a.scores.peopleInvolved] ?? 1.0;
+      const baseHours  = a.annualHours / currentMultiplier;
+      const newAnnual  = usePeople ? Math.round(baseHours * realPeople) : a.annualHours;
+      const newSavings = calculateAutomationSavings(newAnnual, a.automationScore);
+      newAnnualTotal  += newAnnual;
+      newSavingsTotal += newSavings;
+    });
+
+    const fteEquivalent = Math.round((newSavingsTotal / FTE_HOURS_YEAR) * 10) / 10;
+    const capacityGain  = newAnnualTotal > 0
+      ? Math.round((newSavingsTotal / newAnnualTotal) * 100)
+      : 0;
+
+    setRefinedImpact({
+      annualHours:     newAnnualTotal,
+      savingsHours:    newSavingsTotal,
+      fteEquivalent,
+      capacityGain,
+      financialImpact: Math.round(newSavingsTotal * effectiveCost),
+      hourlyCost:      effectiveCost,
+    });
+  };
 
   const idFormValid =
     idForm.company.trim() &&
@@ -184,6 +234,7 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
           insights={insights}
           identification={identification}
           generatedAt={generatedAt}
+          refinedImpact={refinedImpact ?? undefined}
         />
       ).toBlob();
       const url = URL.createObjectURL(blob);
@@ -322,7 +373,7 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
             </div>
             <p className="text-blue-100 text-sm">
               {assessments.length} subprocesso{assessments.length !== 1 ? 's' : ''} avaliado{assessments.length !== 1 ? 's' : ''} ·{' '}
-              {fmt(totalAnnualHours)} horas operacionais/ano mapeadas
+              {fmt(dispAnnualHours)} horas operacionais/ano mapeadas
             </p>
           </div>
         </section>
@@ -338,10 +389,10 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
               </div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Impacto Operacional</p>
             </div>
-            <p className="text-3xl font-extrabold text-gray-900">{fmt(totalSavingsHours)}</p>
+            <p className="text-3xl font-extrabold text-gray-900">{fmt(dispSavingsHours)}</p>
             <p className="text-xs text-gray-500 mt-0.5 mb-3">horas operacionais potencialmente automatizáveis/ano</p>
             <div className="flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-2">
-              <span className="text-sm font-bold text-blue-700">≈ {totalFteEquivalent.toLocaleString('pt-BR')} FTE</span>
+              <span className="text-sm font-bold text-blue-700">≈ {dispFteEquivalent.toLocaleString('pt-BR')} FTE</span>
               <span className="text-xs text-blue-500">de capacidade operacional</span>
             </div>
           </div>
@@ -354,10 +405,10 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
               </div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Ganho de Capacidade</p>
             </div>
-            <p className="text-3xl font-extrabold text-emerald-600">+{totalCapacityGain}%</p>
+            <p className="text-3xl font-extrabold text-emerald-600">+{dispCapacityGain}%</p>
             <p className="text-xs text-gray-500 mt-0.5 mb-3">aumento na capacidade operacional</p>
             <p className="text-xs text-gray-400 leading-relaxed">
-              A equipe atual poderia processar ~{totalCapacityGain}% mais volume sem aumento de headcount.
+              A equipe atual poderia processar ~{dispCapacityGain}% mais volume sem aumento de headcount.
             </p>
           </div>
 
@@ -369,13 +420,59 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
               </div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Impacto Financeiro (cenário)</p>
             </div>
-            <p className="text-2xl font-extrabold text-gray-900">{fmtCurrency(totalFinancialImpact)}</p>
+            <p className="text-2xl font-extrabold text-gray-900">{fmtCurrency(dispFinancialImpact)}</p>
             <p className="text-xs text-gray-500 mt-0.5 mb-3">estimativa anual</p>
             <p className="text-xs text-gray-400 leading-relaxed">
-              Estimativa baseada em custo administrativo de R${HOURLY_COST}/h. Resultados reais variam conforme a estrutura de custos da organização.
+              Estimativa baseada em custo administrativo de R${dispHourlyCost}/h. Resultados reais variam conforme a estrutura de custos da organização.
             </p>
           </div>
 
+        </section>
+
+        {/* ── 1c. Refinement block ──────────────────────────────────────── */}
+        <section className="mb-6 bg-gray-50 border border-gray-200 rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Refinar estimativa de impacto</h3>
+          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+            As estimativas apresentadas utilizam faixas de pessoas envolvidas e custo médio administrativo.<br />
+            Se desejar, informe valores reais para refinar o cálculo.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
+            <div>
+              <label className={LABEL_CLASS}>Número real de pessoas envolvidas</label>
+              <input
+                type="number"
+                min="1"
+                value={refineForm.people}
+                onChange={(e) => setRefineForm((f) => ({ ...f, people: e.target.value }))}
+                placeholder="Ex: 5"
+                className={INPUT_CLASS}
+              />
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>Custo médio por hora (R$)</label>
+              <input
+                type="number"
+                min="1"
+                value={refineForm.hourlyCost}
+                onChange={(e) => setRefineForm((f) => ({ ...f, hourlyCost: e.target.value }))}
+                placeholder="Ex: 50"
+                className={INPUT_CLASS}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleRecalculate}
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
+            >
+              Recalcular estimativa
+            </button>
+            {refinedImpact && (
+              <span className="text-xs text-blue-600 font-medium">
+                ✓ Estimativas atualizadas com valores refinados
+              </span>
+            )}
+          </div>
         </section>
 
         {/* ── 2. Distribuição de Prioridades ───────────────────────────── */}

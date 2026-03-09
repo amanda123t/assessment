@@ -6,6 +6,11 @@ import { RankedAssessment } from '@/lib/ranking';
 import { RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 import { FTE_HOURS_YEAR, HOURLY_COST } from '@/lib/impactCalculator';
 
+interface RefinedImpact {
+  annualHours: number; savingsHours: number; fteEquivalent: number;
+  capacityGain: number; financialImpact: number; hourlyCost: number;
+}
+
 interface Props {
   assessments: SubprocessAssessment[];
   ranked: RankedAssessment[];
@@ -13,6 +18,7 @@ interface Props {
   insights?: string[];
   identification?: AssessmentIdentification;
   generatedAt?: string;
+  refinedImpact?: RefinedImpact;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -308,6 +314,7 @@ export default function PDFDiagnosticReport({
   insights,
   identification,
   generatedAt,
+  refinedImpact,
 }: Props) {
   const summary = {
     alta:  ranked.filter(r => r.priority === 'Alta').length,
@@ -315,14 +322,19 @@ export default function PDFDiagnosticReport({
     baixa: ranked.filter(r => r.priority === 'Baixa').length,
   };
 
-  const totalAnnualHours     = assessments.reduce((a, x) => a + x.annualHours, 0);
-  const totalSavingsHours    = assessments.reduce((a, x) => a + x.automationSavingsHours, 0);
-  const totalFinancialImpact = assessments.reduce((a, x) => a + x.financialImpact, 0);
+  const baseAnnualHours     = assessments.reduce((a, x) => a + x.annualHours, 0);
+  const baseSavingsHours    = assessments.reduce((a, x) => a + x.automationSavingsHours, 0);
+  const baseFinancialImpact = assessments.reduce((a, x) => a + x.financialImpact, 0);
 
-  const totalFteEquivalent = Math.round((totalSavingsHours / FTE_HOURS_YEAR) * 10) / 10;
-  const totalCapacityGain  = totalAnnualHours > 0
-    ? Math.round((totalSavingsHours / totalAnnualHours) * 100)
-    : 0;
+  const totalAnnualHours     = refinedImpact?.annualHours     ?? baseAnnualHours;
+  const totalSavingsHours    = refinedImpact?.savingsHours    ?? baseSavingsHours;
+  const totalFinancialImpact = refinedImpact?.financialImpact ?? baseFinancialImpact;
+  const effectiveHourlyCost  = refinedImpact?.hourlyCost      ?? HOURLY_COST;
+
+  const totalFteEquivalent = refinedImpact?.fteEquivalent ?? Math.round((baseSavingsHours / FTE_HOURS_YEAR) * 10) / 10;
+  const totalCapacityGain  = refinedImpact?.capacityGain  ?? (baseAnnualHours > 0
+    ? Math.round((baseSavingsHours / baseAnnualHours) * 100)
+    : 0);
 
   const top3    = ranked.slice(0, 3);
   const company = identification?.company;
@@ -446,7 +458,7 @@ export default function PDFDiagnosticReport({
               { label: 'Horas automatizáveis (h/ano)',   value: `${fmt(totalSavingsHours)} h` },
               { label: 'FTE equivalente',                value: `≈ ${totalFteEquivalent.toLocaleString('pt-BR')} FTE` },
               { label: 'Ganho de capacidade',            value: `+${totalCapacityGain}%` },
-              { label: `Impacto financeiro (R$${HOURLY_COST}/h)`, value: fmtCurrency(totalFinancialImpact) },
+              { label: `Impacto financeiro (R$${effectiveHourlyCost}/h)`, value: fmtCurrency(totalFinancialImpact) },
             ] as const).map(({ label, value }) => (
               <View key={label} style={s.ovDataRow}>
                 <Text style={s.ovDataLabel}>{label}</Text>
