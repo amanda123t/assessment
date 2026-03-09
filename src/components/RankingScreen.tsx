@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import {
   Trophy, FileDown, RotateCcw, Activity,
-  Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown,
+  Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown, X,
 } from 'lucide-react';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
@@ -12,8 +12,6 @@ import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
   assessments: SubprocessAssessment[];
-  identification?: AssessmentIdentification;
-  generatedAt?: string;
   onRestart: () => void;
 }
 
@@ -129,15 +127,28 @@ const ROADMAP_BADGE: Record<RoadmapCategory, string> = {
 
 const CARD = 'bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6';
 
+// ─── Identification modal ────────────────────────────────────────────────────
+
+const INPUT_CLASS =
+  'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+const LABEL_CLASS = 'block text-xs font-semibold text-gray-600 mb-1.5';
+
+interface IdForm {
+  company: string;
+  area: string;
+  respondentName: string;
+  email: string;
+}
+
+const EMPTY_FORM: IdForm = { company: '', area: '', respondentName: '', email: '' };
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export default function RankingScreen({
-  assessments,
-  identification,
-  generatedAt,
-  onRestart,
-}: Props) {
+export default function RankingScreen({ assessments, onRestart }: Props) {
   const [insightsOpen, setInsightsOpen] = useState(false);
+  const [showIdModal, setShowIdModal] = useState(false);
+  const [idForm, setIdForm] = useState<IdForm>(EMPTY_FORM);
+  const [savedIdentification, setSavedIdentification] = useState<AssessmentIdentification | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const ranked = buildRanking(assessments);
@@ -145,11 +156,17 @@ export default function RankingScreen({
   const insights = buildInsights(ranked);
   const autoRoadmap = buildAutomationRoadmap(assessments);
 
-  const totalAnnualHours    = assessments.reduce((s, a) => s + a.annualHours, 0);
-  const totalSavingsHours   = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
+  const totalAnnualHours     = assessments.reduce((s, a) => s + a.annualHours, 0);
+  const totalSavingsHours    = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
 
-  const handleDownloadPDF = async () => {
+  const idFormValid =
+    idForm.company.trim() &&
+    idForm.area.trim() &&
+    idForm.respondentName.trim() &&
+    idForm.email.trim();
+
+  const generatePDF = async (identification: AssessmentIdentification, generatedAt: string) => {
     setGeneratingPdf(true);
     try {
       const { pdf } = await import('@react-pdf/renderer');
@@ -174,13 +191,85 @@ export default function RankingScreen({
     }
   };
 
+  const handleIdSubmit = async () => {
+    if (!idFormValid) return;
+    const identification: AssessmentIdentification = {
+      company:       idForm.company.trim(),
+      area:          idForm.area.trim(),
+      respondentName: idForm.respondentName.trim(),
+      email:         idForm.email.trim(),
+    };
+    const generatedAt = new Date().toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    });
+    setSavedIdentification(identification);
+    setShowIdModal(false);
+    await generatePDF(identification, generatedAt);
+  };
+
+  const field = (
+    key: keyof IdForm,
+    label: string,
+    placeholder: string,
+    type = 'text',
+  ) => (
+    <div>
+      <label className={LABEL_CLASS}>
+        {label} <span className="text-red-400">*</span>
+      </label>
+      <input
+        type={type}
+        value={idForm[key]}
+        onChange={(e) => setIdForm((f) => ({ ...f, [key]: e.target.value }))}
+        placeholder={placeholder}
+        className={INPUT_CLASS}
+      />
+    </div>
+  );
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
+
+      {/* ── Identification modal ───────────────────────────────────────── */}
+      {showIdModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold text-gray-900">Identificação do relatório</h3>
+              <button
+                onClick={() => setShowIdModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-6">
+              Preencha os dados abaixo para personalizar o relatório PDF.
+            </p>
+
+            <div className="space-y-4">
+              {field('company',       'Empresa',              'Nome da empresa')}
+              {field('area',          'Área',                 'Ex: Financeiro, RH, Logística')}
+              {field('respondentName','Nome do respondente',  'Seu nome completo')}
+              {field('email',         'E-mail',               'seu@email.com', 'email')}
+            </div>
+
+            <button
+              onClick={handleIdSubmit}
+              disabled={!idFormValid || generatingPdf}
+              className="w-full mt-6 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
+            >
+              <FileDown size={15} strokeWidth={1.75} />
+              {generatingPdf ? 'Gerando PDF...' : 'Gerar relatório PDF'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Action bar ────────────────────────────────────────────────── */}
       <div className="flex justify-end gap-3 mb-8">
         <button
-          onClick={handleDownloadPDF}
+          onClick={() => setShowIdModal(true)}
           disabled={generatingPdf}
           className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -208,12 +297,12 @@ export default function RankingScreen({
             Subprocessos com maiores scores indicam maior potencial de melhoria operacional.
             Os resultados abaixo foram ordenados do maior para o menor score.
           </p>
-          {(identification || generatedAt) && (
+          {savedIdentification && (
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-              {identification?.company      && <span>Empresa: <span className="font-medium text-gray-600">{identification.company}</span></span>}
-              {identification?.area         && <span>Área: <span className="font-medium text-gray-600">{identification.area}</span></span>}
-              {identification?.respondentName && <span>Respondente: <span className="font-medium text-gray-600">{identification.respondentName}</span></span>}
-              {generatedAt                  && <span>Gerado em: <span className="font-medium text-gray-600">{generatedAt}</span></span>}
+              {savedIdentification.company       && <span>Empresa: <span className="font-medium text-gray-600">{savedIdentification.company}</span></span>}
+              {savedIdentification.area          && <span>Área: <span className="font-medium text-gray-600">{savedIdentification.area}</span></span>}
+              {savedIdentification.respondentName && <span>Respondente: <span className="font-medium text-gray-600">{savedIdentification.respondentName}</span></span>}
+              {savedIdentification.email         && <span>E-mail: <span className="font-medium text-gray-600">{savedIdentification.email}</span></span>}
             </div>
           )}
         </div>

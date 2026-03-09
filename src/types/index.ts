@@ -66,6 +66,7 @@ export interface AssessmentIdentification {
   company: string;
   area: string;
   respondentName: string;
+  email: string;
 }
 
 export interface AssessmentState {
@@ -73,7 +74,7 @@ export interface AssessmentState {
   globalSelectedSubprocesses: SelectedSubprocessItem[];
   assessments: SubprocessAssessment[];
   currentSubprocessIndex: number;
-  step: 'start' | 'explore' | 'identification' | 'questionnaire' | 'ranking';
+  step: 'start' | 'explore' | 'questionnaire' | 'ranking';
   identification?: AssessmentIdentification;
   /** DD/MM/YYYY string set automatically when the diagnostic starts. */
   generatedAt?: string;

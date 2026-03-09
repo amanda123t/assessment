@@ -1,20 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, PlayCircle } from 'lucide-react';
+import { ArrowLeft, FileDown } from 'lucide-react';
 import { AssessmentIdentification } from '@/types';
 
 interface Props {
   onComplete: (data: AssessmentIdentification) => void;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export default function AssessmentIdentificationScreen({ onComplete, onBack }: Props) {
   const [company, setCompany] = useState('');
   const [area, setArea] = useState('');
   const [respondentName, setRespondentName] = useState('');
+  const [email, setEmail] = useState('');
 
-  const canSubmit = company.trim() && area.trim() && respondentName.trim();
+  const canSubmit = company.trim() && area.trim() && respondentName.trim() && email.trim();
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -22,20 +23,26 @@ export default function AssessmentIdentificationScreen({ onComplete, onBack }: P
       company: company.trim(),
       area: area.trim(),
       respondentName: respondentName.trim(),
+      email: email.trim(),
     });
   };
 
+  const INPUT_CLASS =
+    'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+
   return (
     <div className="max-w-xl mx-auto px-6 py-10">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-8"
-      >
-        <ArrowLeft size={14} strokeWidth={2} />
-        Voltar à seleção
-      </button>
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-8"
+        >
+          <ArrowLeft size={14} strokeWidth={2} />
+          Voltar à seleção
+        </button>
+      )}
 
-      <h2 className="text-xl font-bold text-gray-900 mb-1">Identificação do diagnóstico</h2>
+      <h2 className="text-xl font-bold text-gray-900 mb-1">Identificação do relatório</h2>
       <p className="text-sm text-gray-500 mb-8">
         Preencha os dados abaixo para personalizar o relatório gerado.
       </p>
@@ -51,7 +58,7 @@ export default function AssessmentIdentificationScreen({ onComplete, onBack }: P
             onChange={(e) => setCompany(e.target.value)}
             placeholder="Nome da empresa"
             autoFocus
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={INPUT_CLASS}
           />
         </div>
 
@@ -64,7 +71,7 @@ export default function AssessmentIdentificationScreen({ onComplete, onBack }: P
             value={area}
             onChange={(e) => setArea(e.target.value)}
             placeholder="Ex: Financeiro, RH, Logística"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={INPUT_CLASS}
           />
         </div>
 
@@ -77,7 +84,20 @@ export default function AssessmentIdentificationScreen({ onComplete, onBack }: P
             value={respondentName}
             onChange={(e) => setRespondentName(e.target.value)}
             placeholder="Seu nome completo"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={INPUT_CLASS}
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+            E-mail <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="seu@email.com"
+            className={INPUT_CLASS}
           />
         </div>
       </div>
@@ -87,8 +107,8 @@ export default function AssessmentIdentificationScreen({ onComplete, onBack }: P
         disabled={!canSubmit}
         className="w-full mt-8 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
       >
-        <PlayCircle size={16} strokeWidth={1.75} />
-        Iniciar diagnóstico
+        <FileDown size={16} strokeWidth={1.75} />
+        Gerar relatório PDF
       </button>
     </div>
   );

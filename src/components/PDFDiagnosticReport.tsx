@@ -355,7 +355,7 @@ export default function PDFDiagnosticReport({
                 Empresa: {identification.company}  ·  Área: {identification.area}
               </Text>
               <Text style={s.headerMeta}>
-                Respondente: {identification.respondentName}
+                Respondente: {identification.respondentName}  ·  E-mail: {identification.email}
               </Text>
             </>
           )}

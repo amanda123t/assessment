@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import {
-  AssessmentState, AssessmentIdentification,
+  AssessmentState,
   Macroprocess, Process, Subprocess, CriteriaScores,
   SelectedSubprocessItem,
 } from '@/types';
@@ -13,7 +13,6 @@ import StartScreen from '@/components/StartScreen';
 import SubprocessExplorer from '@/components/SubprocessExplorer';
 import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
 import Questionnaire from '@/components/Questionnaire';
-import AssessmentIdentificationScreen from '@/components/AssessmentIdentification';
 import RankingScreen from '@/components/RankingScreen';
 
 // ── Initial state ────────────────────────────────────────────────────────────
@@ -111,17 +110,10 @@ export default function AssessmentPage() {
     }));
   }, []);
 
-  // ── Start evaluation ─────────────────────────────────────────────────────────
+  // ── Start evaluation (goes directly to questionnaire) ────────────────────────
 
   const startEvaluation = useCallback(() => {
-    setState((s) => ({ ...s, currentSubprocessIndex: 0, step: 'identification' }));
-  }, []);
-
-  const handleIdentificationComplete = useCallback((data: AssessmentIdentification) => {
-    const generatedAt = new Date().toLocaleDateString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-    });
-    setState((s) => ({ ...s, identification: data, generatedAt, step: 'questionnaire' }));
+    setState((s) => ({ ...s, currentSubprocessIndex: 0, step: 'questionnaire' }));
   }, []);
 
   // ── Questionnaire ────────────────────────────────────────────────────────────
@@ -213,13 +205,6 @@ export default function AssessmentPage() {
               />
             )}
 
-            {state.step === 'identification' && (
-              <AssessmentIdentificationScreen
-                onComplete={handleIdentificationComplete}
-                onBack={() => setState((s) => ({ ...s, step: 'explore' }))}
-              />
-            )}
-
             {state.step === 'questionnaire' && currentItem && (
               <Questionnaire
                 key={currentItem.subprocess.id}
@@ -236,8 +221,6 @@ export default function AssessmentPage() {
             {state.step === 'ranking' && (
               <RankingScreen
                 assessments={state.assessments}
-                identification={state.identification}
-                generatedAt={state.generatedAt}
                 onRestart={restart}
               />
             )}

@@ -3,13 +3,12 @@
 import { AssessmentState } from '@/types';
 
 const STEPS = [
-  { key: 'explore',         label: 'Seleção' },
-  { key: 'identification',  label: 'Identificação' },
-  { key: 'questionnaire',   label: 'Avaliação' },
-  { key: 'ranking',         label: 'Resultados' },
+  { key: 'explore',       label: 'Seleção' },
+  { key: 'questionnaire', label: 'Avaliação' },
+  { key: 'ranking',       label: 'Resultados' },
 ] as const;
 
-const STEP_ORDER = ['explore', 'identification', 'questionnaire', 'ranking'];
+const STEP_ORDER = ['explore', 'questionnaire', 'ranking'];
 
 interface Props {
   step: AssessmentState['step'];
