@@ -404,7 +404,7 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap, iden
             <Text key={item} style={s.ctaBullet}>• {item}</Text>
           ))}
           <View style={s.ctaButton}>
-            <Text style={s.ctaButtonText}>Falar com a Meta sobre automação — www.meta.com.br</Text>
+            <Text style={s.ctaButtonText}>Falar com a Meta sobre automação — meta.com.br/contato</Text>
           </View>
         </View>
 

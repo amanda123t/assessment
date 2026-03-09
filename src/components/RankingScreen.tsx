@@ -792,7 +792,7 @@ export default function RankingScreen({
           ))}
         </ul>
         <a
-          href="https://www.meta.com.br"
+          href="https://meta.com.br/contato"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-3 rounded-lg transition-colors"

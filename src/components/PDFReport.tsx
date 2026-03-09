@@ -191,7 +191,7 @@ export default function PDFReport({ assessments, ranked, roadmap }: Props) {
         ))}
         <div style={{ marginTop: '14px' }}>
           <a
-            href="https://www.meta.com.br"
+            href="https://meta.com.br/contato"
             style={{ display: 'inline-block', backgroundColor: '#2563eb', color: '#ffffff', fontSize: '11px', fontWeight: 'bold', padding: '8px 18px', borderRadius: '6px', textDecoration: 'none' }}
           >
             Falar com a Meta sobre automação
