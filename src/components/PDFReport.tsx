@@ -241,32 +241,6 @@ export default function PDFReport({ assessments, ranked, roadmap }: Props) {
         </table>
       </div>
 
-      {/* ── Próximos Passos (CTA) ────────────────────────────────────────── */}
-      <div style={{ margin: '24px 32px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '20px 24px' }}>
-        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e3a5f', marginBottom: '6px' }}>Próximos Passos</div>
-        <div style={{ fontSize: '11px', color: '#374151', marginBottom: '2px' }}>Este diagnóstico identificou processos com alto potencial de automação.</div>
-        <div style={{ fontSize: '11px', color: '#374151', marginBottom: '10px' }}>A Meta pode apoiar sua organização nas próximas etapas com:</div>
-        {[
-          'Análise e redesenho de processos',
-          'Automação com RPA e Inteligência Artificial',
-          'Implementação de programas de automação',
-          'Gestão da mudança para transformação digital',
-        ].map((item) => (
-          <div key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ color: '#3b82f6', fontSize: '14px', lineHeight: '1.2' }}>•</span>
-            <span style={{ fontSize: '11px', color: '#374151' }}>{item}</span>
-          </div>
-        ))}
-        <div style={{ marginTop: '14px' }}>
-          <a
-            href="https://meta.com.br/contato"
-            style={{ display: 'inline-block', backgroundColor: '#2563eb', color: '#ffffff', fontSize: '11px', fontWeight: 'bold', padding: '8px 18px', borderRadius: '6px', textDecoration: 'none' }}
-          >
-            Falar com a Meta sobre automação
-          </a>
-        </div>
-      </div>
-
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <div style={{ borderTop: '1px solid #e5e7eb', padding: '12px 32px', textAlign: 'center' }}>
         <span style={{ fontSize: '10px', color: '#9ca3af' }}>

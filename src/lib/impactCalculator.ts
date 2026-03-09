@@ -37,9 +37,9 @@ const TIME_MAP: Record<number, number> = {
  */
 const PEOPLE_MAP: Record<number, number> = {
   1: 1.0,
-  2: 1.5,
-  3: 2.0,
-  4: 3.0,
+  2: 1.4,
+  3: 1.8,
+  4: 2.2,
 };
 
 /**

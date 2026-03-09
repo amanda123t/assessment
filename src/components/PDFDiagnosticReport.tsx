@@ -258,24 +258,6 @@ const s = StyleSheet.create({
   insDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: '#f59e0b', marginRight: 10, marginTop: 3, flexShrink: 0 },
   insText: { flex: 1, fontSize: 9, color: '#374151', lineHeight: 1.5 },
 
-  // ── CTA ────────────────────────────────────────────────────────────────────
-  ctaCard: { backgroundColor: NAVY, borderRadius: 8, padding: 20, marginTop: 6 },
-  ctaTitle: { fontSize: 13, fontFamily: 'Helvetica-Bold', color: '#ffffff', marginBottom: 5 },
-  ctaText:  { fontSize: 9, color: '#bfdbfe', lineHeight: 1.5, marginBottom: 10 },
-  ctaBullet: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
-  ctaDot:    { width: 4, height: 4, borderRadius: 2, backgroundColor: '#60a5fa', marginRight: 8, marginTop: 4, flexShrink: 0 },
-  ctaBulletText: { fontSize: 8.5, color: '#dbeafe', flex: 1 },
-  ctaLink: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: '#93c5fd',
-    borderStyle: 'solid',
-    borderRadius: 4,
-    padding: 8,
-    alignSelf: 'flex-start',
-  },
-  ctaLinkText: { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#93c5fd' },
-
   // ── Page footer ────────────────────────────────────────────────────────────
   pgFooter: {
     flexDirection: 'row',
@@ -561,35 +543,6 @@ export default function PDFDiagnosticReport({
             </View>
           </>
         )}
-
-        {/* ── 07 Próximos Passos ───────────────────────────────────────────── */}
-        <SectionHeader
-          num={insights && insights.length > 0 ? '07' : '06'}
-          title="Próximos Passos"
-        />
-
-        <View style={s.ctaCard}>
-          <Text style={s.ctaTitle}>Como a Meta pode apoiar sua organização</Text>
-          <Text style={s.ctaText}>
-            Este diagnóstico identificou oportunidades concretas de automação e eficiência operacional.
-            A Meta oferece suporte especializado para transformar esses resultados em iniciativas reais.
-            {'\n\n'}Nota: O impacto financeiro estimado é um cenário baseado em custo administrativo de R${HOURLY_COST}/hora. Os resultados reais variam conforme a estrutura de custos da organização.
-          </Text>
-          {[
-            'Análise e redesenho de processos',
-            'Automação com RPA e Inteligência Artificial',
-            'Implementação de programas de automação',
-            'Gestão da mudança para transformação digital',
-          ].map((item) => (
-            <View key={item} style={s.ctaBullet}>
-              <View style={s.ctaDot} />
-              <Text style={s.ctaBulletText}>{item}</Text>
-            </View>
-          ))}
-          <View style={s.ctaLink}>
-            <Text style={s.ctaLinkText}>meta.com.br/contato</Text>
-          </View>
-        </View>
 
       </Page>
 
