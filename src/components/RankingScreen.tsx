@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import {
   Trophy, FileDown, RotateCcw, Activity,
-  Lightbulb, TrendingUp, DollarSign, Target, ChevronDown, X,
+  Lightbulb, TrendingUp, DollarSign, Target, ChevronDown, X, Pencil,
 } from 'lucide-react';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
@@ -159,6 +159,13 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
     annualHours: number; savingsHours: number; fteEquivalent: number;
     capacityGain: number; financialImpact: number; hourlyCost: number;
   } | null>(null);
+  const [subprocessOverrides, setSubprocessOverrides] = useState<
+    Record<string, { people: string; hourlyCost: string }>
+  >({});
+  const [editingSubprocessId, setEditingSubprocessId] = useState<string | null>(null);
+  const [perSubprocessRefined, setPerSubprocessRefined] = useState<
+    Record<string, { annualHours: number; savingsHours: number; fteEquivalent: number; financialImpact: number; hourlyCost: number }>
+  >({});
 
   const ranked = buildRanking(assessments);
   const summary = buildPrioritySummary(ranked);
@@ -183,22 +190,54 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
   const dispHourlyCost      = refinedImpact?.hourlyCost      ?? HOURLY_COST;
 
   const handleRecalculate = () => {
-    const realPeople = parseFloat(refineForm.people);
-    const hourlyCost = parseFloat(refineForm.hourlyCost);
-    const usePeople  = !isNaN(realPeople) && realPeople > 0;
-    const useCost    = !isNaN(hourlyCost) && hourlyCost > 0;
-    const effectiveCost = useCost ? hourlyCost : HOURLY_COST;
-
-    let newAnnualTotal  = 0;
-    let newSavingsTotal = 0;
+    const newPerSubprocess: typeof perSubprocessRefined = {};
+    let newAnnualTotal    = 0;
+    let newSavingsTotal   = 0;
+    let newFinancialTotal = 0;
 
     assessments.forEach((a) => {
-      const currentMultiplier = PEOPLE_DIVISORS[a.scores.peopleInvolved] ?? 1.0;
-      const baseHours  = a.annualHours / currentMultiplier;
-      const newAnnual  = usePeople ? Math.round(baseHours * realPeople) : a.annualHours;
-      const newSavings = calculateAutomationSavings(newAnnual, a.automationScore);
-      newAnnualTotal  += newAnnual;
-      newSavingsTotal += newSavings;
+      const override = subprocessOverrides[a.subprocessId];
+
+      // People priority: subprocess override → global default → model PEOPLE_MAP (null = keep original)
+      const rawSpPeople = parseFloat(override?.people ?? '');
+      const rawGlPeople = parseFloat(refineForm.people);
+      const effectivePeople =
+        (!isNaN(rawSpPeople) && rawSpPeople > 0) ? rawSpPeople :
+        (!isNaN(rawGlPeople) && rawGlPeople > 0) ? rawGlPeople :
+        null;
+
+      // Cost priority: subprocess override → global default → HOURLY_COST
+      const rawSpCost = parseFloat(override?.hourlyCost ?? '');
+      const rawGlCost = parseFloat(refineForm.hourlyCost);
+      const effectiveCost =
+        (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost :
+        (!isNaN(rawGlCost) && rawGlCost > 0) ? rawGlCost :
+        HOURLY_COST;
+
+      // Recalculate annualHours
+      let newAnnual: number;
+      if (effectivePeople !== null) {
+        const currentMultiplier = PEOPLE_DIVISORS[a.scores.peopleInvolved] ?? 1.0;
+        newAnnual = Math.round((a.annualHours / currentMultiplier) * effectivePeople);
+      } else {
+        newAnnual = a.annualHours;
+      }
+
+      const newSavings    = calculateAutomationSavings(newAnnual, a.automationScore);
+      const fteSp         = Math.round((newSavings / FTE_HOURS_YEAR) * 10) / 10;
+      const financialSp   = Math.round(newSavings * effectiveCost);
+
+      newPerSubprocess[a.subprocessId] = {
+        annualHours:     newAnnual,
+        savingsHours:    newSavings,
+        fteEquivalent:   fteSp,
+        financialImpact: financialSp,
+        hourlyCost:      effectiveCost,
+      };
+
+      newAnnualTotal    += newAnnual;
+      newSavingsTotal   += newSavings;
+      newFinancialTotal += financialSp;
     });
 
     const fteEquivalent = Math.round((newSavingsTotal / FTE_HOURS_YEAR) * 10) / 10;
@@ -206,13 +245,18 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
       ? Math.round((newSavingsTotal / newAnnualTotal) * 100)
       : 0;
 
+    // For the card footer note use the global default cost (or HOURLY_COST)
+    const glCost = parseFloat(refineForm.hourlyCost);
+    const displayCost = (!isNaN(glCost) && glCost > 0) ? glCost : HOURLY_COST;
+
+    setPerSubprocessRefined(newPerSubprocess);
     setRefinedImpact({
       annualHours:     newAnnualTotal,
       savingsHours:    newSavingsTotal,
       fteEquivalent,
       capacityGain,
-      financialImpact: Math.round(newSavingsTotal * effectiveCost),
-      hourlyCost:      effectiveCost,
+      financialImpact: newFinancialTotal,
+      hourlyCost:      displayCost,
     });
   };
 
@@ -434,11 +478,11 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Refinar estimativa de impacto</h3>
           <p className="text-xs text-gray-500 mb-4 leading-relaxed">
             As estimativas apresentadas utilizam faixas de pessoas envolvidas e custo médio administrativo.<br />
-            Se desejar, informe valores reais para refinar o cálculo.
+            Informe valores padrão abaixo ou edite cada subprocesso individualmente na tabela de ranking.
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
             <div>
-              <label className={LABEL_CLASS}>Número real de pessoas envolvidas</label>
+              <label className={LABEL_CLASS}>Número médio de pessoas envolvidas</label>
               <input
                 type="number"
                 min="1"
@@ -497,32 +541,143 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
 
         {/* ── 3. Ranking de Potencial de Automação ─────────────────────── */}
         <section className={CARD}>
-          <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
             <Trophy size={16} className="text-blue-600" strokeWidth={1.75} />
             Ranking de Potencial de Automação
           </h3>
-          <div className="overflow-hidden rounded-xl border border-gray-200">
-            <table className="w-full text-sm">
+          <p className="text-xs text-gray-400 mb-4">
+            Clique em <Pencil size={11} className="inline text-gray-400" strokeWidth={1.75} /> para ajustar pessoas e custo/h por subprocesso. Esses valores se sobrepõem aos padrões globais.
+          </p>
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
+            <table className="w-full text-sm" style={{ minWidth: 720 }}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-12">Rank</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Processo</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-24">Pontuação</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-28">Potencial</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 w-10">Rank</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500">Subprocesso</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-28">Horas Autom.</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-20">Pontuação</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Potencial</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Pessoas</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Custo/h</th>
+                  <th className="px-3 py-3 w-16" />
                 </tr>
               </thead>
               <tbody>
                 {ranked.slice(0, 10).map((item, i) => {
-                  const potential = getAutomationPotential(item.totalScore);
+                  const potential   = getAutomationPotential(item.totalScore);
+                  const isEditing   = editingSubprocessId === item.subprocessId;
+                  const spOverride  = subprocessOverrides[item.subprocessId] ?? { people: '', hourlyCost: '' };
+                  const refined     = perSubprocessRefined[item.subprocessId];
+                  const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
+
+                  // View-mode display values
+                  const viewPeople  = spOverride.people     || refineForm.people     || null;
+                  const viewCost    = spOverride.hourlyCost || refineForm.hourlyCost || null;
+                  const isSpPeople  = !!spOverride.people;
+                  const isSpCost    = !!spOverride.hourlyCost;
+
                   return (
                     <tr key={item.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
-                      <td className="px-4 py-3 text-center font-bold text-gray-400 text-xs">{item.rank}</td>
-                      <td className="px-4 py-3 text-gray-900">{item.subprocessName}</td>
-                      <td className="px-4 py-3 text-center font-semibold text-gray-800">{item.totalScore}</td>
-                      <td className="px-4 py-3 text-center">
+
+                      {/* Rank */}
+                      <td className="px-3 py-2.5 text-center font-bold text-gray-400 text-xs">{item.rank}</td>
+
+                      {/* Name */}
+                      <td className="px-3 py-2.5 text-gray-900 text-xs">{item.subprocessName}</td>
+
+                      {/* Horas Autom. */}
+                      <td className="px-3 py-2.5 text-center text-xs text-gray-700">
+                        {fmt(dispSavings)} h
+                        {refined && <span className="ml-1 text-blue-400 font-bold">*</span>}
+                      </td>
+
+                      {/* Pontuação */}
+                      <td className="px-3 py-2.5 text-center font-semibold text-gray-800 text-xs">{item.totalScore}</td>
+
+                      {/* Potencial */}
+                      <td className="px-3 py-2.5 text-center">
                         <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${potential.color}`}>
                           {potential.label}
                         </span>
+                      </td>
+
+                      {/* Pessoas */}
+                      <td className="px-3 py-2 text-center">
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            min="1"
+                            value={spOverride.people}
+                            onChange={(e) =>
+                              setSubprocessOverrides((prev) => ({
+                                ...prev,
+                                [item.subprocessId]: { ...spOverride, people: e.target.value },
+                              }))
+                            }
+                            placeholder={refineForm.people || 'padrão'}
+                            className="w-20 border border-blue-300 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <span className={`text-xs ${isSpPeople ? 'font-bold text-blue-700' : 'text-gray-400'}`}>
+                            {viewPeople ?? '—'}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Custo/h */}
+                      <td className="px-3 py-2 text-center">
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            min="1"
+                            value={spOverride.hourlyCost}
+                            onChange={(e) =>
+                              setSubprocessOverrides((prev) => ({
+                                ...prev,
+                                [item.subprocessId]: { ...spOverride, hourlyCost: e.target.value },
+                              }))
+                            }
+                            placeholder={refineForm.hourlyCost || String(HOURLY_COST)}
+                            className="w-20 border border-blue-300 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <span className={`text-xs ${isSpCost ? 'font-bold text-blue-700' : 'text-gray-400'}`}>
+                            {viewCost ? `R$${viewCost}` : `R$${HOURLY_COST}`}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Edit / Confirm / Clear */}
+                      <td className="px-3 py-2 text-center">
+                        {isEditing ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => setEditingSubprocessId(null)}
+                              title="Confirmar"
+                              className="text-xs font-bold px-2 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                            >✓</button>
+                            <button
+                              onClick={() => {
+                                setSubprocessOverrides((prev) => {
+                                  const next = { ...prev };
+                                  delete next[item.subprocessId];
+                                  return next;
+                                });
+                                setEditingSubprocessId(null);
+                              }}
+                              title="Limpar override"
+                              className="text-xs font-bold px-2 py-1 rounded bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                            >×</button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setEditingSubprocessId(item.subprocessId)}
+                            title="Editar valores"
+                            className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          >
+                            <Pencil size={13} strokeWidth={1.75} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -530,6 +685,9 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
               </tbody>
             </table>
           </div>
+          {Object.keys(perSubprocessRefined).length > 0 && (
+            <p className="text-xs text-blue-400 mt-2 pl-1">* Horas recalculadas com valores refinados</p>
+          )}
         </section>
 
         {/* ── 4. Matriz de Priorização de Automação ────────────────────── */}
