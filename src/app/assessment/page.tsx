@@ -34,32 +34,7 @@ export default function AssessmentPage() {
     typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).slice(2)
   );
 
-  // Persist all assessments to Supabase when the ranking step is reached.
-  useEffect(() => {
-    if (state.step !== 'ranking' || state.assessments.length === 0) return;
 
-    const rows = state.assessments.map((a) => ({
-      session_id:  sessionId.current,
-      company:     '',
-      area:        '',
-      process:     a.processName,
-      subarea_id:  a.subprocessId,
-      score:       a.totalScore,
-      created_at:  new Date().toISOString(),
-    }));
-
-    const client = getSupabase();
-    if (!client) return;
-
-    client
-      .from('responses')
-      .insert(rows)
-      .then(({ error }) => {
-        if (error) console.error('[Supabase] Failed to save responses:', error);
-      });
-  // Run once when the step first transitions to 'ranking'.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.step]);
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 
