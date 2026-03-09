@@ -28,7 +28,6 @@ export default function StartScreen({ onStart }: Props) {
       {/* Header */}
       <header className="bg-white border-b border-gray-100 px-6 py-4 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center gap-2">
-          <Activity size={16} className="text-blue-600" strokeWidth={1.75} />
           <div>
             <h1 className="text-base font-bold text-gray-900 leading-none">OEA</h1>
             <p className="text-xs text-gray-500">Operational Efficiency Assessment</p>

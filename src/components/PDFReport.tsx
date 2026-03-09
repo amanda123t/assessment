@@ -173,6 +173,74 @@ export default function PDFReport({ assessments, ranked, roadmap }: Props) {
         })}
       </div>
 
+      {/* ── Matriz de Priorização de Automação ──────────────────────────── */}
+      {(() => {
+        const matrixQuadrants = [
+          { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: '#fef2f2', border: '#fecaca', title: '#b91c1c' },
+          { label: 'Alta Prioridade',           min: 20, max: 24,       bg: '#fff7ed', border: '#fed7aa', title: '#c2410c' },
+          { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8' },
+          { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: '#f9fafb', border: '#e5e7eb', title: '#6b7280' },
+        ];
+        return (
+          <div style={{ padding: '20px 32px 0' }}>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e40af', borderBottom: '2px solid #e5e7eb', paddingBottom: '6px', marginBottom: '14px' }}>
+              Matriz de Priorização de Automação
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {matrixQuadrants.map(({ label, min, max, bg, border, title }) => {
+                const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
+                return (
+                  <div key={label} style={{ backgroundColor: bg, border: `1px solid ${border}`, borderRadius: '6px', padding: '12px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: title, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{label}</div>
+                    {items.length === 0 ? (
+                      <div style={{ fontSize: '10px', color: '#9ca3af', fontStyle: 'italic' }}>Nenhum processo nesta categoria</div>
+                    ) : items.map(r => (
+                      <div key={r.subprocessId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '10px', color: '#111827', flex: 1, paddingRight: '8px' }}>{r.subprocessName}</span>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: title }}>{r.totalScore}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Ranking de Potencial de Automação ───────────────────────────── */}
+      <div style={{ padding: '20px 32px 0' }}>
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e40af', borderBottom: '2px solid #e5e7eb', paddingBottom: '6px', marginBottom: '14px' }}>
+          Ranking de Potencial de Automação
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f3f4f6' }}>
+              {['Rank', 'Processo', 'Pontuação', 'Potencial'].map((h) => (
+                <th key={h} style={{ border: '1px solid #e5e7eb', padding: '6px 10px', textAlign: h === 'Pontuação' || h === 'Rank' || h === 'Potencial' ? 'center' : 'left', color: '#374151', fontWeight: 'bold' }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ranked.slice(0, 10).map((item, i) => {
+              const score = item.totalScore;
+              const potential = score >= 24 ? 'Muito Alto' : score >= 20 ? 'Alto' : score >= 16 ? 'Médio' : 'Baixo';
+              const potentialColor = score >= 24 ? '#dc2626' : score >= 20 ? '#d97706' : score >= 16 ? '#a16207' : '#6b7280';
+              return (
+                <tr key={item.subprocessId} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
+                  <td style={{ border: '1px solid #e5e7eb', padding: '6px 10px', textAlign: 'center', color: '#9ca3af', fontWeight: 'bold' }}>{item.rank}</td>
+                  <td style={{ border: '1px solid #e5e7eb', padding: '6px 10px', color: '#111827' }}>{item.subprocessName}</td>
+                  <td style={{ border: '1px solid #e5e7eb', padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: '#111827' }}>{item.totalScore}</td>
+                  <td style={{ border: '1px solid #e5e7eb', padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: potentialColor }}>{potential}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <div style={{ borderTop: '1px solid #e5e7eb', padding: '12px 32px', textAlign: 'center' }}>
         <span style={{ fontSize: '10px', color: '#9ca3af' }}>

@@ -4,358 +4,560 @@ import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { RankedAssessment } from '@/lib/ranking';
 import { RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
+import { FTE_HOURS_YEAR, HOURLY_COST } from '@/lib/impactCalculator';
+
+interface RefinedImpact {
+  annualHours: number; savingsHours: number; fteEquivalent: number;
+  capacityGain: number; financialImpact: number; hourlyCost: number;
+}
 
 interface Props {
   assessments: SubprocessAssessment[];
   ranked: RankedAssessment[];
   roadmap: RoadmapItem[];
+  insights?: string[];
   identification?: AssessmentIdentification;
   generatedAt?: string;
+  refinedImpact?: RefinedImpact;
 }
 
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const NAVY  = '#1e3a8a';
+const BLUE  = '#2563eb';
+const LBLUE = '#eff6ff';
+
 const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
-  'quick-wins':     'Quick Wins — 0 a 3 meses',
-  'strategic':      'Iniciativas Estratégicas — 3 a 6 meses',
-  'transformation': 'Transformação Operacional — 6 a 12 meses',
+  'quick-wins':     'Quick Win',
+  'strategic':      'Iniciativa Estratégica',
+  'transformation': 'Transformação Operacional',
 };
 
-const CATEGORY_BG: Record<RoadmapCategory, string> = {
-  'quick-wins':     '#f0fdf4',
-  'strategic':      '#eff6ff',
-  'transformation': '#f5f3ff',
-};
+function getPotential(score: number): { label: string; color: string } {
+  if (score >= 24) return { label: 'Muito Alto', color: '#dc2626' };
+  if (score >= 20) return { label: 'Alto',       color: '#d97706' };
+  if (score >= 16) return { label: 'Médio',      color: '#a16207' };
+  return               { label: 'Baixo',      color: '#6b7280' };
+}
 
-const CATEGORY_TEXT: Record<RoadmapCategory, string> = {
-  'quick-wins':     '#166534',
-  'strategic':      '#1e40af',
-  'transformation': '#5b21b6',
-};
-
-const PRIORITY_COLOR: Record<string, string> = {
-  Alta:  '#dc2626',
-  Média: '#d97706',
-  Baixa: '#6b7280',
-};
+// ── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+
+  // pages
+  coverPage: { padding: 0, fontFamily: 'Helvetica', backgroundColor: '#ffffff' },
   page: {
-    padding: 32,
-    fontSize: 11,
+    paddingHorizontal: 44,
+    paddingTop: 36,
+    paddingBottom: 50,
     fontFamily: 'Helvetica',
+    fontSize: 10,
     color: '#111827',
     backgroundColor: '#ffffff',
   },
 
-  // ── Header ────────────────────────────────────────────────────────────────
-  header: {
-    backgroundColor: '#1e40af',
-    borderRadius: 4,
-    padding: 20,
-    marginBottom: 20,
+  // ── Cover ──────────────────────────────────────────────────────────────────
+  coverTop: {
+    backgroundColor: NAVY,
+    height: 390,
+    paddingHorizontal: 48,
+    paddingTop: 52,
+    paddingBottom: 48,
+    justifyContent: 'flex-end',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: 'Helvetica-Bold',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 11,
-    color: '#bfdbfe',
-    marginBottom: 2,
-  },
-  headerDate: {
-    fontSize: 9,
-    color: '#93c5fd',
-  },
+  coverAccent: { width: 36, height: 3, backgroundColor: '#60a5fa', marginBottom: 18 },
+  coverBrand:  { fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#93c5fd', marginBottom: 20 },
+  coverTitle:  { fontSize: 28, fontFamily: 'Helvetica-Bold', color: '#ffffff', lineHeight: 1.2, marginBottom: 10 },
+  coverSub:    { fontSize: 12, color: '#93c5fd', lineHeight: 1.5 },
 
-  // ── Section title ─────────────────────────────────────────────────────────
-  sectionTitle: {
-    fontSize: 13,
-    fontFamily: 'Helvetica-Bold',
-    color: '#1e40af',
-    marginTop: 16,
-    marginBottom: 8,
-    paddingBottom: 4,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#e5e7eb',
-    borderBottomStyle: 'solid',
-  },
+  coverBottom: { flex: 1, paddingHorizontal: 48, paddingTop: 36, paddingBottom: 36, justifyContent: 'space-between' },
+  coverInfoRow: { flexDirection: 'row' },
+  coverInfoCol: { flex: 1, marginRight: 24 },
+  coverInfoColLast: { flex: 1 },
+  coverCaption: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 4, marginTop: 18 },
+  coverVal:     { fontSize: 13, fontFamily: 'Helvetica-Bold', color: '#111827' },
+  coverValSub:  { fontSize: 9, color: '#6b7280', marginTop: 2 },
+  coverFooter:  { fontSize: 8, color: '#d1d5db', borderTopWidth: 0.5, borderTopColor: '#e5e7eb', borderTopStyle: 'solid', paddingTop: 12 },
 
-  // ── Summary cards row ─────────────────────────────────────────────────────
-  cardsRow: {
+  // ── Section header ─────────────────────────────────────────────────────────
+  secHeader: {
     flexDirection: 'row',
-    marginBottom: 10,
-  },
-  card: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderStyle: 'solid',
-    borderRadius: 4,
-    padding: 8,
     alignItems: 'center',
-    marginRight: 6,
-  },
-  cardLast: {
-    marginRight: 0,
-  },
-  cardValue: {
-    fontSize: 16,
-    fontFamily: 'Helvetica-Bold',
-    marginBottom: 2,
-  },
-  cardLabel: {
-    fontSize: 8,
-    color: '#6b7280',
-  },
-
-  // ── Indicator cards ───────────────────────────────────────────────────────
-  indicatorCard: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderStyle: 'solid',
-    borderRadius: 4,
-    padding: 8,
-    marginRight: 6,
-  },
-  indicatorCardLast: {
-    marginRight: 0,
-  },
-  indicatorLabel: {
-    fontSize: 8,
-    color: '#6b7280',
-    marginBottom: 3,
-  },
-  indicatorValue: {
-    fontSize: 13,
-    fontFamily: 'Helvetica-Bold',
-  },
-
-  // ── Table ─────────────────────────────────────────────────────────────────
-  tableHeaderRow: {
-    flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingBottom: 8,
+    marginBottom: 10,
+    marginTop: 18,
+    borderBottomWidth: 2,
+    borderBottomColor: NAVY,
     borderBottomStyle: 'solid',
-    paddingVertical: 5,
   },
-  tableRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    borderBottomStyle: 'solid',
-    paddingVertical: 5,
+  secHeaderFirst: {
+    marginTop: 0,
   },
-  tableRowAlt: {
-    backgroundColor: '#f9fafb',
+  secNum: {
+    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+    color: BLUE,
+    backgroundColor: LBLUE,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 3,
+    marginRight: 10,
   },
-  th: {
-    paddingHorizontal: 5,
+  secTitle: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: NAVY },
+
+  subsecTitle: {
     fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     color: '#374151',
-  },
-  td: {
-    paddingHorizontal: 5,
-    fontSize: 9,
-    color: '#111827',
+    textTransform: 'uppercase',
+    marginTop: 12,
+    marginBottom: 6,
   },
 
-  // ── Roadmap ───────────────────────────────────────────────────────────────
-  categoryBadge: {
-    borderRadius: 4,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  categoryBadgeText: {
+  // ── Summary paragraph ──────────────────────────────────────────────────────
+  summaryPara: {
     fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
+    color: '#374151',
+    lineHeight: 1.6,
+    backgroundColor: LBLUE,
+    borderLeftWidth: 3,
+    borderLeftColor: BLUE,
+    borderLeftStyle: 'solid',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 10,
   },
 
-  // ── Footer ────────────────────────────────────────────────────────────────
-  footer: {
-    marginTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+  // ── KPI cards ──────────────────────────────────────────────────────────────
+  kpiRow: { flexDirection: 'row', marginBottom: 10 },
+  kpiCard: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderTopWidth: 3,
+    borderTopColor: BLUE,
     borderTopStyle: 'solid',
-    paddingTop: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderStyle: 'solid',
+    borderRadius: 5,
+    padding: 8,
+    marginRight: 8,
     alignItems: 'center',
   },
-  footerText: {
-    fontSize: 8,
-    color: '#9ca3af',
+  kpiCardLast: { marginRight: 0 },
+  kpiVal:   { fontSize: 16, fontFamily: 'Helvetica-Bold', color: NAVY, marginBottom: 3, textAlign: 'center' },
+  kpiLabel: { fontSize: 7, color: '#6b7280', textAlign: 'center', lineHeight: 1.4 },
+
+  // ── Top 3 ──────────────────────────────────────────────────────────────────
+  top3Row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 5,
+    padding: 8,
+    marginBottom: 5,
+    borderLeftWidth: 3,
+    borderLeftStyle: 'solid',
   },
+  top3Rank:    { width: 26, fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#d1d5db' },
+  top3Content: { flex: 1, paddingRight: 8 },
+  top3Name:    { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#111827', marginBottom: 2 },
+  top3Meta:    { fontSize: 7, color: '#9ca3af' },
+  top3Score:   { fontSize: 16, fontFamily: 'Helvetica-Bold', textAlign: 'center', width: 32 },
+  top3Badge:   { fontSize: 7, fontFamily: 'Helvetica-Bold', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3, marginLeft: 8, color: '#ffffff' },
+
+  // ── Overview cards ─────────────────────────────────────────────────────────
+  ovRow: { flexDirection: 'row' },
+  ovCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderStyle: 'solid',
+    borderRadius: 5,
+    padding: 10,
+    marginRight: 8,
+  },
+  ovCardLast: { marginRight: 0 },
+  ovCardTitle: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#9ca3af', textTransform: 'uppercase', marginBottom: 8 },
+  ovDataRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#f3f4f6',
+    borderBottomStyle: 'solid',
+  },
+  ovDataLabel: { fontSize: 8.5, color: '#6b7280' },
+  ovDataVal:   { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#111827' },
+
+  // ── Table ──────────────────────────────────────────────────────────────────
+  tblWrap: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderStyle: 'solid',
+    borderRadius: 5,
+  },
+  tblHead: {
+    flexDirection: 'row',
+    backgroundColor: NAVY,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+  },
+  tblRow: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#f3f4f6',
+    borderBottomStyle: 'solid',
+  },
+  tblRowAlt: { backgroundColor: '#f9fafb' },
+  th: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#ffffff', paddingHorizontal: 3 },
+  td: { fontSize: 8.5, color: '#111827', paddingHorizontal: 3 },
+
+  // ── Matrix ─────────────────────────────────────────────────────────────────
+  matGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  matQuad: {
+    width: '48%',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderRadius: 5,
+    padding: 8,
+    marginBottom: 8,
+    marginRight: '2%',
+  },
+  matTitle: { fontSize: 8, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', marginBottom: 6 },
+  matItem:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  matName:  { fontSize: 7.5, color: '#374151', flex: 1, paddingRight: 6 },
+  matBadge: { fontSize: 7, fontFamily: 'Helvetica-Bold', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 3 },
+  matEmpty: { fontSize: 7.5, color: '#9ca3af' },
+
+  // ── Roadmap ────────────────────────────────────────────────────────────────
+  rmStep: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
+  rmCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: NAVY,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  rmNum:     { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#ffffff' },
+  rmContent: { flex: 1, borderBottomWidth: 0.5, borderBottomColor: '#f3f4f6', borderBottomStyle: 'solid', paddingBottom: 6 },
+  rmTitle:   { fontSize: 9.5, fontFamily: 'Helvetica-Bold', color: '#111827', marginBottom: 2 },
+  rmDesc:    { fontSize: 7.5, color: '#6b7280' },
+
+  // ── Insights ───────────────────────────────────────────────────────────────
+  insightsBox: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderStyle: 'solid',
+    borderRadius: 6,
+    padding: 12,
+  },
+  insRow:  { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
+  insDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: '#f59e0b', marginRight: 10, marginTop: 3, flexShrink: 0 },
+  insText: { flex: 1, fontSize: 9, color: '#374151', lineHeight: 1.5 },
+
+  // ── Page footer ────────────────────────────────────────────────────────────
+  pgFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 0.5,
+    borderTopColor: '#e5e7eb',
+    borderTopStyle: 'solid',
+    paddingTop: 6,
+    position: 'absolute',
+    bottom: 20,
+    left: 44,
+    right: 44,
+  },
+  pgFooterText: { fontSize: 7, color: '#9ca3af' },
 });
 
-function fmt(n: number): string {
-  return n.toLocaleString('pt-BR');
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmt(n: number) { return n.toLocaleString('pt-BR'); }
+function fmtCurrency(n: number) { return `R$ ${n.toLocaleString('pt-BR')}`; }
+
+function SectionHeader({ num, title, first }: { num: string; title: string; first?: boolean }) {
+  return (
+    <View style={[s.secHeader, first ? s.secHeaderFirst : {}]}>
+      <Text style={s.secNum}>{num}</Text>
+      <Text style={s.secTitle}>{title}</Text>
+    </View>
+  );
 }
 
-function fmtCurrency(n: number): string {
-  return `R$ ${n.toLocaleString('pt-BR')}`;
+function PageFooter({ company }: { company?: string }) {
+  return (
+    <View style={s.pgFooter} fixed>
+      <Text style={s.pgFooterText}>{company ? `Confidencial · ${company}` : 'Confidencial'}</Text>
+      <Text style={s.pgFooterText}>Diagnóstico de Eficiência Operacional</Text>
+      <Text style={s.pgFooterText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+    </View>
+  );
 }
 
-export default function PDFDiagnosticReport({ assessments, ranked, roadmap, identification, generatedAt }: Props) {
+// ── Component ────────────────────────────────────────────────────────────────
+
+export default function PDFDiagnosticReport({
+  assessments,
+  ranked,
+  roadmap,
+  insights,
+  identification,
+  generatedAt,
+  refinedImpact,
+}: Props) {
   const summary = {
     alta:  ranked.filter(r => r.priority === 'Alta').length,
     media: ranked.filter(r => r.priority === 'Média').length,
     baixa: ranked.filter(r => r.priority === 'Baixa').length,
   };
 
-  const totalAnnualHours     = assessments.reduce((acc, a) => acc + a.annualHours, 0);
-  const totalSavingsHours    = assessments.reduce((acc, a) => acc + a.automationSavingsHours, 0);
-  const totalFinancialImpact = assessments.reduce((acc, a) => acc + a.financialImpact, 0);
+  const baseAnnualHours     = assessments.reduce((a, x) => a + x.annualHours, 0);
+  const baseSavingsHours    = assessments.reduce((a, x) => a + x.automationSavingsHours, 0);
+  const baseFinancialImpact = assessments.reduce((a, x) => a + x.financialImpact, 0);
 
+  const totalAnnualHours     = refinedImpact?.annualHours     ?? baseAnnualHours;
+  const totalSavingsHours    = refinedImpact?.savingsHours    ?? baseSavingsHours;
+  const totalFinancialImpact = refinedImpact?.financialImpact ?? baseFinancialImpact;
+  const effectiveHourlyCost  = refinedImpact?.hourlyCost      ?? HOURLY_COST;
 
-  const roadmapGroups = (['quick-wins', 'strategic', 'transformation'] as RoadmapCategory[])
-    .map(cat => ({ cat, items: roadmap.filter(r => r.roadmapCategory === cat) }))
-    .filter(g => g.items.length > 0);
+  const totalFteEquivalent = refinedImpact?.fteEquivalent ?? Math.round((baseSavingsHours / FTE_HOURS_YEAR) * 10) / 10;
+  const totalCapacityGain  = refinedImpact?.capacityGain  ?? (baseAnnualHours > 0
+    ? Math.round((baseSavingsHours / baseAnnualHours) * 100)
+    : 0);
+
+  const top3    = ranked.slice(0, 3);
+  const company = identification?.company;
 
   return (
     <Document>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          PAGE 1 — COVER
+      ════════════════════════════════════════════════════════════════════ */}
+      <Page size="A4" style={s.coverPage}>
+        <View style={s.coverTop}>
+          <View style={s.coverAccent} />
+          <Text style={s.coverBrand}>META</Text>
+          <Text style={s.coverTitle}>{'Diagnóstico de\nEficiência Operacional'}</Text>
+          <Text style={s.coverSub}>Identificação de oportunidades de automação</Text>
+        </View>
+
+        <View style={s.coverBottom}>
+          <View style={s.coverInfoRow}>
+            {identification && (
+              <>
+                <View style={s.coverInfoCol}>
+                  <Text style={s.coverCaption}>PREPARADO PARA</Text>
+                  <Text style={s.coverVal}>{identification.company}</Text>
+                  <Text style={s.coverValSub}>{identification.area}</Text>
+
+                  <Text style={s.coverCaption}>RESPONDENTE</Text>
+                  <Text style={s.coverVal}>{identification.respondentName}</Text>
+                  <Text style={s.coverValSub}>{identification.email}</Text>
+                </View>
+                <View style={s.coverInfoColLast}>
+                  {generatedAt && (
+                    <>
+                      <Text style={s.coverCaption}>DATA</Text>
+                      <Text style={s.coverVal}>{generatedAt}</Text>
+                    </>
+                  )}
+                </View>
+              </>
+            )}
+            {!identification && generatedAt && (
+              <View style={s.coverInfoCol}>
+                <Text style={s.coverCaption}>DATA</Text>
+                <Text style={s.coverVal}>{generatedAt}</Text>
+              </View>
+            )}
+          </View>
+
+          <Text style={s.coverFooter}>Documento Confidencial · Meta Consultoria</Text>
+        </View>
+      </Page>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          CONTENT PAGES — continuous flow
+      ════════════════════════════════════════════════════════════════════ */}
       <Page size="A4" style={s.page}>
+        <PageFooter company={company} />
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <View style={s.header}>
-          <Text style={s.headerTitle}>Diagnóstico de Automação Operacional</Text>
-          <Text style={s.headerSubtitle}>Relatório de Oportunidades de Automação</Text>
-          {identification && (
-            <>
-              <Text style={s.headerDate}>
-                Empresa: {identification.company}  ·  Área: {identification.area}
-              </Text>
-              <Text style={s.headerDate}>
-                Respondente: {identification.respondentName}
-              </Text>
-            </>
-          )}
-          {generatedAt && (
-            <Text style={s.headerDate}>Gerado em: {generatedAt}</Text>
-          )}
-        </View>
+        {/* ── 01 Sumário Executivo ─────────────────────────────────────────── */}
+        <SectionHeader num="01" title="Sumário Executivo" first />
 
-        {/* ── Resumo do Diagnóstico ───────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Resumo do Diagnóstico</Text>
-        <View style={s.cardsRow}>
+        <Text style={s.summaryPara}>
+          {`O presente diagnóstico avaliou ${assessments.length} subprocesso${assessments.length !== 1 ? 's' : ''} operacional${assessments.length !== 1 ? 'is' : ''}, identificando ${summary.alta} com alta prioridade para automação. O potencial de automação identificado representa ${fmt(totalSavingsHours)} horas operacionais/ano — equivalente a ${totalFteEquivalent.toLocaleString('pt-BR')} FTE — e um ganho de capacidade operacional de +${totalCapacityGain}%.`}
+        </Text>
+
+        <View style={s.kpiRow}>
           {([
-            { label: 'Prioridade Alta',  value: String(summary.alta),   color: '#dc2626' },
-            { label: 'Prioridade Média', value: String(summary.media),  color: '#d97706' },
-            { label: 'Prioridade Baixa', value: String(summary.baixa),  color: '#6b7280' },
-            { label: 'Total Avaliados',  value: String(ranked.length),  color: '#111827' },
-          ] as const).map(({ label, value, color }, i, arr) => (
-            <View key={label} style={[s.card, i === arr.length - 1 ? s.cardLast : {}]}>
-              <Text style={[s.cardValue, { color }]}>{value}</Text>
-              <Text style={s.cardLabel}>{label}</Text>
+            { label: 'Subprocessos\navaliados',             value: String(assessments.length) },
+            { label: 'Horas automatizáveis\n(estimado)',     value: `${fmt(totalSavingsHours)} h` },
+            { label: 'FTE equivalente\n(estimado)',          value: `≈ ${totalFteEquivalent.toLocaleString('pt-BR')} FTE` },
+            { label: 'Ganho de\ncapacidade',                 value: `+${totalCapacityGain}%` },
+          ] as const).map(({ label, value }, i, arr) => (
+            <View key={label} style={[s.kpiCard, i === arr.length - 1 ? s.kpiCardLast : {}]}>
+              <Text style={s.kpiVal}>{value}</Text>
+              <Text style={s.kpiLabel}>{label}</Text>
             </View>
           ))}
         </View>
 
-        {/* ── Indicadores ────────────────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Indicadores</Text>
-        <View style={s.cardsRow}>
-          {([
-            { label: 'Horas Anuais Mapeadas',      value: `${fmt(totalAnnualHours)} h`,      color: '#111827' },
-            { label: 'Potencial de Economia',       value: `${fmt(totalSavingsHours)} h/ano`, color: '#059669' },
-            { label: 'Impacto Financeiro Estimado', value: fmtCurrency(totalFinancialImpact), color: '#059669' },
-          ] as const).map(({ label, value, color }, i, arr) => (
-            <View key={label} style={[s.indicatorCard, i === arr.length - 1 ? s.indicatorCardLast : {}]}>
-              <Text style={s.indicatorLabel}>{label}</Text>
-              <Text style={[s.indicatorValue, { color }]}>{value}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── Ranking de Processos ────────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Ranking de Processos</Text>
-        <View style={s.tableHeaderRow}>
-          <Text style={[s.th, { width: '5%' }]}>#</Text>
-          <Text style={[s.th, { width: '30%' }]}>Processo</Text>
-          <Text style={[s.th, { width: '37%' }]}>Subprocesso</Text>
-          <Text style={[s.th, { width: '12%', textAlign: 'center' }]}>Score</Text>
-          <Text style={[s.th, { width: '16%', textAlign: 'center' }]}>Prioridade</Text>
-        </View>
-        {ranked.map((item, i) => {
-          const prLabel = item.totalScore >= 20 ? 'Alta' : item.totalScore >= 14 ? 'Média' : 'Baixa';
-          const prColor = item.totalScore >= 20 ? '#dc2626' : item.totalScore >= 14 ? '#d97706' : '#6b7280';
+        <Text style={s.subsecTitle}>Principais Oportunidades de Automação</Text>
+        {top3.map((item, i) => {
+          const colors = ['#dc2626', '#d97706', '#6b7280'];
+          const c = colors[i] ?? '#6b7280';
           return (
-            <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-              <Text style={[s.td, { width: '5%', color: '#6b7280' }]}>{item.rank}</Text>
-              <Text style={[s.td, { width: '30%' }]}>{item.processName}</Text>
-              <Text style={[s.td, { width: '37%' }]}>{item.subprocessName}</Text>
-              <Text style={[s.td, { width: '12%', textAlign: 'center', color: prColor }]}>{item.totalScore}</Text>
-              <Text style={[s.td, { width: '16%', textAlign: 'center', color: prColor }]}>{prLabel}</Text>
+            <View key={item.subprocessId} style={[s.top3Row, { borderLeftColor: c }]}>
+              <Text style={s.top3Rank}>#{i + 1}</Text>
+              <View style={s.top3Content}>
+                <Text style={s.top3Name}>{item.subprocessName}</Text>
+                <Text style={s.top3Meta}>{item.macroprocessName} › {item.processName}</Text>
+              </View>
+              <Text style={[s.top3Score, { color: c }]}>{item.totalScore}</Text>
+              <Text style={[s.top3Badge, { backgroundColor: c }]}>{item.priority}</Text>
             </View>
           );
         })}
 
-        {/* ── Ranking de Oportunidades ────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Ranking de Oportunidades</Text>
-        <View style={s.tableHeaderRow}>
-          <Text style={[s.th, { width: '5%' }]}>#</Text>
-          <Text style={[s.th, { width: '33%' }]}>Subprocesso</Text>
-          <Text style={[s.th, { width: '24%' }]}>Macroprocesso</Text>
-          <Text style={[s.th, { width: '10%', textAlign: 'center' }]}>Score</Text>
-          <Text style={[s.th, { width: '12%', textAlign: 'center' }]}>Prioridade</Text>
-          <Text style={[s.th, { width: '16%', textAlign: 'right' }]}>Economia Est.</Text>
-        </View>
-        {ranked.map((item, i) => (
-          <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-            <Text style={[s.td, { width: '5%', color: '#6b7280' }]}>{item.rank}</Text>
-            <Text style={[s.td, { width: '33%' }]}>{item.subprocessName}</Text>
-            <Text style={[s.td, { width: '24%', color: '#6b7280' }]}>{item.macroprocessName}</Text>
-            <Text style={[s.td, { width: '10%', textAlign: 'center', color: PRIORITY_COLOR[item.priority] ?? '#111827' }]}>
-              {item.totalScore}
-            </Text>
-            <Text style={[s.td, { width: '12%', textAlign: 'center', color: PRIORITY_COLOR[item.priority] ?? '#111827' }]}>
-              {item.priority}
-            </Text>
-            <Text style={[s.td, { width: '16%', textAlign: 'right', color: '#059669' }]}>
-              {fmtCurrency(item.financialImpact)}
-            </Text>
-          </View>
-        ))}
+        {/* ── 02 Visão Geral ───────────────────────────────────────────────── */}
+        <SectionHeader num="02" title="Visão Geral do Diagnóstico" />
 
-        {/* ── Roadmap de Automação ────────────────────────────────────────── */}
-        <Text style={s.sectionTitle}>Roadmap de Automação</Text>
-        {roadmapGroups.map(({ cat, items }) => (
-          <View key={cat}>
-            <View style={[s.categoryBadge, { backgroundColor: CATEGORY_BG[cat] }]}>
-              <Text style={[s.categoryBadgeText, { color: CATEGORY_TEXT[cat] }]}>
-                {CATEGORY_LABELS[cat]}
-              </Text>
-            </View>
-            <View style={s.tableHeaderRow}>
-              <Text style={[s.th, { width: '42%' }]}>Subprocesso</Text>
-              <Text style={[s.th, { width: '16%', textAlign: 'center' }]}>Automação</Text>
-              <Text style={[s.th, { width: '16%', textAlign: 'center' }]}>Impacto</Text>
-              <Text style={[s.th, { width: '26%', textAlign: 'right' }]}>Economia Est.</Text>
-            </View>
-            {items.map((item, i) => (
-              <View key={item.subprocessId} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-                <Text style={[s.td, { width: '42%' }]}>{item.subprocessName}</Text>
-                <Text style={[s.td, { width: '16%', textAlign: 'center' }]}>{item.automationScore}%</Text>
-                <Text style={[s.td, { width: '16%', textAlign: 'center' }]}>{item.impactScore}%</Text>
-                <Text style={[s.td, { width: '26%', textAlign: 'right', color: '#059669' }]}>
-                  {fmtCurrency(item.estimatedSavings)}
-                </Text>
+        <View style={s.ovRow}>
+          <View style={s.ovCard}>
+            <Text style={s.ovCardTitle}>Distribuição de Prioridades</Text>
+            {([
+              { label: 'Alta Prioridade',  value: String(summary.alta),  color: '#dc2626' },
+              { label: 'Média Prioridade', value: String(summary.media), color: '#d97706' },
+              { label: 'Baixa Prioridade', value: String(summary.baixa), color: '#6b7280' },
+            ] as const).map(({ label, value, color }) => (
+              <View key={label} style={s.ovDataRow}>
+                <Text style={s.ovDataLabel}>{label}</Text>
+                <Text style={[s.ovDataVal, { color }]}>{value}</Text>
               </View>
             ))}
           </View>
-        ))}
 
-        {/* ── Footer ─────────────────────────────────────────────────────── */}
-        <View style={s.footer}>
-          <Text style={s.footerText}>
-            Relatório gerado automaticamente — Diagnóstico de Automação Operacional
-          </Text>
+          <View style={[s.ovCard, s.ovCardLast]}>
+            <Text style={s.ovCardTitle}>Indicadores de Impacto Operacional</Text>
+            {([
+              { label: 'Processos analisados',          value: String(assessments.length) },
+              { label: 'Esforço mapeado (h/ano)',        value: `${fmt(totalAnnualHours)} h` },
+              { label: 'Horas automatizáveis (h/ano)',   value: `${fmt(totalSavingsHours)} h` },
+              { label: 'FTE equivalente',                value: `≈ ${totalFteEquivalent.toLocaleString('pt-BR')} FTE` },
+              { label: 'Ganho de capacidade',            value: `+${totalCapacityGain}%` },
+              { label: `Impacto financeiro (R$${effectiveHourlyCost}/h)`, value: fmtCurrency(totalFinancialImpact) },
+            ] as const).map(({ label, value }) => (
+              <View key={label} style={s.ovDataRow}>
+                <Text style={s.ovDataLabel}>{label}</Text>
+                <Text style={s.ovDataVal}>{value}</Text>
+              </View>
+            ))}
+          </View>
         </View>
 
+        {/* ── 03 Ranking ───────────────────────────────────────────────────── */}
+        <SectionHeader num="03" title="Ranking de Potencial de Automação" />
+
+        <View style={s.tblWrap}>
+          <View style={s.tblHead}>
+            <Text style={[s.th, { width: '8%',  textAlign: 'center' }]}>Rank</Text>
+            <Text style={[s.th, { width: '56%' }]}>Processo</Text>
+            <Text style={[s.th, { width: '18%', textAlign: 'center' }]}>Pontuação</Text>
+            <Text style={[s.th, { width: '18%', textAlign: 'center' }]}>Potencial</Text>
+          </View>
+          {ranked.slice(0, 15).map((item, i) => {
+            const pt = getPotential(item.totalScore);
+            return (
+              <View key={item.subprocessId} style={[s.tblRow, i % 2 === 1 ? s.tblRowAlt : {}]}>
+                <Text style={[s.td, { width: '8%',  textAlign: 'center', color: '#9ca3af' }]}>{item.rank}</Text>
+                <Text style={[s.td, { width: '56%' }]}>{item.subprocessName}</Text>
+                <Text style={[s.td, { width: '18%', textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>{item.totalScore}</Text>
+                <Text style={[s.td, { width: '18%', textAlign: 'center', color: pt.color, fontFamily: 'Helvetica-Bold' }]}>{pt.label}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* ── 04 Matriz de Priorização ─────────────────────────────────────── */}
+        <SectionHeader num="04" title="Matriz de Priorização de Automação" />
+
+        <View style={s.matGrid}>
+          {([
+            { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: '#fef2f2', border: '#fecaca', color: '#b91c1c' },
+            { label: 'Alta Prioridade',           min: 20, max: 24,       bg: '#fff7ed', border: '#fed7aa', color: '#c2410c' },
+            { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
+            { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: '#f9fafb', border: '#e5e7eb', color: '#6b7280' },
+          ] as { label: string; min: number; max: number; bg: string; border: string; color: string }[]).map(({ label, min, max, bg, border, color }) => {
+            const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
+            return (
+              <View key={label} style={[s.matQuad, { backgroundColor: bg, borderColor: border }]}>
+                <Text style={[s.matTitle, { color }]}>{label}</Text>
+                {items.length === 0
+                  ? <Text style={s.matEmpty}>Nenhum processo nesta categoria</Text>
+                  : items.map(r => (
+                    <View key={r.subprocessId} style={s.matItem}>
+                      <Text style={s.matName}>{r.subprocessName}</Text>
+                      <Text style={[s.matBadge, { color, backgroundColor: bg }]}>{r.totalScore}</Text>
+                    </View>
+                  ))
+                }
+              </View>
+            );
+          })}
+        </View>
+
+        {/* ── 05 Roadmap ───────────────────────────────────────────────────── */}
+        {roadmap.length > 0 && (
+          <>
+            <SectionHeader num="05" title="Roadmap de Automação Sugerido" />
+            {roadmap.map((item, i) => (
+              <View key={item.subprocessId} style={s.rmStep}>
+                <View style={s.rmCircle}>
+                  <Text style={s.rmNum}>{i + 1}</Text>
+                </View>
+                <View style={s.rmContent}>
+                  <Text style={s.rmTitle}>{item.subprocessName}</Text>
+                  <Text style={s.rmDesc}>
+                    {CATEGORY_LABELS[item.roadmapCategory]}
+                    {' · '}{item.timeline}
+                    {' · '}Economia est.: {fmtCurrency(item.estimatedSavings)}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* ── 06 Insights ──────────────────────────────────────────────────── */}
+        {insights && insights.length > 0 && (
+          <>
+            <SectionHeader num="06" title="Insights do Diagnóstico" />
+            <View style={s.insightsBox}>
+              {insights.map((text, i) => (
+                <View key={i} style={[s.insRow, i === insights.length - 1 ? { marginBottom: 0 } : {}]}>
+                  <View style={s.insDot} />
+                  <Text style={s.insText}>{text}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
       </Page>
+
     </Document>
   );
 }

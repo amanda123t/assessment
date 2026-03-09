@@ -66,6 +66,7 @@ export interface AssessmentIdentification {
   company: string;
   area: string;
   respondentName: string;
+  email: string;
 }
 
 export interface AssessmentState {
@@ -73,7 +74,7 @@ export interface AssessmentState {
   globalSelectedSubprocesses: SelectedSubprocessItem[];
   assessments: SubprocessAssessment[];
   currentSubprocessIndex: number;
-  step: 'start' | 'explore' | 'identification' | 'questionnaire' | 'ranking';
+  step: 'start' | 'explore' | 'questionnaire' | 'ranking';
   identification?: AssessmentIdentification;
   /** DD/MM/YYYY string set automatically when the diagnostic starts. */
   generatedAt?: string;
@@ -102,7 +103,7 @@ export const CRITERIA = [
     description: 'Tempo médio gasto para completar o subprocesso por tarefa',
     lowLabel: 'Muito rápido',
     highLabel: 'Muito demorado',
-    options: ['Menos de 2 min', '2 a 5 min', '5 a 15 min', 'Mais de 15 min'] as const,
+    options: ['Menos de 5 minutos', '5 a 15 minutos', '15 a 30 minutos', 'Mais de 30 minutos'] as const,
   },
   {
     key: 'reworkOrErrors' as keyof CriteriaScores,
