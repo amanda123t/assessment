@@ -4,7 +4,9 @@
  * Converts questionnaire scores (1–4) into operational impact estimates:
  * - Annual operational hours (volume × time × 12 months)
  * - Automation savings hours (based on automationScore thresholds)
- * - Estimated financial impact (savings × hourly cost)
+ * - FTE equivalent of automatable hours
+ * - Operational capacity gain percentage
+ * - Estimated financial impact (scenario, based on R$3,000/month salary profile)
  */
 
 import { CriteriaScores } from '@/types';
@@ -25,8 +27,17 @@ const TIME_MAP: Record<number, number> = {
   4: 20,
 };
 
-/** Assumed average operational cost per hour (USD/BRL) */
-export const HOURLY_COST = 80;
+/**
+ * Assumed average productive hours per FTE per year.
+ * Standard 40 h/week × 50 weeks.
+ */
+export const FTE_HOURS_YEAR = 2000;
+
+/**
+ * Assumed total hourly cost of an operational employee.
+ * Based on ~R$3,000/month salary + employer charges ÷ 160 h/month ≈ R$50/h.
+ */
+export const HOURLY_COST = 50;
 
 /**
  * Calculate annual operational effort in hours.
@@ -57,8 +68,28 @@ export function calculateAutomationSavings(
 }
 
 /**
- * Estimate financial impact from automation savings.
+ * Calculate the FTE equivalent of automatable hours.
+ * Formula: automatableHours / FTE_HOURS_YEAR
+ * Rounded to one decimal place.
+ */
+export function calculateFteEquivalent(automatableHours: number): number {
+  return Math.round((automatableHours / FTE_HOURS_YEAR) * 10) / 10;
+}
+
+/**
+ * Calculate the operational capacity gain percentage.
+ * Formula: (automatableHours / annualHours) × 100
+ * Returns 0 if annualHours is 0.
+ */
+export function calculateCapacityGain(automatableHours: number, annualHours: number): number {
+  if (annualHours === 0) return 0;
+  return Math.round((automatableHours / annualHours) * 100);
+}
+
+/**
+ * Estimate financial impact from automation savings (scenario).
  * Formula: savingsHours × HOURLY_COST
+ * This is a scenario estimate based on an assumed administrative cost of R$50/hour.
  */
 export function calculateFinancialImpact(savingsHours: number): number {
   return savingsHours * HOURLY_COST;

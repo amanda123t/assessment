@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import {
   Trophy, FileDown, RotateCcw, Activity,
-  Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown, X,
+  Lightbulb, TrendingUp, DollarSign, Target, ChevronDown, X,
 } from 'lucide-react';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
+import { FTE_HOURS_YEAR, HOURLY_COST } from '@/lib/impactCalculator';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
@@ -160,6 +161,11 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
   const totalSavingsHours    = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
 
+  const totalFteEquivalent = Math.round((totalSavingsHours / FTE_HOURS_YEAR) * 10) / 10;
+  const totalCapacityGain  = totalAnnualHours > 0
+    ? Math.round((totalSavingsHours / totalAnnualHours) * 100)
+    : 0;
+
   const idFormValid =
     idForm.company.trim() &&
     idForm.area.trim() &&
@@ -307,44 +313,69 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
           )}
         </div>
 
-        {/* ── 1. Diagnóstico ───────────────────────────────────────────── */}
+        {/* ── 1. Diagnóstico — header ───────────────────────────────────── */}
         <section className="mb-6">
           <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-sm">
-            <div className="flex items-center gap-2 mb-5">
+            <div className="flex items-center gap-2 mb-2">
               <Activity size={18} strokeWidth={1.75} />
               <h3 className="font-semibold text-base">Diagnóstico de Eficiência Operacional</h3>
             </div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="bg-white/10 rounded-xl p-4">
-                <p className="text-blue-100 text-xs mb-1">Subprocessos avaliados</p>
-                <p className="text-3xl font-extrabold">{assessments.length}</p>
+            <p className="text-blue-100 text-sm">
+              {assessments.length} subprocesso{assessments.length !== 1 ? 's' : ''} avaliado{assessments.length !== 1 ? 's' : ''} ·{' '}
+              {fmt(totalAnnualHours)} horas operacionais/ano mapeadas
+            </p>
+          </div>
+        </section>
+
+        {/* ── 1b. Executive impact metrics ──────────────────────────────── */}
+        <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+
+          {/* Card 1 — Operational Impact */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <TrendingUp size={15} className="text-blue-600" strokeWidth={1.75} />
               </div>
-              <div className="bg-white/10 rounded-xl p-4">
-                <div className="flex items-center gap-1 mb-1">
-                  <Clock size={12} className="text-blue-200" />
-                  <p className="text-blue-100 text-xs">Esforço operacional analisado</p>
-                </div>
-                <p className="text-3xl font-extrabold">{fmt(totalAnnualHours)}</p>
-                <p className="text-blue-200 text-xs mt-0.5">horas/ano</p>
-              </div>
-              <div className="bg-white/10 rounded-xl p-4">
-                <div className="flex items-center gap-1 mb-1">
-                  <TrendingUp size={12} className="text-blue-200" />
-                  <p className="text-blue-100 text-xs">Oportunidade de automação</p>
-                </div>
-                <p className="text-3xl font-extrabold">{fmt(totalSavingsHours)}</p>
-                <p className="text-blue-200 text-xs mt-0.5">horas/ano</p>
-              </div>
-              <div className="bg-white/10 rounded-xl p-4">
-                <div className="flex items-center gap-1 mb-1">
-                  <DollarSign size={12} className="text-blue-200" />
-                  <p className="text-blue-100 text-xs">Economia operacional estimada</p>
-                </div>
-                <p className="text-2xl font-extrabold">{fmtCurrency(totalFinancialImpact)}</p>
-                <p className="text-blue-200 text-xs mt-0.5">por ano</p>
-              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Impacto Operacional</p>
+            </div>
+            <p className="text-3xl font-extrabold text-gray-900">{fmt(totalSavingsHours)}</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-3">horas operacionais potencialmente automatizáveis/ano</p>
+            <div className="flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-2">
+              <span className="text-sm font-bold text-blue-700">≈ {totalFteEquivalent.toLocaleString('pt-BR')} FTE</span>
+              <span className="text-xs text-blue-500">de capacidade operacional</span>
             </div>
           </div>
+
+          {/* Card 2 — Operational Capacity Gain */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <Activity size={15} className="text-emerald-600" strokeWidth={1.75} />
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Ganho de Capacidade</p>
+            </div>
+            <p className="text-3xl font-extrabold text-emerald-600">+{totalCapacityGain}%</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-3">aumento na capacidade operacional</p>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              A equipe atual poderia processar ~{totalCapacityGain}% mais volume sem aumento de headcount.
+            </p>
+          </div>
+
+          {/* Card 3 — Financial Impact (scenario) */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                <DollarSign size={15} className="text-amber-600" strokeWidth={1.75} />
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Impacto Financeiro (cenário)</p>
+            </div>
+            <p className="text-2xl font-extrabold text-gray-900">{fmtCurrency(totalFinancialImpact)}</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-3">estimativa anual</p>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Estimativa baseada em custo administrativo de R${HOURLY_COST}/h. Resultados reais variam conforme a estrutura de custos da organização.
+            </p>
+          </div>
+
         </section>
 
         {/* ── 2. Distribuição de Prioridades ───────────────────────────── */}

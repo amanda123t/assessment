@@ -4,6 +4,7 @@ import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { RankedAssessment } from '@/lib/ranking';
 import { RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
+import { FTE_HOURS_YEAR, HOURLY_COST } from '@/lib/impactCalculator';
 
 interface Props {
   assessments: SubprocessAssessment[];
@@ -336,6 +337,11 @@ export default function PDFDiagnosticReport({
   const totalSavingsHours    = assessments.reduce((a, x) => a + x.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((a, x) => a + x.financialImpact, 0);
 
+  const totalFteEquivalent = Math.round((totalSavingsHours / FTE_HOURS_YEAR) * 10) / 10;
+  const totalCapacityGain  = totalAnnualHours > 0
+    ? Math.round((totalSavingsHours / totalAnnualHours) * 100)
+    : 0;
+
   const top3    = ranked.slice(0, 3);
   const company = identification?.company;
 
@@ -398,15 +404,15 @@ export default function PDFDiagnosticReport({
         <SectionHeader num="01" title="Sumário Executivo" first />
 
         <Text style={s.summaryPara}>
-          {`O presente diagnóstico avaliou ${assessments.length} subprocesso${assessments.length !== 1 ? 's' : ''} operacional${assessments.length !== 1 ? 'is' : ''}, identificando ${summary.alta} com alta prioridade para automação. A análise estima um potencial de economia de ${fmt(totalSavingsHours)} horas operacionais por ano, representando um impacto financeiro estimado de ${fmtCurrency(totalFinancialImpact)} anuais.`}
+          {`O presente diagnóstico avaliou ${assessments.length} subprocesso${assessments.length !== 1 ? 's' : ''} operacional${assessments.length !== 1 ? 'is' : ''}, identificando ${summary.alta} com alta prioridade para automação. O potencial de automação identificado representa ${fmt(totalSavingsHours)} horas operacionais/ano — equivalente a ${totalFteEquivalent.toLocaleString('pt-BR')} FTE — e um ganho de capacidade operacional de +${totalCapacityGain}%.`}
         </Text>
 
         <View style={s.kpiRow}>
           {([
-            { label: 'Subprocessos\navaliados',        value: String(assessments.length) },
-            { label: 'Alta\nprioridade',               value: String(summary.alta) },
-            { label: 'Horas de automação\n(estimado)',  value: `${fmt(totalSavingsHours)} h` },
-            { label: 'Economia anual\nestimada',        value: fmtCurrency(totalFinancialImpact) },
+            { label: 'Subprocessos\navaliados',             value: String(assessments.length) },
+            { label: 'Horas automatizáveis\n(estimado)',     value: `${fmt(totalSavingsHours)} h` },
+            { label: 'FTE equivalente\n(estimado)',          value: `≈ ${totalFteEquivalent.toLocaleString('pt-BR')} FTE` },
+            { label: 'Ganho de\ncapacidade',                 value: `+${totalCapacityGain}%` },
           ] as const).map(({ label, value }, i, arr) => (
             <View key={label} style={[s.kpiCard, i === arr.length - 1 ? s.kpiCardLast : {}]}>
               <Text style={s.kpiVal}>{value}</Text>
@@ -451,12 +457,14 @@ export default function PDFDiagnosticReport({
           </View>
 
           <View style={[s.ovCard, s.ovCardLast]}>
-            <Text style={s.ovCardTitle}>Indicadores de Impacto</Text>
+            <Text style={s.ovCardTitle}>Indicadores de Impacto Operacional</Text>
             {([
-              { label: 'Processos analisados',       value: String(assessments.length) },
-              { label: 'Esforço mapeado (h/ano)',     value: `${fmt(totalAnnualHours)} h` },
-              { label: 'Potencial automação (h/ano)', value: `${fmt(totalSavingsHours)} h` },
-              { label: 'Economia estimada (R$/ano)',  value: fmtCurrency(totalFinancialImpact) },
+              { label: 'Processos analisados',          value: String(assessments.length) },
+              { label: 'Esforço mapeado (h/ano)',        value: `${fmt(totalAnnualHours)} h` },
+              { label: 'Horas automatizáveis (h/ano)',   value: `${fmt(totalSavingsHours)} h` },
+              { label: 'FTE equivalente',                value: `≈ ${totalFteEquivalent.toLocaleString('pt-BR')} FTE` },
+              { label: 'Ganho de capacidade',            value: `+${totalCapacityGain}%` },
+              { label: `Impacto financeiro (R$${HOURLY_COST}/h)`, value: fmtCurrency(totalFinancialImpact) },
             ] as const).map(({ label, value }) => (
               <View key={label} style={s.ovDataRow}>
                 <Text style={s.ovDataLabel}>{label}</Text>
@@ -565,6 +573,7 @@ export default function PDFDiagnosticReport({
           <Text style={s.ctaText}>
             Este diagnóstico identificou oportunidades concretas de automação e eficiência operacional.
             A Meta oferece suporte especializado para transformar esses resultados em iniciativas reais.
+            {'\n\n'}Nota: O impacto financeiro estimado é um cenário baseado em custo administrativo de R${HOURLY_COST}/hora. Os resultados reais variam conforme a estrutura de custos da organização.
           </Text>
           {[
             'Análise e redesenho de processos',
