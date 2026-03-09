@@ -109,9 +109,8 @@ export default function SessionPage() {
       return;
     }
 
-    let nextNotice: Notice;
     try {
-      const { error: insertError } = await supabase.from('responses').insert({
+      const { data, error } = await supabase.from('responses').insert({
         session_id: sessionId,
         area: selectedArea.name,
         process: selectedProcess.name,
@@ -120,28 +119,27 @@ export default function SessionPage() {
         participant_email: email.trim(),
       });
 
-      if (insertError?.code === '23505') {
-        // Already answered by another participant — refresh so it shows as locked
-        await fetchAnswered();
-        nextNotice = {
-          type: 'error',
-          message: 'Este subprocesso já foi respondido por outro participante.',
-        };
-      } else if (insertError) {
-        nextNotice = { type: 'error', message: 'Erro ao salvar. Tente novamente.' };
-      } else {
-        nextNotice = { type: 'success', message: 'Resposta salva com sucesso!' };
-        await fetchAnswered();
+      if (error) {
+        console.error('Supabase insert error:', error);
+        alert(error.message);
+        setSubmitting(false);
+        return;
       }
-    } catch {
-      nextNotice = { type: 'error', message: 'Erro ao salvar. Tente novamente.' };
+
+      console.log('Supabase insert success:', data);
+      await fetchAnswered();
+      setNotice({ type: 'success', message: 'Resposta salva com sucesso!' });
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      alert('Unexpected error while saving response.');
+      setSubmitting(false);
+      return;
     }
 
-    // Always return to the subarea list — selectedArea and selectedProcess are
+    // Return to the subarea list — selectedArea and selectedProcess are
     // intentionally kept so the user can answer other subprocesses in the same process.
     setSelectedSubarea(null);
     setSubmitting(false);
-    setNotice(nextNotice);
     setView('subarea');
   };
 
