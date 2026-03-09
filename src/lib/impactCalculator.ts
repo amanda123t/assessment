@@ -21,10 +21,25 @@ const VOLUME_MAP: Record<number, number> = {
 
 /** Maps executionTime score (1–4) → minutes per task */
 const TIME_MAP: Record<number, number> = {
-  1: 1,
-  2: 3,
-  3: 10,
-  4: 20,
+  1: 5,
+  2: 15,
+  3: 30,
+  4: 60,
+};
+
+/**
+ * Maps peopleInvolved score (1–4) → effort multiplier.
+ * Reflects the cumulative operational effort when multiple people execute the same task.
+ * 1 person → 1.0× (base)
+ * 2–3 people → 1.5×
+ * 4–6 people → 2.0×
+ * 6+ people → 3.0×
+ */
+const PEOPLE_MAP: Record<number, number> = {
+  1: 1.0,
+  2: 1.5,
+  3: 2.0,
+  4: 3.0,
 };
 
 /**
@@ -41,12 +56,14 @@ export const HOURLY_COST = 50;
 
 /**
  * Calculate annual operational effort in hours.
- * Formula: (volume_per_month × minutes_per_task × 12) / 60
+ * Formula: (volume_per_month × minutes_per_task × 12 × peopleMultiplier) / 60
+ * peopleMultiplier accounts for the cumulative effort when multiple people execute the task.
  */
 export function calculateAnnualHours(scores: CriteriaScores): number {
   const volume = VOLUME_MAP[scores.operationalVolume] ?? 0;
   const minutes = TIME_MAP[scores.executionTime] ?? 0;
-  return Math.round((volume * minutes * 12) / 60);
+  const peopleMultiplier = PEOPLE_MAP[scores.peopleInvolved] ?? 1.0;
+  return Math.round((volume * minutes * 12 * peopleMultiplier) / 60);
 }
 
 /**
