@@ -13,10 +13,10 @@ import { CriteriaScores } from '@/types';
 
 /** Maps operationalVolume score (1–4) → monthly executions */
 const VOLUME_MAP: Record<number, number> = {
-  1: 25,
-  2: 125,
+  1: 50,
+  2: 150,
   3: 350,
-  4: 700,
+  4: 800,
 };
 
 /** Maps executionTime score (1–4) → minutes per task */
