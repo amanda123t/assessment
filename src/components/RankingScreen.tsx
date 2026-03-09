@@ -2,15 +2,11 @@
 
 import { useState } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell,
-} from 'recharts';
-import {
-  Trophy, BarChart2, FileDown, RotateCcw, Activity,
+  Trophy, FileDown, RotateCcw, Activity,
   Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown,
 } from 'lucide-react';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
-import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
+import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 
@@ -34,20 +30,6 @@ function getAutomationPotential(score: number): { label: string; color: string }
 
 function fmtCurrency(n: number): string {
   return `R$ ${n.toLocaleString('pt-BR')}`;
-}
-
-function CustomTooltip({ active, payload }: {
-  active?: boolean;
-  payload?: Array<{ payload: { name: string; score: number } }>;
-}) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm">
-      <p className="font-semibold text-gray-800 mb-1 max-w-[220px] leading-snug">{d.name}</p>
-      <p className="text-blue-600 font-bold">Score: {d.score}</p>
-    </div>
-  );
 }
 
 // ─── Insights ───────────────────────────────────────────────────────────────
@@ -139,6 +121,7 @@ export default function RankingScreen({
 }: Props) {
   const [expandedRoadmapSections, setExpandedRoadmapSections] = useState<Set<RoadmapCategory>>(new Set());
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
 
   const toggleRoadmapSection = (cat: RoadmapCategory) => {
     setExpandedRoadmapSections((prev) => {
@@ -173,9 +156,7 @@ export default function RankingScreen({
   };
 
   const ranked = buildRanking(assessments);
-  const chartData = buildChartData(ranked);
   const summary = buildPrioritySummary(ranked);
-  const top3 = ranked.slice(0, 3);
   const insights = buildInsights(ranked);
   const autoRoadmap = buildAutomationRoadmap(assessments);
 
@@ -183,7 +164,7 @@ export default function RankingScreen({
   const totalSavingsHours = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
 
-  // Category config for the new roadmap section
+  // Category config for the roadmap section
   const categoryConfig: Record<RoadmapCategory, {
     label: string; timeline: string; color: string; badge: string; bar: string; dot: string;
   }> = {
@@ -242,7 +223,7 @@ export default function RankingScreen({
           )}
         </div>
 
-        {/* ── Executive Summary ────────────────────────────────────── */}
+        {/* ── 1. Diagnóstico ───────────────────────────────────────── */}
         <section className="mb-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white">
           <div className="flex items-center gap-2 mb-5">
             <Activity size={18} strokeWidth={1.75} />
@@ -280,7 +261,7 @@ export default function RankingScreen({
           </div>
         </section>
 
-        {/* ── Summary cards ────────────────────────────────────────── */}
+        {/* ── 2. Distribuição de Prioridades ───────────────────────── */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
             { label: 'Alta Prioridade',  count: summary.alta,  bg: 'bg-red-50    border-red-100',    text: 'text-red-600',    bar: 'bg-red-500' },
@@ -297,96 +278,84 @@ export default function RankingScreen({
           ))}
         </div>
 
-        {/* ── Top Opportunities ────────────────────────────────────── */}
-        {top3.length > 0 && (
-          <section className="mb-8">
-            <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <Trophy size={16} className="text-blue-500" strokeWidth={1.75} />
-              Principais Oportunidades
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {top3.map((item, i) => (
-                <div
-                  key={item.subprocessId}
-                  className="text-left bg-white rounded-xl border border-gray-100 shadow-sm p-5"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                      #{i + 1}
-                    </span>
-                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                      {item.isCustom && (
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200">
-                          Custom
-                        </span>
-                      )}
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${item.badgeColor}`}>
-                        {item.priority}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="font-semibold text-gray-900 text-sm leading-snug mb-1">
-                    {item.subprocessName}
-                  </p>
-                  <p className="text-xs text-gray-400 mb-3">
-                    {item.macroprocessName} › {item.processName}
-                  </p>
-                  <p className={`text-2xl font-extrabold ${item.priorityColor} mb-2`}>
-                    {item.totalScore}
-                  </p>
-                  <div className="border-t border-gray-100 pt-2 space-y-1">
-                    <p className="text-xs text-gray-400">
-                      <span className="font-medium text-gray-600">{fmt(item.annualHours)}h/ano</span> esforço
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      <span className="font-medium text-green-600">{fmtCurrency(item.financialImpact)}</span> pot. economia
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── Chart (shown only when there are more than 5 subprocesses) ── */}
-        {ranked.length > 5 && <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-8">
-          <h3 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
-            <BarChart2 size={16} className="text-blue-500" strokeWidth={1.75} />
-            Score por Subprocesso{chartData.length < ranked.length ? ` (Top ${chartData.length})` : ''}
+        {/* ── 3. Ranking de Potencial de Automação ─────────────────── */}
+        <section className="mb-8">
+          <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Trophy size={16} className="text-blue-600" strokeWidth={1.75} />
+            Ranking de Potencial de Automação
           </h3>
-          <p className="text-xs text-gray-400 mb-5">Ordenado do maior para o menor score</p>
-          <ResponsiveContainer width="100%" height={Math.max(260, chartData.length * 32)}>
-            <BarChart
-              data={chartData}
-              layout="vertical"
-              margin={{ top: 0, right: 24, left: 8, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F3F4F6" />
-              <XAxis
-                type="number"
-                tick={{ fontSize: 11, fill: '#9CA3AF' }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={190}
-                tick={{ fontSize: 11, fill: '#6B7280' }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F9FAFB' }} />
-              <Bar dataKey="score" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>}
+          <div className="overflow-hidden rounded-xl border border-gray-200">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-12">Rank</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Processo</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-24">Pontuação</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-28">Potencial</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranked.slice(0, 10).map((item, i) => {
+                  const potential = getAutomationPotential(item.totalScore);
+                  return (
+                    <tr key={item.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                      <td className="px-4 py-3 text-center font-bold text-gray-400 text-xs">{item.rank}</td>
+                      <td className="px-4 py-3 text-gray-900">{item.subprocessName}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-gray-800">{item.totalScore}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${potential.color}`}>
+                          {potential.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-        {/* ── Roadmap de Automação Sugerido (Impact × Effort, accordion) ── */}
+        {/* ── 4. Matriz de Priorização de Automação ────────────────── */}
+        {(() => {
+          const matrixQuadrants = [
+            { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: 'bg-red-50',    border: 'border-red-200',    title: 'text-red-700',    badge: 'bg-red-100 text-red-700 border-red-200' },
+            { label: 'Alta Prioridade',           min: 20, max: 24,       bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700', badge: 'bg-orange-100 text-orange-700 border-orange-200' },
+            { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: 'bg-blue-50',   border: 'border-blue-200',   title: 'text-blue-700',   badge: 'bg-blue-100 text-blue-700 border-blue-200' },
+            { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: 'bg-gray-50',   border: 'border-gray-200',   title: 'text-gray-600',   badge: 'bg-gray-100 text-gray-600 border-gray-200' },
+          ];
+          return (
+            <section className="mb-8">
+              <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Target size={16} className="text-blue-600" strokeWidth={1.75} />
+                Matriz de Priorização de Automação
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                {matrixQuadrants.map(({ label, min, max, bg, border, title, badge }) => {
+                  const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
+                  return (
+                    <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
+                      <div className={`text-xs font-bold uppercase tracking-wide mb-3 ${title}`}>{label}</div>
+                      {items.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {items.map(r => (
+                            <li key={r.subprocessId} className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-gray-800 leading-snug flex-1">{r.subprocessName}</span>
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge}`}>{r.totalScore}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
+
+        {/* ── 5. Roadmap de Automação Sugerido ─────────────────────── */}
         {autoRoadmap.length > 0 && (() => {
           const quickWins = autoRoadmap.filter((r) => r.roadmapCategory === 'quick-wins');
           const strategic = autoRoadmap.filter((r) => r.roadmapCategory === 'strategic');
@@ -421,7 +390,7 @@ export default function RankingScreen({
                     <p className="text-xs text-gray-400">Economia Anual Estimada</p>
                     <p className="text-xs font-semibold text-green-700">{fmtCurrency(item.estimatedSavings)}</p>
                   </div>
-                  {/* Timeline badge — Prazo de Implementação */}
+                  {/* Timeline badge */}
                   <div className="text-right flex-shrink-0">
                     <p className="text-xs text-gray-400 mb-0.5 hidden sm:block">Prazo de Implementação</p>
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${cfg.badge}`}>
@@ -514,128 +483,65 @@ export default function RankingScreen({
           );
         })()}
 
-        {/* ── Diagnostic Insights ──────────────────────────────────── */}
+        {/* ── 6. Insights do Diagnóstico (collapsed by default) ────── */}
         {insights.length > 0 && (
-          <section className="mb-8 bg-amber-50 border border-amber-100 rounded-2xl p-6">
-            <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Lightbulb size={16} className="text-amber-500" strokeWidth={1.75} />
-              Insights do Diagnóstico
-            </h3>
-            <ul className="space-y-3">
-              {insights.map((insight, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                  <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
-                </li>
-              ))}
-            </ul>
+          <section className="mb-8 bg-amber-50 border border-amber-100 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setInsightsOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-6 py-5 cursor-pointer hover:brightness-95 transition-all"
+            >
+              <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                <Lightbulb size={16} className="text-amber-500" strokeWidth={1.75} />
+                Insights do Diagnóstico
+              </h3>
+              <ChevronDown
+                size={16}
+                strokeWidth={2.5}
+                className={`text-amber-500 transition-transform duration-300 flex-shrink-0 ${insightsOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {insightsOpen && (
+              <div className="px-6 pb-6">
+                <ul className="space-y-3">
+                  {insights.map((insight, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                      <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
         )}
 
-      {/* ── Matriz de Priorização de Automação ───────────────────────── */}
-      {(() => {
-        const matrixQuadrants = [
-          { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: 'bg-red-50',    border: 'border-red-200',    title: 'text-red-700',    badge: 'bg-red-100 text-red-700 border-red-200' },
-          { label: 'Alta Prioridade',           min: 20, max: 24,       bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700', badge: 'bg-orange-100 text-orange-700 border-orange-200' },
-          { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: 'bg-blue-50',   border: 'border-blue-200',   title: 'text-blue-700',   badge: 'bg-blue-100 text-blue-700 border-blue-200' },
-          { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: 'bg-gray-50',   border: 'border-gray-200',   title: 'text-gray-600',   badge: 'bg-gray-100 text-gray-600 border-gray-200' },
-        ];
-        return (
-          <section className="mb-8">
-            <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Target size={16} className="text-blue-600" strokeWidth={1.75} />
-              Matriz de Priorização de Automação
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              {matrixQuadrants.map(({ label, min, max, bg, border, title, badge }) => {
-                const items = ranked.filter(r => r.totalScore >= min && r.totalScore < max);
-                return (
-                  <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
-                    <div className={`text-xs font-bold uppercase tracking-wide mb-3 ${title}`}>{label}</div>
-                    {items.length === 0 ? (
-                      <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {items.map(r => (
-                          <li key={r.subprocessId} className="flex items-center justify-between gap-2">
-                            <span className="text-xs text-gray-800 leading-snug flex-1">{r.subprocessName}</span>
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge}`}>{r.totalScore}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })()}
-
-      {/* ── Ranking de Potencial de Automação ────────────────────────── */}
-      <section className="mb-8">
-        <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Trophy size={16} className="text-blue-600" strokeWidth={1.75} />
-          Ranking de Potencial de Automação
-        </h3>
-        <div className="overflow-hidden rounded-xl border border-gray-200">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 w-12">Rank</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Processo</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-24">Pontuação</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 w-28">Potencial</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranked.slice(0, 10).map((item, i) => {
-                const potential = getAutomationPotential(item.totalScore);
-                return (
-                  <tr key={item.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
-                    <td className="px-4 py-3 text-center font-bold text-gray-400 text-xs">{item.rank}</td>
-                    <td className="px-4 py-3 text-gray-900">{item.subprocessName}</td>
-                    <td className="px-4 py-3 text-center font-semibold text-gray-800">{item.totalScore}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${potential.color}`}>
-                        {potential.label}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* ── Próximos Passos (CTA) ─────────────────────────────────────── */}
-      <section className="mb-8 bg-blue-50 border border-blue-100 rounded-2xl p-6">
-        <h3 className="text-base font-semibold text-gray-900 mb-2">Próximos Passos</h3>
-        <p className="text-sm text-gray-700 mb-1">Este diagnóstico identificou processos com alto potencial de automação.</p>
-        <p className="text-sm text-gray-700 mb-4">A Meta pode apoiar sua organização nas próximas etapas com:</p>
-        <ul className="space-y-1 mb-6">
-          {[
-            'Análise e redesenho de processos',
-            'Automação com RPA e Inteligência Artificial',
-            'Implementação de programas de automação',
-            'Gestão da mudança para transformação digital',
-          ].map((item) => (
-            <li key={item} className="flex items-start gap-2 text-sm text-gray-700">
-              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
-              {item}
-            </li>
-          ))}
-        </ul>
-        <a
-          href="https://meta.com.br/contato"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-3 rounded-lg transition-colors"
-        >
-          Falar com a Meta sobre automação
-        </a>
-      </section>
+        {/* ── Próximos Passos (CTA) ─────────────────────────────────── */}
+        <section className="mb-8 bg-blue-50 border border-blue-100 rounded-2xl p-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-2">Próximos Passos</h3>
+          <p className="text-sm text-gray-700 mb-1">Este diagnóstico identificou processos com alto potencial de automação.</p>
+          <p className="text-sm text-gray-700 mb-4">A Meta pode apoiar sua organização nas próximas etapas com:</p>
+          <ul className="space-y-1 mb-6">
+            {[
+              'Análise e redesenho de processos',
+              'Automação com RPA e Inteligência Artificial',
+              'Implementação de programas de automação',
+              'Gestão da mudança para transformação digital',
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2 text-sm text-gray-700">
+                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+          <a
+            href="https://meta.com.br/contato"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-3 rounded-lg transition-colors"
+          >
+            Falar com a Meta sobre automação
+          </a>
+        </section>
 
       </div>{/* end #diagnostic-results */}
 
