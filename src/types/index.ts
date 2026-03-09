@@ -62,12 +62,20 @@ export interface SelectedSubprocessItem {
   isCustom?: boolean;
 }
 
+export interface AssessmentIdentification {
+  company: string;
+  area: string;
+  respondentName: string;
+  date: string; // YYYY-MM-DD
+}
+
 export interface AssessmentState {
   /** Global accumulator — persists across all navigation. */
   globalSelectedSubprocesses: SelectedSubprocessItem[];
   assessments: SubprocessAssessment[];
   currentSubprocessIndex: number;
-  step: 'start' | 'explore' | 'questionnaire' | 'ranking';
+  step: 'start' | 'explore' | 'identification' | 'questionnaire' | 'ranking';
+  identification?: AssessmentIdentification;
 }
 
 export const CRITERIA = [

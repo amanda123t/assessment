@@ -9,13 +9,14 @@ import {
   Trophy, BarChart2, FileDown, RotateCcw, X, Activity,
   Lightbulb, Clock, TrendingUp, DollarSign, Target, ChevronDown,
 } from 'lucide-react';
-import { SubprocessAssessment, CRITERIA } from '@/types';
+import { SubprocessAssessment, CRITERIA, AssessmentIdentification } from '@/types';
 import { buildRanking, buildChartData, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
   assessments: SubprocessAssessment[];
+  identification?: AssessmentIdentification;
   onRestart: () => void;
 }
 
@@ -201,6 +202,7 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
 
 export default function RankingScreen({
   assessments,
+  identification,
   onRestart,
 }: Props) {
   const [selected, setSelected] = useState<RankedAssessment | null>(null);
@@ -233,6 +235,7 @@ export default function RankingScreen({
           assessments={assessments}
           ranked={ranked}
           roadmap={autoRoadmap}
+          identification={identification}
         />
       ).toBlob();
       const url = URL.createObjectURL(blob);

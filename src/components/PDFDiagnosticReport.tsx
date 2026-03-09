@@ -1,7 +1,7 @@
 'use client';
 
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import { SubprocessAssessment } from '@/types';
+import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { RankedAssessment } from '@/lib/ranking';
 import { RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 
@@ -9,6 +9,7 @@ interface Props {
   assessments: SubprocessAssessment[];
   ranked: RankedAssessment[];
   roadmap: RoadmapItem[];
+  identification?: AssessmentIdentification;
 }
 
 const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
@@ -198,7 +199,7 @@ function fmtCurrency(n: number): string {
   return `R$ ${n.toLocaleString('pt-BR')}`;
 }
 
-export default function PDFDiagnosticReport({ assessments, ranked, roadmap }: Props) {
+export default function PDFDiagnosticReport({ assessments, ranked, roadmap, identification }: Props) {
   const summary = {
     alta:  ranked.filter(r => r.priority === 'Alta').length,
     media: ranked.filter(r => r.priority === 'Média').length,
@@ -226,6 +227,16 @@ export default function PDFDiagnosticReport({ assessments, ranked, roadmap }: Pr
         <View style={s.header}>
           <Text style={s.headerTitle}>Diagnóstico de Automação Operacional</Text>
           <Text style={s.headerSubtitle}>Relatório de Oportunidades de Automação</Text>
+          {identification && (
+            <>
+              <Text style={s.headerDate}>
+                Empresa: {identification.company}  ·  Área: {identification.area}
+              </Text>
+              <Text style={s.headerDate}>
+                Respondente: {identification.respondentName}  ·  Data: {identification.date.split('-').reverse().join('/')}
+              </Text>
+            </>
+          )}
           <Text style={s.headerDate}>Gerado em: {generatedAt}</Text>
         </View>
 

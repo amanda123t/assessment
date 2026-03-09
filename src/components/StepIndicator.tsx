@@ -3,14 +3,13 @@
 import { AssessmentState } from '@/types';
 
 const STEPS = [
-  { key: 'explore', label: 'Seleção' },
-  { key: 'questionnaire', label: 'Avaliação' },
-  { key: 'ranking', label: 'Resultados' },
+  { key: 'explore',         label: 'Seleção' },
+  { key: 'identification',  label: 'Identificação' },
+  { key: 'questionnaire',   label: 'Avaliação' },
+  { key: 'ranking',         label: 'Resultados' },
 ] as const;
 
-// 'mode-selection' sits between explore and questionnaire but maps to the
-// same visual position as 'explore' (it's part of the "Seleção" phase).
-const STEP_ORDER = ['explore', 'questionnaire', 'ranking'];
+const STEP_ORDER = ['explore', 'identification', 'questionnaire', 'ranking'];
 
 interface Props {
   step: AssessmentState['step'];
