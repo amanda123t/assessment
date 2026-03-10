@@ -485,16 +485,16 @@ export default function AssessmentPage() {
                 {mode === 'group' && (state.step === 'explore' || state.step === 'questionnaire') && (
                   <button
                     onClick={() => setShowShareModal(true)}
-                    className="text-sm text-gray-700 hover:text-gray-900 font-medium border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                    className="text-sm text-white font-medium bg-blue-600 hover:bg-blue-700 rounded-lg px-3 py-1.5 transition-colors"
                   >
-                    🔗 Link de compartilhamento
+                    Link de compartilhamento
                   </button>
                 )}
 
-                {state.step === 'questionnaire' && state.globalSelectedSubprocesses.length > 1 && (
+                {state.step === 'questionnaire' && (
                   <button
                     onClick={openResumeModal}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                    className="text-sm text-white font-medium bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5 transition-colors"
                   >
                     Continuar depois
                   </button>

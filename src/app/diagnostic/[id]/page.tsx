@@ -112,6 +112,10 @@ export default function DiagnosticResumePage() {
   // This collaborator's own selection (group join explore step)
   const [groupSelectedItems, setGroupSelectedItems] = useState<SelectedSubprocessItem[]>([]);
 
+  // "Continuar depois" — available during questionnaire on both individual and group flows
+  const [showContinueModal, setShowContinueModal] = useState(false);
+  const [continueLinkCopied, setContinueLinkCopied] = useState(false);
+
   // IDs that were already in Firestore before this session — used to filter saves.
   const initialAnsweredIds = useRef<Set<string>>(new Set());
   const alreadySaved = useRef(false);
@@ -230,6 +234,18 @@ export default function DiagnosticResumePage() {
     });
   }, [lockedSubprocessIds]);
 
+  const addGroupCustomSubprocess = useCallback((item: SelectedSubprocessItem) => {
+    setGroupSelectedItems(prev => {
+      const customCount = prev.filter(i => i.isCustom).length;
+      if (customCount >= 3) return prev;
+      return [...prev, item];
+    });
+  }, []);
+
+  const removeGroupCustomSubprocess = useCallback((subprocessId: string) => {
+    setGroupSelectedItems(prev => prev.filter(i => i.subprocess.id !== subprocessId));
+  }, []);
+
   const startGroupEvaluation = useCallback(() => {
     setState(s => ({
       ...s,
@@ -286,6 +302,7 @@ export default function DiagnosticResumePage() {
   const currentItem = state.globalSelectedSubprocesses[0];
 
   const groupSelectedIds = new Set(groupSelectedItems.map(i => i.subprocess.id));
+  const groupCustomSubprocesses = groupSelectedItems.filter(i => i.isCustom);
 
   // ── Loading / not-found ────────────────────────────────────────────────────
 
@@ -334,9 +351,17 @@ export default function DiagnosticResumePage() {
             {isGroupMode && (
               <button
                 onClick={() => setShowShareModal(true)}
-                className="text-sm text-gray-700 hover:text-gray-900 font-medium border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                className="text-sm text-white font-medium bg-blue-600 hover:bg-blue-700 rounded-lg px-3 py-1.5 transition-colors"
               >
-                🔗 Link de compartilhamento
+                Link de compartilhamento
+              </button>
+            )}
+            {(state.step === 'questionnaire' || state.step === 'explore') && (
+              <button
+                onClick={() => setShowContinueModal(true)}
+                className="text-sm text-white font-medium bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5 transition-colors"
+              >
+                Continuar depois
               </button>
             )}
           </div>
@@ -386,6 +411,49 @@ export default function DiagnosticResumePage() {
         </div>
       )}
 
+      {/* Continuar depois modal */}
+      {showContinueModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowContinueModal(false); }}
+        >
+          <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Continuar diagnóstico depois
+            </h2>
+            <p className="text-sm text-gray-600">
+              Use o link abaixo para continuar de onde parou. As respostas já dadas serão mantidas.
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={typeof window !== 'undefined' ? window.location.href : ''}
+                readOnly
+                className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  setContinueLinkCopied(true);
+                  setTimeout(() => setContinueLinkCopied(false), 2000);
+                }}
+                className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
+              >
+                Copiar
+              </button>
+            </div>
+            {continueLinkCopied && (
+              <p className="text-green-600 text-xs -mt-2">Link copiado!</p>
+            )}
+            <button
+              onClick={() => setShowContinueModal(false)}
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors text-left"
+            >
+              Voltar ao diagnóstico
+            </button>
+          </div>
+        </div>
+      )}
+
       <StepIndicator step={state.step} />
 
       {/* Group explore: collaborator picks their areas */}
@@ -398,11 +466,11 @@ export default function DiagnosticResumePage() {
           />
           <SubprocessExplorer
             selectedIds={groupSelectedIds}
-            customSubprocesses={[]}
+            customSubprocesses={groupCustomSubprocesses}
             onToggle={toggleGroupSubprocess}
             onToggleAll={toggleGroupAll}
-            onAddCustom={() => {}}
-            onRemoveCustom={() => {}}
+            onAddCustom={addGroupCustomSubprocess}
+            onRemoveCustom={removeGroupCustomSubprocess}
             onBack={() => router.push('/assessment')}
             lockedSubprocessIds={lockedSubprocessIds}
           />
