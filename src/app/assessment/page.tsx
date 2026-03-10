@@ -453,7 +453,7 @@ export default function AssessmentPage() {
                 </p>
               </div>
 
-              {state.step === 'questionnaire' && state.assessments.length > 0 && (
+              {state.step === 'questionnaire' && state.globalSelectedSubprocesses.length > 1 && (
                 <button
                   onClick={openResumeModal}
                   className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
