@@ -9,7 +9,7 @@ import {
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, getDocs, where, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, where, doc, getDoc } from 'firebase/firestore';
 
 import { processLibrary } from '@/data/processLibrary';
 
@@ -268,10 +268,14 @@ export default function AssessmentPage() {
     // Writing everything in one setDoc call (outside setState) guarantees the
     // document is never created without selected_subprocess_ids, which is what
     // the resume page uses to reconstruct the exact original queue.
-    setDoc(doc(db, 'diagnostics', diagnosticId.current), {
+    addDoc(collection(db, 'diagnostics'), {
       company,
       created_at: new Date().toISOString(),
       selected_subprocess_ids: state.globalSelectedSubprocesses.map((i) => i.subprocess.id),
+    }).then((docRef) => {
+      // Store the Firestore-generated ID so the resume link and all subsequent
+      // response writes reference the correct document.
+      diagnosticId.current = docRef.id;
     }).catch((err) => console.error('[Firestore] Failed to create diagnostic:', err));
 
     setState((s) => ({ ...s, currentSubprocessIndex: 0, step: 'questionnaire' }));
