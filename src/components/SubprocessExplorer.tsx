@@ -30,6 +30,7 @@ interface Props {
   onAddCustom: (item: SelectedSubprocessItem) => void;
   onRemoveCustom: (subprocessId: string) => void;
   onBack: () => void;
+  lockedSubprocessIds?: Set<string>;
 }
 
 // ── Modal: create a custom subprocess for a specific process ──────────────
@@ -162,6 +163,7 @@ export default function SubprocessExplorer({
   onAddCustom,
   onRemoveCustom,
   onBack,
+  lockedSubprocessIds = new Set(),
 }: Props) {
   const [expandedMacros, setExpandedMacros] = useState<Set<string>>(new Set());
   const [expandedProcesses, setExpandedProcesses] = useState<Set<string>>(new Set());
@@ -207,9 +209,9 @@ export default function SubprocessExplorer({
           const Icon = MACRO_ICONS[macro.id];
           const isMacroExpanded = expandedMacros.has(macro.id);
 
-          // Count standard selections + custom items in this macro
+          // Count standard selections + custom items in this macro (excluding locked)
           const standardSelectedInMacro = macro.processes.reduce(
-            (acc, p) => acc + p.subprocesses.filter((sp) => selectedIds.has(sp.id)).length,
+            (acc, p) => acc + p.subprocesses.filter((sp) => !lockedSubprocessIds.has(sp.id) && selectedIds.has(sp.id)).length,
             0
           );
           const customInMacro = customSubprocesses.filter((c) => c.macroprocess.id === macro.id).length;
@@ -254,13 +256,17 @@ export default function SubprocessExplorer({
                       (c) => c.macroprocess.id === macro.id && c.process.id === proc.id
                     );
 
-                    const standardSelectedInProc = proc.subprocesses.filter((sp) => selectedIds.has(sp.id)).length;
+                    const visibleSubprocesses = proc.subprocesses.filter(
+                      (sp) => !lockedSubprocessIds.has(sp.id)
+                    );
+
+                    const standardSelectedInProc = visibleSubprocesses.filter((sp) => selectedIds.has(sp.id)).length;
                     const totalSelectedInProc = standardSelectedInProc + procCustoms.length;
-                    const totalInProc = proc.subprocesses.length + procCustoms.length;
+                    const totalInProc = visibleSubprocesses.length + procCustoms.length;
 
                     const allStandardSelected =
-                      proc.subprocesses.length > 0 &&
-                      proc.subprocesses.every((sp) => selectedIds.has(sp.id));
+                      visibleSubprocesses.length > 0 &&
+                      visibleSubprocesses.every((sp) => selectedIds.has(sp.id));
 
                     return (
                       <div key={proc.id} className="border-b border-gray-50 last:border-b-0">
@@ -288,11 +294,11 @@ export default function SubprocessExplorer({
                         {/* ── Subprocesses (visible when process expanded) ── */}
                         {isProcExpanded && (
                           <div className="pb-2 bg-gray-50/50">
-                            {/* Toggle-all row (standard subprocesses only) */}
-                            {proc.subprocesses.length > 0 && (
+                            {/* Toggle-all row (visible standard subprocesses only) */}
+                            {visibleSubprocesses.length > 0 && (
                               <div className="pl-16 pr-5 pt-2 pb-1">
                                 <button
-                                  onClick={() => onToggleAll(proc.subprocesses, macro, proc, !allStandardSelected)}
+                                  onClick={() => onToggleAll(visibleSubprocesses, macro, proc, !allStandardSelected)}
                                   className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
                                 >
                                   {allStandardSelected ? 'Desmarcar todos' : 'Selecionar todos'}
@@ -300,8 +306,8 @@ export default function SubprocessExplorer({
                               </div>
                             )}
 
-                            {/* Standard subprocesses */}
-                            {proc.subprocesses.map((sp) => {
+                            {/* Standard subprocesses (locked ones hidden) */}
+                            {visibleSubprocesses.map((sp) => {
                               const isSelected = selectedIds.has(sp.id);
                               return (
                                 <button

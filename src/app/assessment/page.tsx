@@ -9,7 +9,9 @@ import {
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, where } from 'firebase/firestore';
+
+import { processLibrary } from '@/data/processLibrary';
 
 import StepIndicator from '@/components/StepIndicator';
 import StartScreen from '@/components/StartScreen';
@@ -35,6 +37,9 @@ export default function AssessmentPage() {
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
 
+  const [diagnosticId, setDiagnosticId] = useState<string | null>(null);
+  const [answeredSubprocessIds, setAnsweredSubprocessIds] = useState<string[]>([]);
+
   // Stable session identifier — generated once per page mount
   const sessionId = useRef<string>(
     typeof crypto !== 'undefined'
@@ -49,41 +54,66 @@ export default function AssessmentPage() {
 
     if (state.step !== 'ranking' || state.assessments.length === 0) return;
     if (alreadySaved.current) return;
+    if (!diagnosticId) return;
     alreadySaved.current = true;
 
     const createdAt = new Date().toISOString();
 
-    addDoc(collection(db, 'diagnostics'), {
-      company: company,
-      created_at: createdAt,
-    }).then((diagnosticRef) => {
-      const diagnosticId = diagnosticRef.id;
-      state.assessments.forEach((a) => {
-        addDoc(collection(db, 'responses'), {
-          diagnostic_id: diagnosticId,
-          subprocess_id: a.subprocessId,
-          process: a.processName,
-          score: a.totalScore,
-          answered_by: email,
-          created_at: createdAt,
-        }).catch((err) =>
-          console.error('[Firestore] Failed to save response:', err)
-        );
-      });
-    }).catch((err) =>
-      console.error('[Firestore] Failed to save diagnosis:', err)
-    );
+    state.assessments.forEach((a) => {
+      addDoc(collection(db, 'responses'), {
+        diagnostic_id: diagnosticId,
+        subprocess_id: a.subprocessId,
+        process: a.processName,
+        score: a.totalScore,
+        answered_by: email,
+        created_at: createdAt,
+      }).catch((err) =>
+        console.error('[Firestore] Failed to save response:', err)
+      );
+    });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.step]);
 
+  // ── Load answered subprocess IDs when entering explore step ─────────────────
+
+  useEffect(() => {
+
+    if (state.step !== 'explore' || !diagnosticId) return;
+
+    const q = query(
+      collection(db, 'responses'),
+      where('diagnostic_id', '==', diagnosticId)
+    );
+
+    getDocs(q).then((snapshot) => {
+      const ids = snapshot.docs.map((doc) => doc.data().subprocess_id as string);
+      setAnsweredSubprocessIds(ids);
+    }).catch((err) =>
+      console.error('[Firestore] Failed to load responses:', err)
+    );
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.step, diagnosticId]);
+
   // ── Navigation ─────────────────────────────────────────────────────────────
 
-  const goToExplore = useCallback(() => {
+  const goToExplore = useCallback(async () => {
     if (!company.trim()) {
       alert('Informe o nome da empresa');
       return;
     }
+
+    try {
+      const docRef = await addDoc(collection(db, 'diagnostics'), {
+        company: company,
+        created_at: new Date().toISOString(),
+      });
+      setDiagnosticId(docRef.id);
+    } catch (err) {
+      console.error('[Firestore] Failed to create diagnostic:', err);
+    }
+
     setState((s) => ({ ...s, step: 'explore' }));
   }, [company]);
 
@@ -276,6 +306,9 @@ export default function AssessmentPage() {
 
   const restart = useCallback(() => {
     setState(INITIAL_STATE);
+    setDiagnosticId(null);
+    setAnsweredSubprocessIds([]);
+    alreadySaved.current = false;
   }, []);
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -295,6 +328,25 @@ export default function AssessmentPage() {
       state.globalSelectedSubprocesses.filter((i) => i.isCustom),
     [state.globalSelectedSubprocesses]
   );
+
+  const lockedSubprocessIds = useMemo(
+    () => new Set(answeredSubprocessIds),
+    [answeredSubprocessIds]
+  );
+
+  const allStandardSubprocesses = useMemo(
+    () => processLibrary.flatMap((m) => m.processes.flatMap((p) => p.subprocesses)),
+    []
+  );
+
+  const remainingSubprocesses = useMemo(
+    () => allStandardSubprocesses.filter((sp) => !lockedSubprocessIds.has(sp.id)),
+    [allStandardSubprocesses, lockedSubprocessIds]
+  );
+
+  const allAnswered =
+    answeredSubprocessIds.length > 0 &&
+    remainingSubprocesses.length === 0;
 
   const currentItem =
     state.globalSelectedSubprocesses[state.currentSubprocessIndex];
@@ -345,15 +397,26 @@ export default function AssessmentPage() {
 
             {state.step === 'explore' && (
 
-              <SubprocessExplorer
-                selectedIds={selectedIds}
-                customSubprocesses={customSubprocesses}
-                onToggle={toggleSubprocess}
-                onToggleAll={toggleAllInProcess}
-                onAddCustom={addCustomSubprocess}
-                onRemoveCustom={removeCustomSubprocess}
-                onBack={goBackToStart}
-              />
+              allAnswered ? (
+                <div className="max-w-4xl mx-auto px-6 py-20 text-center">
+                  <div className="bg-white rounded-xl border border-gray-200 p-10 inline-block">
+                    <p className="text-gray-500 text-base">
+                      All subprocesses in this diagnostic have already been answered.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <SubprocessExplorer
+                  selectedIds={selectedIds}
+                  customSubprocesses={customSubprocesses}
+                  onToggle={toggleSubprocess}
+                  onToggleAll={toggleAllInProcess}
+                  onAddCustom={addCustomSubprocess}
+                  onRemoveCustom={removeCustomSubprocess}
+                  onBack={goBackToStart}
+                  lockedSubprocessIds={lockedSubprocessIds}
+                />
+              )
 
             )}
 
