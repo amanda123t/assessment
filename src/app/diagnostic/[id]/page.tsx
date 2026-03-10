@@ -10,7 +10,7 @@ import {
   AssessmentState, Macroprocess, Process, Subprocess,
   CriteriaScores, SubprocessAssessment, SelectedSubprocessItem,
 } from '@/types';
-import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
+import { createAssessment, addAssessment } from '@/lib/assessmentEngine';
 
 import StepIndicator from '@/components/StepIndicator';
 import Questionnaire from '@/components/Questionnaire';
@@ -221,14 +221,11 @@ export default function DiagnosticResumePage() {
 
     setState(s => {
       const updatedAssessments = addAssessment(s.assessments, assessment);
-      const done = isAssessmentComplete(
-        s.globalSelectedSubprocesses.map(i => i.subprocess),
-        s.currentSubprocessIndex,
-      );
+      const done = s.currentSubprocessIndex >= s.globalSelectedSubprocesses.length - 1;
       return {
         ...s,
         assessments: updatedAssessments,
-        currentSubprocessIndex: done ? s.currentSubprocessIndex : advanceIndex(s.currentSubprocessIndex),
+        currentSubprocessIndex: done ? s.currentSubprocessIndex : s.currentSubprocessIndex + 1,
         step: done ? 'ranking' : 'questionnaire',
       };
     });
