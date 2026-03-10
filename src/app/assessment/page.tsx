@@ -462,9 +462,6 @@ export default function AssessmentPage() {
           onCompanyChange={setCompany}
           email={email}
           onEmailChange={setEmail}
-          onContinue={handleContinueDiagnostic}
-          continueError={continueError}
-          isContinuing={isContinuing}
         />
 
       ) : (
