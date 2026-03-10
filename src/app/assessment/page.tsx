@@ -51,16 +51,25 @@ export default function AssessmentPage() {
     if (alreadySaved.current) return;
     alreadySaved.current = true;
 
+    const createdAt = new Date().toISOString();
+
     addDoc(collection(db, 'diagnostics'), {
-      session_id: sessionId.current,
       company: company,
-      participant_email: email,
-      responses: state.assessments.map((a) => ({
-        process: a.processName,
-        subarea_id: a.subprocessId,
-        score: a.totalScore,
-      })),
-      created_at: new Date().toISOString(),
+      created_at: createdAt,
+    }).then((diagnosticRef) => {
+      const diagnosticId = diagnosticRef.id;
+      state.assessments.forEach((a) => {
+        addDoc(collection(db, 'responses'), {
+          diagnostic_id: diagnosticId,
+          subprocess_id: a.subprocessId,
+          process: a.processName,
+          score: a.totalScore,
+          answered_by: email,
+          created_at: createdAt,
+        }).catch((err) =>
+          console.error('[Firestore] Failed to save response:', err)
+        );
+      });
     }).catch((err) =>
       console.error('[Firestore] Failed to save diagnosis:', err)
     );
