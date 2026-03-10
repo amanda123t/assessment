@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { collection, addDoc, query, getDocs, where, doc, getDoc } from 'firebase/firestore';
 
@@ -10,13 +10,9 @@ import {
   AssessmentState, Macroprocess, Process, Subprocess,
   CriteriaScores, SubprocessAssessment, SelectedSubprocessItem,
 } from '@/types';
-import {
-  createAssessment, addAssessment, advanceIndex, isAssessmentComplete,
-} from '@/lib/assessmentEngine';
+import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 
 import StepIndicator from '@/components/StepIndicator';
-import SubprocessExplorer from '@/components/SubprocessExplorer';
-import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
 import Questionnaire from '@/components/Questionnaire';
 import RankingScreen from '@/components/RankingScreen';
 
@@ -51,7 +47,7 @@ function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessm
     scores:           EMPTY_SCORES,
     totalScore:       (data.score as number) ?? 0,
     // Criteria scores were not persisted — derived metrics default to 0.
-    // Priority labels still work correctly because they derive from totalScore.
+    // Priority labels are unaffected as they derive only from totalScore.
     automationScore:        0,
     annualHours:            0,
     automationSavingsHours: 0,
@@ -59,18 +55,34 @@ function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessm
   };
 }
 
-// ── Initial state (skips 'start' — enters 'explore' directly) ─────────────────
-
-const EXPLORE_STATE: AssessmentState = {
-  globalSelectedSubprocesses: [],
-  assessments: [],
-  currentSubprocessIndex: 0,
-  step: 'explore',
-};
+/**
+ * Build the queue of subprocesses not yet answered.
+ * Preserves processLibrary order so the questionnaire flows naturally.
+ */
+function buildRemainingItems(answeredIds: Set<string>): SelectedSubprocessItem[] {
+  const items: SelectedSubprocessItem[] = [];
+  for (const macro of processLibrary) {
+    for (const process of macro.processes) {
+      for (const subprocess of process.subprocesses) {
+        if (!answeredIds.has(subprocess.id)) {
+          items.push({ macroprocess: macro, process, subprocess });
+        }
+      }
+    }
+  }
+  return items;
+}
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 type PageStatus = 'loading' | 'not-found' | 'ready';
+
+const LOADING_STATE: AssessmentState = {
+  globalSelectedSubprocesses: [],
+  assessments: [],
+  currentSubprocessIndex: 0,
+  step: 'questionnaire',
+};
 
 export default function DiagnosticResumePage() {
   const { id } = useParams<{ id: string }>();
@@ -78,36 +90,47 @@ export default function DiagnosticResumePage() {
 
   const [pageStatus, setPageStatus] = useState<PageStatus>('loading');
   const [company, setCompany] = useState('');
-  const [previousAssessments, setPreviousAssessments] = useState<SubprocessAssessment[]>([]);
-  const [answeredSubprocessIds, setAnsweredSubprocessIds] = useState<string[]>([]);
-  const [state, setState] = useState<AssessmentState>(EXPLORE_STATE);
+  const [state, setState] = useState<AssessmentState>(LOADING_STATE);
+
+  // IDs that were already in Firestore before this session — used to filter saves.
+  const initialAnsweredIds = useRef<Set<string>>(new Set());
   const alreadySaved = useRef(false);
 
-  // ── Load diagnostic + responses on mount ────────────────────────────────────
+  // ── Load diagnostic + responses, then restore state ──────────────────────────
 
   useEffect(() => {
     if (!id) { setPageStatus('not-found'); return; }
 
     async function load() {
-      // Step 1: verify the diagnostic exists
+      // 1. Verify diagnostic exists
       const diagnosticSnap = await getDoc(doc(db, 'diagnostics', id));
       if (!diagnosticSnap.exists()) { setPageStatus('not-found'); return; }
 
       setCompany(diagnosticSnap.data().company ?? '');
 
-      // Step 2: load all existing responses
-      const q = query(
-        collection(db, 'responses'),
-        where('diagnostic_id', '==', id),
-      );
+      // 2. Load all responses for this diagnostic
+      const q = query(collection(db, 'responses'), where('diagnostic_id', '==', id));
       const snapshot = await getDocs(q);
-      const responses = snapshot.docs.map(d =>
-        reconstructAssessment(d.data() as Record<string, unknown>)
-      );
-      responses.sort((a, b) => b.totalScore - a.totalScore);
+      const responses = snapshot.docs.map(d => d.data() as Record<string, unknown>);
 
-      setPreviousAssessments(responses);
-      setAnsweredSubprocessIds(responses.map(r => r.subprocessId));
+      // 3. Determine which subprocesses were already answered
+      const answeredIds = new Set(responses.map(r => r.subprocess_id as string));
+      initialAnsweredIds.current = answeredIds;
+
+      // 4. Rebuild SubprocessAssessment[] from stored responses
+      const rebuiltAssessments: SubprocessAssessment[] = responses.map(reconstructAssessment);
+
+      // 5. Build the queue of remaining (unanswered) subprocesses
+      const remainingItems = buildRemainingItems(answeredIds);
+
+      // 6. Restore full state — jump straight to questionnaire or ranking
+      setState({
+        assessments: rebuiltAssessments,
+        globalSelectedSubprocesses: remainingItems,
+        currentSubprocessIndex: 0,
+        step: remainingItems.length === 0 ? 'ranking' : 'questionnaire',
+      });
+
       setPageStatus('ready');
     }
 
@@ -117,87 +140,47 @@ export default function DiagnosticResumePage() {
     });
   }, [id]);
 
-  // ── Persist new responses when ranking is reached ────────────────────────────
+  // ── Persist only NEW responses when ranking is reached ───────────────────────
 
   useEffect(() => {
-    if (state.step !== 'ranking' || state.assessments.length === 0) return;
+    if (state.step !== 'ranking') return;
     if (alreadySaved.current) return;
     alreadySaved.current = true;
 
+    // Filter to assessments added this session (not already in Firestore)
+    const alreadyAnswered = initialAnsweredIds.current;
+    const newAssessments = state.assessments.filter(a => !alreadyAnswered.has(a.subprocessId));
+
+    if (newAssessments.length === 0) return;
+
     const createdAt = new Date().toISOString();
-    state.assessments.forEach(a => {
+    newAssessments.forEach(a => {
       addDoc(collection(db, 'responses'), {
         diagnostic_id: id,
         subprocess_id: a.subprocessId,
-        process: a.processName,
-        score: a.totalScore,
-        answered_by: '',
-        created_at: createdAt,
+        process:       a.processName,
+        score:         a.totalScore,
+        answered_by:   '',
+        created_at:    createdAt,
       }).catch(err => console.error('[Firestore] Failed to save response:', err));
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.step]);
 
-  // ── Subprocess selection ───────────────────────────────────────────────────
-
-  const toggleSubprocess = useCallback(
-    (subprocess: Subprocess, macroprocess: Macroprocess, process: Process) => {
-      setState(s => {
-        const exists = s.globalSelectedSubprocesses.some(i => i.subprocess.id === subprocess.id);
-        if (exists) {
-          return { ...s, globalSelectedSubprocesses: s.globalSelectedSubprocesses.filter(i => i.subprocess.id !== subprocess.id) };
-        }
-        return { ...s, globalSelectedSubprocesses: [...s.globalSelectedSubprocesses, { macroprocess, process, subprocess }] };
-      });
-    }, []);
-
-  const toggleAllInProcess = useCallback(
-    (subprocesses: Subprocess[], macroprocess: Macroprocess, process: Process, selectAll: boolean) => {
-      setState(s => {
-        if (selectAll) {
-          const existingIds = new Set(s.globalSelectedSubprocesses.map(i => i.subprocess.id));
-          const toAdd: SelectedSubprocessItem[] = subprocesses
-            .filter(sp => !existingIds.has(sp.id))
-            .map(sp => ({ macroprocess, process, subprocess: sp }));
-          return { ...s, globalSelectedSubprocesses: [...s.globalSelectedSubprocesses, ...toAdd] };
-        }
-        const idsToRemove = new Set(subprocesses.map(sp => sp.id));
-        return { ...s, globalSelectedSubprocesses: s.globalSelectedSubprocesses.filter(i => !idsToRemove.has(i.subprocess.id)) };
-      });
-    }, []);
-
-  const clearSelection = useCallback(() => setState(s => ({ ...s, globalSelectedSubprocesses: [] })), []);
-
-  const addCustomSubprocess = useCallback((item: SelectedSubprocessItem) => {
-    setState(s => {
-      if (s.globalSelectedSubprocesses.filter(i => i.isCustom).length >= 3) return s;
-      return { ...s, globalSelectedSubprocesses: [...s.globalSelectedSubprocesses, item] };
-    });
-  }, []);
-
-  const removeCustomSubprocess = useCallback((subprocessId: string) => {
-    setState(s => ({
-      ...s,
-      globalSelectedSubprocesses: s.globalSelectedSubprocesses.filter(i => i.subprocess.id !== subprocessId),
-    }));
-  }, []);
-
-  // ── Evaluation flow ────────────────────────────────────────────────────────
-
-  const startEvaluation = useCallback(() => {
-    setState(s => ({ ...s, currentSubprocessIndex: 0, step: 'questionnaire' }));
-  }, []);
+  // ── Questionnaire handlers ────────────────────────────────────────────────
 
   const completeQuestionnaire = useCallback((scores: CriteriaScores) => {
     setState(s => {
       const { macroprocess, process, subprocess, isCustom } =
         s.globalSelectedSubprocesses[s.currentSubprocessIndex];
+
       const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
       const updatedAssessments = addAssessment(s.assessments, assessment);
       const done = isAssessmentComplete(
         s.globalSelectedSubprocesses.map(i => i.subprocess),
         s.currentSubprocessIndex,
       );
+
       return {
         ...s,
         assessments: updatedAssessments,
@@ -209,30 +192,12 @@ export default function DiagnosticResumePage() {
 
   const goBackInQuestionnaire = useCallback(() => {
     setState(s => {
-      if (s.currentSubprocessIndex === 0) return { ...s, step: 'explore' };
+      if (s.currentSubprocessIndex === 0) return s;
       return { ...s, currentSubprocessIndex: s.currentSubprocessIndex - 1 };
     });
   }, []);
 
-  // ── Derived values ─────────────────────────────────────────────────────────
-
-  const selectedIds = useMemo(
-    () => new Set(state.globalSelectedSubprocesses.map(i => i.subprocess.id)),
-    [state.globalSelectedSubprocesses],
-  );
-  const customSubprocesses = useMemo(
-    () => state.globalSelectedSubprocesses.filter(i => i.isCustom),
-    [state.globalSelectedSubprocesses],
-  );
-  const lockedSubprocessIds = useMemo(() => new Set(answeredSubprocessIds), [answeredSubprocessIds]);
-
   const currentItem = state.globalSelectedSubprocesses[state.currentSubprocessIndex];
-
-  // Ranking shows previously answered assessments combined with new ones from this session
-  const allAssessments = useMemo(
-    () => [...previousAssessments, ...state.assessments],
-    [previousAssessments, state.assessments],
-  );
 
   // ── Loading / not-found ────────────────────────────────────────────────────
 
@@ -263,7 +228,7 @@ export default function DiagnosticResumePage() {
     );
   }
 
-  // ── Assessment flow ────────────────────────────────────────────────────────
+  // ── Resume flow ────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -282,28 +247,7 @@ export default function DiagnosticResumePage() {
 
       <StepIndicator step={state.step} />
 
-      {state.step === 'explore' && (
-        <SelectedSubprocessesPanel
-          count={state.globalSelectedSubprocesses.length}
-          onStart={startEvaluation}
-          onClear={clearSelection}
-        />
-      )}
-
       <main>
-
-        {state.step === 'explore' && (
-          <SubprocessExplorer
-            selectedIds={selectedIds}
-            customSubprocesses={customSubprocesses}
-            onToggle={toggleSubprocess}
-            onToggleAll={toggleAllInProcess}
-            onAddCustom={addCustomSubprocess}
-            onRemoveCustom={removeCustomSubprocess}
-            onBack={() => router.push('/assessment')}
-            lockedSubprocessIds={lockedSubprocessIds}
-          />
-        )}
 
         {state.step === 'questionnaire' && currentItem && (
           <Questionnaire
@@ -314,13 +258,22 @@ export default function DiagnosticResumePage() {
             currentIndex={state.currentSubprocessIndex}
             total={state.globalSelectedSubprocesses.length}
             onComplete={completeQuestionnaire}
-            onBack={goBackInQuestionnaire}
+            onBack={
+              state.currentSubprocessIndex === 0
+                ? () => router.push('/assessment')
+                : goBackInQuestionnaire
+            }
           />
         )}
 
+        {/*
+          RankingScreen receives state.assessments which is:
+            rebuiltAssessments (from Firestore) + newAssessments (this session).
+          This guarantees the ranking always reflects all responses.
+        */}
         {state.step === 'ranking' && (
           <RankingScreen
-            assessments={allAssessments}
+            assessments={state.assessments}
             onRestart={() => router.push('/assessment')}
           />
         )}
