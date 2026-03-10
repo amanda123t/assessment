@@ -51,24 +51,19 @@ export default function AssessmentPage() {
     if (alreadySaved.current) return;
     alreadySaved.current = true;
 
-    const responsesCollection = collection(db, 'responses');
-
-    state.assessments.forEach((a) => {
-
-      addDoc(responsesCollection, {
-        session_id: sessionId.current,
-        company: company,
-        participant_email: email,
-        area: '',
+    addDoc(collection(db, 'diagnostics'), {
+      session_id: sessionId.current,
+      company: company,
+      participant_email: email,
+      responses: state.assessments.map((a) => ({
         process: a.processName,
         subarea_id: a.subprocessId,
         score: a.totalScore,
-        created_at: new Date().toISOString(),
-      }).catch((err) => {
-        console.error('[Firestore] Failed to save response:', err);
-      });
-
-    });
+      })),
+      created_at: new Date().toISOString(),
+    }).catch((err) =>
+      console.error('[Firestore] Failed to save diagnosis:', err)
+    );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.step]);
