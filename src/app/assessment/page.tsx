@@ -9,7 +9,7 @@ import {
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, getDocs, where, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, where, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 import { processLibrary } from '@/data/processLibrary';
 
@@ -268,11 +268,15 @@ export default function AssessmentPage() {
 
   const startEvaluation = useCallback(() => {
 
-    setState((s) => ({
-      ...s,
-      currentSubprocessIndex: 0,
-      step: 'questionnaire',
-    }));
+    setState((s) => {
+      // Persist the selected subprocess IDs so the resume page can restore
+      // exactly this queue rather than falling back to all 182 library entries.
+      updateDoc(doc(db, 'diagnostics', diagnosticId.current), {
+        selected_subprocess_ids: s.globalSelectedSubprocesses.map((i) => i.subprocess.id),
+      }).catch((err) => console.error('[Firestore] Failed to update diagnostic:', err));
+
+      return { ...s, currentSubprocessIndex: 0, step: 'questionnaire' };
+    });
 
   }, []);
 

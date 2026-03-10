@@ -56,15 +56,29 @@ function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessm
 }
 
 /**
- * Build the queue of subprocesses not yet answered.
- * Preserves processLibrary order so the questionnaire flows naturally.
+ * Build the queue of subprocesses that were selected for this diagnostic
+ * but have not yet been answered.
+ *
+ * selectedIds — the IDs stored in diagnostics/{id}.selected_subprocess_ids
+ *               (written by assessment/page.tsx when the questionnaire starts)
+ * answeredIds — IDs that already have a response document in Firestore
+ *
+ * Falls back to the full processLibrary when selectedIds is empty so that
+ * diagnostics created before this field was introduced still work.
  */
-function buildRemainingItems(answeredIds: Set<string>): SelectedSubprocessItem[] {
+function buildRemainingItems(
+  selectedIds: string[],
+  answeredIds: Set<string>,
+): SelectedSubprocessItem[] {
   const items: SelectedSubprocessItem[] = [];
+  const useSelection = selectedIds.length > 0;
+  const selectedSet = new Set(selectedIds);
+
   for (const macro of processLibrary) {
     for (const process of macro.processes) {
       for (const subprocess of process.subprocesses) {
-        if (!answeredIds.has(subprocess.id)) {
+        const isSelected = !useSelection || selectedSet.has(subprocess.id);
+        if (isSelected && !answeredIds.has(subprocess.id)) {
           items.push({ macroprocess: macro, process, subprocess });
         }
       }
@@ -106,7 +120,8 @@ export default function DiagnosticResumePage() {
       const diagnosticSnap = await getDoc(doc(db, 'diagnostics', id));
       if (!diagnosticSnap.exists()) { setPageStatus('not-found'); return; }
 
-      setCompany(diagnosticSnap.data().company ?? '');
+      const diagData = diagnosticSnap.data();
+      setCompany(diagData.company ?? '');
 
       // 2. Load all responses for this diagnostic
       const q = query(collection(db, 'responses'), where('diagnostic_id', '==', id));
@@ -120,8 +135,12 @@ export default function DiagnosticResumePage() {
       // 4. Rebuild SubprocessAssessment[] from stored responses
       const rebuiltAssessments: SubprocessAssessment[] = responses.map(reconstructAssessment);
 
-      // 5. Build the queue of remaining (unanswered) subprocesses
-      const remainingItems = buildRemainingItems(answeredIds);
+      // 5. Build the queue of remaining (unanswered) subprocesses.
+      //    selectedSubprocessIds is written by assessment/page.tsx when the
+      //    questionnaire starts; it limits the queue to the originally chosen
+      //    subprocesses instead of all 182 library entries.
+      const selectedSubprocessIds: string[] = diagData.selected_subprocess_ids ?? [];
+      const remainingItems = buildRemainingItems(selectedSubprocessIds, answeredIds);
 
       // 6. Restore full state — jump straight to questionnaire or ranking
       setState({
