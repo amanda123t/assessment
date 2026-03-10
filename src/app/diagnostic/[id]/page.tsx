@@ -112,6 +112,10 @@ export default function DiagnosticResumePage() {
   // This collaborator's own selection (group join explore step)
   const [groupSelectedItems, setGroupSelectedItems] = useState<SelectedSubprocessItem[]>([]);
 
+  // "Continuar depois" — available during questionnaire on both individual and group flows
+  const [showContinueModal, setShowContinueModal] = useState(false);
+  const [continueLinkCopied, setContinueLinkCopied] = useState(false);
+
   // IDs that were already in Firestore before this session — used to filter saves.
   const initialAnsweredIds = useRef<Set<string>>(new Set());
   const alreadySaved = useRef(false);
@@ -352,6 +356,14 @@ export default function DiagnosticResumePage() {
                 🔗 Link de compartilhamento
               </button>
             )}
+            {state.step === 'questionnaire' && state.globalSelectedSubprocesses.length > 1 && (
+              <button
+                onClick={() => setShowContinueModal(true)}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              >
+                Continuar depois
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -394,6 +406,49 @@ export default function DiagnosticResumePage() {
               className="text-sm text-gray-500 hover:text-gray-700 transition-colors text-left"
             >
               Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Continuar depois modal */}
+      {showContinueModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowContinueModal(false); }}
+        >
+          <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Continuar diagnóstico depois
+            </h2>
+            <p className="text-sm text-gray-600">
+              Use o link abaixo para continuar de onde parou. As respostas já dadas serão mantidas.
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={typeof window !== 'undefined' ? window.location.href : ''}
+                readOnly
+                className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  setContinueLinkCopied(true);
+                  setTimeout(() => setContinueLinkCopied(false), 2000);
+                }}
+                className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
+              >
+                Copiar
+              </button>
+            </div>
+            {continueLinkCopied && (
+              <p className="text-green-600 text-xs -mt-2">Link copiado!</p>
+            )}
+            <button
+              onClick={() => setShowContinueModal(false)}
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors text-left"
+            >
+              Voltar ao diagnóstico
             </button>
           </div>
         </div>
