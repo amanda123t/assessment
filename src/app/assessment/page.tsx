@@ -33,6 +33,7 @@ export default function AssessmentPage() {
 
   const [state, setState] = useState<AssessmentState>(INITIAL_STATE);
   const [company, setCompany] = useState('');
+  const [email, setEmail] = useState('');
 
   // Stable session identifier — generated once per page mount
   const sessionId = useRef<string>(
@@ -40,12 +41,15 @@ export default function AssessmentPage() {
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2)
   );
+  const alreadySaved = useRef(false);
 
   // ── Persist responses in Firestore when ranking is reached ──────────────────
 
   useEffect(() => {
 
     if (state.step !== 'ranking' || state.assessments.length === 0) return;
+    if (alreadySaved.current) return;
+    alreadySaved.current = true;
 
     const responsesCollection = collection(db, 'responses');
 
@@ -54,21 +58,20 @@ export default function AssessmentPage() {
       addDoc(responsesCollection, {
         session_id: sessionId.current,
         company: company,
+        participant_email: email,
         area: '',
         process: a.processName,
         subarea_id: a.subprocessId,
         score: a.totalScore,
         created_at: new Date().toISOString(),
-      })
-
-      .catch((err) => {
+      }).catch((err) => {
         console.error('[Firestore] Failed to save response:', err);
       });
 
     });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.step, state.assessments, company]);
+  }, [state.step]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
@@ -300,7 +303,7 @@ export default function AssessmentPage() {
 
       {state.step === 'start' ? (
 
-        <StartScreen onStart={goToExplore} company={company} onCompanyChange={setCompany} />
+        <StartScreen onStart={goToExplore} company={company} onCompanyChange={setCompany} email={email} onEmailChange={setEmail} />
 
       ) : (
 

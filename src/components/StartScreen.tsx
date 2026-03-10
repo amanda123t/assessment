@@ -6,6 +6,8 @@ interface Props {
   onStart: () => void;
   company: string;
   onCompanyChange: (value: string) => void;
+  email: string;
+  onEmailChange: (value: string) => void;
 }
 
 const features = [
@@ -24,7 +26,7 @@ const criteria = [
   'Integrações entre Sistemas',
 ];
 
-export default function StartScreen({ onStart, company, onCompanyChange }: Props) {
+export default function StartScreen({ onStart, company, onCompanyChange, email, onEmailChange }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex flex-col">
       {/* Header */}
@@ -62,6 +64,13 @@ export default function StartScreen({ onStart, company, onCompanyChange }: Props
               placeholder="Nome da empresa"
               value={company}
               onChange={(e) => onCompanyChange(e.target.value)}
+              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <input
+              type="email"
+              placeholder="Seu email"
+              value={email}
+              onChange={(e) => onEmailChange(e.target.value)}
               className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
             <button
