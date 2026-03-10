@@ -41,7 +41,8 @@ export default function AssessmentPage() {
   const [answeredSubprocessIds, setAnsweredSubprocessIds] = useState<string[]>([]);
   const [continueError, setContinueError] = useState<string | null>(null);
   const [isContinuing, setIsContinuing] = useState(false);
-  const [idCopied, setIdCopied] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Stable session identifier — generated once per page mount
   const sessionId = useRef<string>(
@@ -336,7 +337,8 @@ export default function AssessmentPage() {
     setDiagnosticId(null);
     setAnsweredSubprocessIds([]);
     setContinueError(null);
-    setIdCopied(false);
+    setShowResumeModal(false);
+    setLinkCopied(false);
     alreadySaved.current = false;
   }, []);
 
@@ -431,27 +433,61 @@ export default function AssessmentPage() {
 
           )}
 
-          {state.step === 'explore' && diagnosticId && (
-            <div className="max-w-4xl mx-auto px-6 pt-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
-                <p className="text-sm text-blue-700">
-                  Your diagnostic code is:{' '}
-                  <span className="font-mono font-bold">{diagnosticId}</span>
-                  {'. '}Save this code to continue later.
-                </p>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(diagnosticId);
-                    setIdCopied(true);
-                    setTimeout(() => setIdCopied(false), 2000);
-                  }}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap flex-shrink-0 transition-colors"
-                >
-                  {idCopied ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-            </div>
+          {/* Continuar depois — floating button during explore & questionnaire */}
+          {diagnosticId && (state.step === 'explore' || state.step === 'questionnaire') && (
+            <button
+              onClick={() => setShowResumeModal(true)}
+              className="fixed bottom-6 right-6 z-40 bg-white border border-gray-200 shadow-lg hover:shadow-xl text-gray-700 hover:text-blue-600 font-medium text-sm px-4 py-2.5 rounded-full transition-all duration-200 flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              Continuar depois
+            </button>
           )}
+
+          {/* Resume modal */}
+          {showResumeModal && diagnosticId && (() => {
+            const resumeLink = window.location.origin + '/diagnostic/' + diagnosticId;
+            return (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+                onClick={(e) => { if (e.target === e.currentTarget) setShowResumeModal(false); }}
+              >
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4">
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Continuar diagnóstico depois
+                  </h2>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Seu diagnóstico foi salvo. Use o link abaixo para continuar depois ou compartilhar com sua equipe.
+                  </p>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-mono text-gray-700 break-all select-all">
+                    {resumeLink}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(resumeLink);
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2000);
+                      }}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2.5 rounded-lg transition-colors"
+                    >
+                      {linkCopied ? 'Link copiado!' : 'Copiar link'}
+                    </button>
+                    <button
+                      onClick={() => setShowResumeModal(false)}
+                      className="w-full border border-gray-200 hover:bg-gray-50 text-gray-600 font-medium text-sm py-2.5 rounded-lg transition-colors"
+                    >
+                      Voltar ao diagnóstico
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           <main>
 
