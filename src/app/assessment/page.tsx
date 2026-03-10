@@ -284,12 +284,19 @@ export default function AssessmentPage() {
 
   // ── Questionnaire ──────────────────────────────────────────────────────────
 
-  const completeQuestionnaire = useCallback((scores: CriteriaScores) => {
+  const completeQuestionnaire = useCallback((
+    scores: CriteriaScores,
+    subprocess: Subprocess,
+    macroprocess: Macroprocess,
+    process: Process,
+  ) => {
 
     setState((s) => {
 
-      const { macroprocess, process, subprocess, isCustom } =
-        s.globalSelectedSubprocesses[s.currentSubprocessIndex];
+      // subprocess / macroprocess / process come from Questionnaire props —
+      // no state re-read needed.  isCustom is not a Questionnaire concern so
+      // it is still read from state (custom subprocesses added at runtime).
+      const { isCustom } = s.globalSelectedSubprocesses[s.currentSubprocessIndex];
 
       const assessment = createAssessment(
         macroprocess,

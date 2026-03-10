@@ -181,10 +181,16 @@ export default function DiagnosticResumePage() {
 
   // ── Questionnaire handlers ────────────────────────────────────────────────
 
-  const completeQuestionnaire = useCallback((scores: CriteriaScores) => {
-    // Always read from the front of the remaining queue.
-    const { macroprocess, process, subprocess, isCustom } = state.globalSelectedSubprocesses[0];
-    const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
+  const completeQuestionnaire = useCallback((
+    scores: CriteriaScores,
+    subprocess: Subprocess,
+    macroprocess: Macroprocess,
+    process: Process,
+  ) => {
+    // subprocess comes directly from the Questionnaire prop — no state re-read,
+    // no processLibrary lookup.  subprocess.id is guaranteed to be the exact ID
+    // that was displayed to the user and stored in selected_subprocess_ids.
+    const assessment = createAssessment(macroprocess, process, subprocess, scores);
 
     // Persist immediately so progress is never lost if the user closes the
     // tab before reaching the ranking screen.  initialAnsweredIds guards
@@ -212,7 +218,7 @@ export default function DiagnosticResumePage() {
         step: remainingQueue.length === 0 ? 'ranking' : 'questionnaire',
       };
     });
-  }, [state.globalSelectedSubprocesses, id]);
+  }, [id]);
 
   const goBackInQuestionnaire = useCallback(() => {
     setState(s => {

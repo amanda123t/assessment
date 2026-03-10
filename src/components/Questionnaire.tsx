@@ -11,7 +11,12 @@ interface Props {
   subprocess: Subprocess;
   currentIndex: number;
   total: number;
-  onComplete: (scores: CriteriaScores) => void;
+  onComplete: (
+    scores: CriteriaScores,
+    subprocess: Subprocess,
+    macroprocess: Macroprocess,
+    process: Process,
+  ) => void;
   onBack: () => void;
 }
 
@@ -121,7 +126,7 @@ export default function Questionnaire({
           }
         </span>
         <button
-          onClick={() => { if (allAnswered) onComplete(scores); }}
+          onClick={() => { if (allAnswered) onComplete(scores, subprocess, macroprocess, process); }}
           disabled={!allAnswered}
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white disabled:text-gray-400 font-semibold px-6 py-2.5 rounded-lg transition-colors text-sm"
         >
