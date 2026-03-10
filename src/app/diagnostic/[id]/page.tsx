@@ -160,15 +160,23 @@ export default function DiagnosticResumePage() {
   }, [id]);
 
   // ── Persist only NEW responses when ranking is reached ───────────────────────
+  //
+  // Both state.step and state.assessments are listed as dependencies so the
+  // effect always closes over the fully-populated assessments array (rebuilt
+  // from Firestore + new answers from this session).  The alreadySaved guard
+  // ensures the write happens exactly once even though the dependency on
+  // state.assessments means the effect may be scheduled more than once.
 
   useEffect(() => {
     if (state.step !== 'ranking') return;
     if (alreadySaved.current) return;
     alreadySaved.current = true;
 
-    // Filter to assessments added this session (not already in Firestore)
-    const alreadyAnswered = initialAnsweredIds.current;
-    const newAssessments = state.assessments.filter(a => !alreadyAnswered.has(a.subprocessId));
+    // Only persist assessments that were not already in Firestore before
+    // this session started (rebuiltAssessments are excluded here).
+    const newAssessments = state.assessments.filter(
+      a => !initialAnsweredIds.current.has(a.subprocessId)
+    );
 
     if (newAssessments.length === 0) return;
 
@@ -183,8 +191,7 @@ export default function DiagnosticResumePage() {
         created_at:    createdAt,
       }).catch(err => console.error('[Firestore] Failed to save response:', err));
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.step]);
+  }, [state.step, state.assessments, id]);
 
   // ── Questionnaire handlers ────────────────────────────────────────────────
 
