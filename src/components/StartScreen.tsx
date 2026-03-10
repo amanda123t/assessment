@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Activity, ClipboardList, BarChart3, TrendingUp, FileDown } from 'lucide-react';
+import { Activity, ClipboardList, BarChart3, TrendingUp, FileDown, Users } from 'lucide-react';
 
 interface Props {
   onStart: () => void;
+  onStartGroup: () => void;
   company: string;
   onCompanyChange: (value: string) => void;
   email: string;
@@ -30,7 +31,7 @@ const criteria = [
   'Integrações entre Sistemas',
 ];
 
-export default function StartScreen({ onStart, company, onCompanyChange, email, onEmailChange, onContinue, continueError, isContinuing }: Props) {
+export default function StartScreen({ onStart, onStartGroup, company, onCompanyChange, email, onEmailChange, onContinue, continueError, isContinuing }: Props) {
   const [showContinueForm, setShowContinueForm] = useState(false);
   const [continueCode, setContinueCode] = useState('');
 
@@ -86,12 +87,23 @@ export default function StartScreen({ onStart, company, onCompanyChange, email, 
               onChange={(e) => onEmailChange(e.target.value)}
               className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
-            <button
-              onClick={onStart}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl text-base shadow-lg hover:shadow-xl transition-all duration-200"
-            >
-              Iniciar Avaliação
-            </button>
+
+            {/* Mode selection */}
+            <div className="flex gap-3 mt-1 w-72">
+              <button
+                onClick={onStart}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-3 rounded-xl text-sm shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                Responder individual
+              </button>
+              <button
+                onClick={onStartGroup}
+                className="flex-1 bg-white hover:bg-gray-50 text-gray-800 font-semibold px-4 py-3 rounded-xl text-sm shadow-md hover:shadow-lg border border-gray-200 transition-all duration-200 flex items-center justify-center gap-1.5"
+              >
+                <Users size={14} strokeWidth={2} />
+                Em grupo
+              </button>
+            </div>
           </div>
           <p className="text-xs text-gray-400 mt-1">Sem cadastro inicial</p>
 
