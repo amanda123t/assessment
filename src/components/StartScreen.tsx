@@ -1,9 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import { Activity, ClipboardList, BarChart3, TrendingUp, FileDown } from 'lucide-react';
 
 interface Props {
   onStart: () => void;
+  company: string;
+  onCompanyChange: (value: string) => void;
+  email: string;
+  onEmailChange: (value: string) => void;
+  onContinue: (code: string) => void;
+  continueError: string | null;
+  isContinuing: boolean;
 }
 
 const features = [
@@ -22,7 +30,16 @@ const criteria = [
   'Integrações entre Sistemas',
 ];
 
-export default function StartScreen({ onStart }: Props) {
+export default function StartScreen({ onStart, company, onCompanyChange, email, onEmailChange, onContinue, continueError, isContinuing }: Props) {
+  const [showContinueForm, setShowContinueForm] = useState(false);
+  const [continueCode, setContinueCode] = useState('');
+
+  const handleContinueSubmit = () => {
+    const trimmed = continueCode.trim();
+    if (!trimmed) return;
+    onContinue(trimmed);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex flex-col">
       {/* Header */}
@@ -54,13 +71,73 @@ export default function StartScreen({ onStart }: Props) {
             Diagnóstico gratuito &bull; leva menos de 3 minutos &bull; relatório exportável
           </p>
 
-          <button
-            onClick={onStart}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl text-base shadow-lg hover:shadow-xl transition-all duration-200"
-          >
-            Iniciar Avaliação
-          </button>
-          <p className="text-xs text-gray-400 mt-3">Sem cadastro inicial</p>
+          <div className="flex flex-col items-center gap-3 mb-2">
+            <input
+              type="text"
+              placeholder="Nome da empresa"
+              value={company}
+              onChange={(e) => onCompanyChange(e.target.value)}
+              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <input
+              type="email"
+              placeholder="Seu email"
+              value={email}
+              onChange={(e) => onEmailChange(e.target.value)}
+              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              onClick={onStart}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl text-base shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Iniciar Avaliação
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Sem cadastro inicial</p>
+
+          {/* Continue Diagnostic */}
+          <div className="mt-6">
+            {!showContinueForm ? (
+              <button
+                onClick={() => setShowContinueForm(true)}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium underline underline-offset-2 transition-colors"
+              >
+                Continue Diagnostic
+              </button>
+            ) : (
+              <div className="flex flex-col items-center gap-2 mt-2">
+                <input
+                  type="text"
+                  placeholder="Enter diagnostic code"
+                  value={continueCode}
+                  onChange={(e) => {
+                    setContinueCode(e.target.value);
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleContinueSubmit()}
+                  className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  autoFocus
+                />
+                {continueError && (
+                  <p className="text-xs text-red-500">{continueError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowContinueForm(false); setContinueCode(''); }}
+                    className="border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium px-4 py-2 rounded-lg text-sm transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleContinueSubmit}
+                    disabled={!continueCode.trim() || isContinuing}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white disabled:text-gray-400 font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+                  >
+                    {isContinuing ? 'Loading...' : 'Continue'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Feature cards */}
