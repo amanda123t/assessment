@@ -230,6 +230,18 @@ export default function DiagnosticResumePage() {
     });
   }, [lockedSubprocessIds]);
 
+  const addGroupCustomSubprocess = useCallback((item: SelectedSubprocessItem) => {
+    setGroupSelectedItems(prev => {
+      const customCount = prev.filter(i => i.isCustom).length;
+      if (customCount >= 3) return prev;
+      return [...prev, item];
+    });
+  }, []);
+
+  const removeGroupCustomSubprocess = useCallback((subprocessId: string) => {
+    setGroupSelectedItems(prev => prev.filter(i => i.subprocess.id !== subprocessId));
+  }, []);
+
   const startGroupEvaluation = useCallback(() => {
     setState(s => ({
       ...s,
@@ -286,6 +298,7 @@ export default function DiagnosticResumePage() {
   const currentItem = state.globalSelectedSubprocesses[0];
 
   const groupSelectedIds = new Set(groupSelectedItems.map(i => i.subprocess.id));
+  const groupCustomSubprocesses = groupSelectedItems.filter(i => i.isCustom);
 
   // ── Loading / not-found ────────────────────────────────────────────────────
 
@@ -398,11 +411,11 @@ export default function DiagnosticResumePage() {
           />
           <SubprocessExplorer
             selectedIds={groupSelectedIds}
-            customSubprocesses={[]}
+            customSubprocesses={groupCustomSubprocesses}
             onToggle={toggleGroupSubprocess}
             onToggleAll={toggleGroupAll}
-            onAddCustom={() => {}}
-            onRemoveCustom={() => {}}
+            onAddCustom={addGroupCustomSubprocess}
+            onRemoveCustom={removeGroupCustomSubprocess}
             onBack={() => router.push('/assessment')}
             lockedSubprocessIds={lockedSubprocessIds}
           />
