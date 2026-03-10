@@ -40,17 +40,9 @@ export default function AssessmentPage() {
   const [answeredSubprocessIds, setAnsweredSubprocessIds] = useState<string[]>([]);
   const [continueError, setContinueError] = useState<string | null>(null);
   const [isContinuing, setIsContinuing] = useState(false);
-  const [showResumeModal, setShowResumeModal] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
-
   // Stable diagnostic identifier — generated once per page mount
   const diagnosticId = useRef(crypto.randomUUID());
   const alreadySaved = useRef(false);
-
-  const resumeLink =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/diagnostic/${diagnosticId.current}`
-      : '';
 
   // ── Persist responses in Firestore when ranking is reached ──────────────────
 
@@ -348,8 +340,6 @@ export default function AssessmentPage() {
     diagnosticId.current = crypto.randomUUID();
     setAnsweredSubprocessIds([]);
     setContinueError(null);
-    setShowResumeModal(false);
-    setLinkCopied(false);
     alreadySaved.current = false;
   }, []);
 
@@ -444,58 +434,6 @@ export default function AssessmentPage() {
 
           )}
 
-          {/* Continuar depois — floating button during explore & questionnaire */}
-          {(state.step === 'explore' || state.step === 'questionnaire') && (
-            <button
-              onClick={() => setShowResumeModal(true)}
-              className="fixed bottom-6 right-6 z-40 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
-              Continuar depois
-            </button>
-          )}
-
-          {/* Resume modal */}
-          {showResumeModal && (
-            <div
-              className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
-              onClick={(e) => { if (e.target === e.currentTarget) setShowResumeModal(false); }}
-            >
-              <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Continuar diagnóstico depois
-                </h2>
-                <p className="text-sm text-gray-600">
-                  Use o link abaixo para continuar depois ou compartilhar com sua equipe.
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    value={resumeLink}
-                    readOnly
-                    className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
-                  />
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(resumeLink);
-                      setLinkCopied(true);
-                      setTimeout(() => setLinkCopied(false), 2000);
-                    }}
-                    className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
-                  >
-                    Copiar
-                  </button>
-                </div>
-                {linkCopied && (
-                  <p className="text-green-600 text-xs -mt-2">Link copiado!</p>
-                )}
-                <button
-                  onClick={() => setShowResumeModal(false)}
-                  className="text-sm text-gray-500 hover:text-gray-700 transition-colors text-left"
-                >
-                  Voltar ao diagnóstico
-                </button>
-              </div>
-            </div>
-          )}
 
           <main>
 
