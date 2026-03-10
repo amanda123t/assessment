@@ -9,7 +9,7 @@ import {
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, getDocs, where, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, where, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 import { processLibrary } from '@/data/processLibrary';
 
@@ -37,20 +37,20 @@ export default function AssessmentPage() {
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
 
-  const [diagnosticId, setDiagnosticId] = useState<string | null>(null);
   const [answeredSubprocessIds, setAnsweredSubprocessIds] = useState<string[]>([]);
   const [continueError, setContinueError] = useState<string | null>(null);
   const [isContinuing, setIsContinuing] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // Stable session identifier — generated once per page mount
-  const sessionId = useRef<string>(
-    typeof crypto !== 'undefined'
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2)
-  );
+  // Stable diagnostic identifier — generated once per page mount
+  const diagnosticId = useRef(crypto.randomUUID());
   const alreadySaved = useRef(false);
+
+  const resumeLink =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/diagnostic/${diagnosticId.current}`
+      : '';
 
   // ── Persist responses in Firestore when ranking is reached ──────────────────
 
@@ -58,14 +58,13 @@ export default function AssessmentPage() {
 
     if (state.step !== 'ranking' || state.assessments.length === 0) return;
     if (alreadySaved.current) return;
-    if (!diagnosticId) return;
     alreadySaved.current = true;
 
     const createdAt = new Date().toISOString();
 
     state.assessments.forEach((a) => {
       addDoc(collection(db, 'responses'), {
-        diagnostic_id: diagnosticId,
+        diagnostic_id: diagnosticId.current,
         subprocess_id: a.subprocessId,
         process: a.processName,
         score: a.totalScore,
@@ -83,11 +82,11 @@ export default function AssessmentPage() {
 
   useEffect(() => {
 
-    if (state.step !== 'explore' || !diagnosticId) return;
+    if (state.step !== 'explore') return;
 
     const q = query(
       collection(db, 'responses'),
-      where('diagnostic_id', '==', diagnosticId)
+      where('diagnostic_id', '==', diagnosticId.current)
     );
 
     getDocs(q).then((snapshot) => {
@@ -98,7 +97,7 @@ export default function AssessmentPage() {
     );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.step, diagnosticId]);
+  }, [state.step]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
@@ -109,11 +108,10 @@ export default function AssessmentPage() {
     }
 
     try {
-      const docRef = await addDoc(collection(db, 'diagnostics'), {
+      await setDoc(doc(db, 'diagnostics', diagnosticId.current), {
         company: company,
         created_at: new Date().toISOString(),
       });
-      setDiagnosticId(docRef.id);
     } catch (err) {
       console.error('[Firestore] Failed to create diagnostic:', err);
     }
@@ -139,7 +137,7 @@ export default function AssessmentPage() {
 
       const data = diagnosticSnap.data();
       setCompany(data.company || '');
-      setDiagnosticId(code);
+      diagnosticId.current = code;
       setState((s) => ({ ...s, step: 'explore' }));
     } catch (err) {
       console.error('[Firestore] Failed to load diagnostic:', err);
@@ -270,11 +268,15 @@ export default function AssessmentPage() {
 
   const startEvaluation = useCallback(() => {
 
-    setState((s) => ({
-      ...s,
-      currentSubprocessIndex: 0,
-      step: 'questionnaire',
-    }));
+    setState((s) => {
+      // Persist the selected subprocess IDs so the resume page can restore
+      // exactly this queue rather than falling back to all 182 library entries.
+      updateDoc(doc(db, 'diagnostics', diagnosticId.current), {
+        selected_subprocess_ids: s.globalSelectedSubprocesses.map((i) => i.subprocess.id),
+      }).catch((err) => console.error('[Firestore] Failed to update diagnostic:', err));
+
+      return { ...s, currentSubprocessIndex: 0, step: 'questionnaire' };
+    });
 
   }, []);
 
@@ -334,7 +336,7 @@ export default function AssessmentPage() {
 
   const restart = useCallback(() => {
     setState(INITIAL_STATE);
-    setDiagnosticId(null);
+    diagnosticId.current = crypto.randomUUID();
     setAnsweredSubprocessIds([]);
     setContinueError(null);
     setShowResumeModal(false);
@@ -434,60 +436,57 @@ export default function AssessmentPage() {
           )}
 
           {/* Continuar depois — floating button during explore & questionnaire */}
-          {diagnosticId && (state.step === 'explore' || state.step === 'questionnaire') && (
+          {(state.step === 'explore' || state.step === 'questionnaire') && (
             <button
               onClick={() => setShowResumeModal(true)}
-              className="fixed bottom-6 right-6 z-40 bg-white border border-gray-200 shadow-lg hover:shadow-xl text-gray-700 hover:text-blue-600 font-medium text-sm px-4 py-2.5 rounded-full transition-all duration-200 flex items-center gap-2"
+              className="fixed bottom-6 right-6 z-40 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition-colors text-sm font-medium"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/>
-                <polyline points="7 3 7 8 15 8"/>
-              </svg>
               Continuar depois
             </button>
           )}
 
           {/* Resume modal */}
-          {showResumeModal && diagnosticId && (() => {
-            const resumeLink = window.location.origin + '/diagnostic/' + diagnosticId;
-            return (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
-                onClick={(e) => { if (e.target === e.currentTarget) setShowResumeModal(false); }}
-              >
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4">
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Continuar diagnóstico depois
-                  </h2>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Seu diagnóstico foi salvo. Use o link abaixo para continuar depois ou compartilhar com sua equipe.
-                  </p>
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-xs font-mono text-gray-700 break-all select-all">
-                    {resumeLink}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(resumeLink);
-                        setLinkCopied(true);
-                        setTimeout(() => setLinkCopied(false), 2000);
-                      }}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2.5 rounded-lg transition-colors"
-                    >
-                      {linkCopied ? 'Link copiado!' : 'Copiar link'}
-                    </button>
-                    <button
-                      onClick={() => setShowResumeModal(false)}
-                      className="w-full border border-gray-200 hover:bg-gray-50 text-gray-600 font-medium text-sm py-2.5 rounded-lg transition-colors"
-                    >
-                      Voltar ao diagnóstico
-                    </button>
-                  </div>
+          {showResumeModal && (
+            <div
+              className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowResumeModal(false); }}
+            >
+              <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Continuar diagnóstico depois
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Use o link abaixo para continuar depois ou compartilhar com sua equipe.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    value={resumeLink}
+                    readOnly
+                    className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(resumeLink);
+                      setLinkCopied(true);
+                      setTimeout(() => setLinkCopied(false), 2000);
+                    }}
+                    className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
+                  >
+                    Copiar
+                  </button>
                 </div>
+                {linkCopied && (
+                  <p className="text-green-600 text-xs -mt-2">Link copiado!</p>
+                )}
+                <button
+                  onClick={() => setShowResumeModal(false)}
+                  className="text-sm text-gray-500 hover:text-gray-700 transition-colors text-left"
+                >
+                  Voltar ao diagnóstico
+                </button>
               </div>
-            );
-          })()}
+            </div>
+          )}
 
           <main>
 
