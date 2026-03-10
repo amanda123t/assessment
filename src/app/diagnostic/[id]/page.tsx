@@ -196,17 +196,35 @@ export default function DiagnosticResumePage() {
   // ── Questionnaire handlers ────────────────────────────────────────────────
 
   const completeQuestionnaire = useCallback((scores: CriteriaScores) => {
-    setState(s => {
-      const { macroprocess, process, subprocess, isCustom } =
-        s.globalSelectedSubprocesses[s.currentSubprocessIndex];
+    // Read the subprocess being answered from the REMAINING queue.
+    // state.globalSelectedSubprocesses contains only unanswered subprocesses
+    // (set by load()), so index 0 is always the next one to answer.
+    const { macroprocess, process, subprocess, isCustom } =
+      state.globalSelectedSubprocesses[state.currentSubprocessIndex];
 
-      const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
+    const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
+
+    // Persist immediately so progress is never lost if the user closes the
+    // tab before reaching the ranking screen.  initialAnsweredIds guards
+    // against duplicate writes on re-renders or strict-mode double-calls.
+    if (!initialAnsweredIds.current.has(assessment.subprocessId)) {
+      initialAnsweredIds.current.add(assessment.subprocessId);
+      addDoc(collection(db, 'responses'), {
+        diagnostic_id: id,
+        subprocess_id: assessment.subprocessId,
+        process:       assessment.processName,
+        score:         assessment.totalScore,
+        answered_by:   '',
+        created_at:    new Date().toISOString(),
+      }).catch(err => console.error('[Firestore] Failed to save response:', err));
+    }
+
+    setState(s => {
       const updatedAssessments = addAssessment(s.assessments, assessment);
       const done = isAssessmentComplete(
         s.globalSelectedSubprocesses.map(i => i.subprocess),
         s.currentSubprocessIndex,
       );
-
       return {
         ...s,
         assessments: updatedAssessments,
@@ -214,7 +232,9 @@ export default function DiagnosticResumePage() {
         step: done ? 'ranking' : 'questionnaire',
       };
     });
-  }, []);
+  // state.globalSelectedSubprocesses and state.currentSubprocessIndex are
+  // needed to read the current subprocess outside setState.
+  }, [state.globalSelectedSubprocesses, state.currentSubprocessIndex, id]);
 
   const goBackInQuestionnaire = useCallback(() => {
     setState(s => {
@@ -223,6 +243,8 @@ export default function DiagnosticResumePage() {
     });
   }, []);
 
+  // remainingSubprocesses = state.globalSelectedSubprocesses (set by load()).
+  // currentItem is always the next unanswered subprocess in that queue.
   const currentItem = state.globalSelectedSubprocesses[state.currentSubprocessIndex];
 
   // ── Loading / not-found ────────────────────────────────────────────────────
