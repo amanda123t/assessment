@@ -196,12 +196,8 @@ export default function DiagnosticResumePage() {
   // ── Questionnaire handlers ────────────────────────────────────────────────
 
   const completeQuestionnaire = useCallback((scores: CriteriaScores) => {
-    // Read the subprocess being answered from the REMAINING queue.
-    // state.globalSelectedSubprocesses contains only unanswered subprocesses
-    // (set by load()), so index 0 is always the next one to answer.
-    const { macroprocess, process, subprocess, isCustom } =
-      state.globalSelectedSubprocesses[state.currentSubprocessIndex];
-
+    // Always read from the front of the remaining queue.
+    const { macroprocess, process, subprocess, isCustom } = state.globalSelectedSubprocesses[0];
     const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
 
     // Persist immediately so progress is never lost if the user closes the
@@ -221,17 +217,16 @@ export default function DiagnosticResumePage() {
 
     setState(s => {
       const updatedAssessments = addAssessment(s.assessments, assessment);
-      const done = s.currentSubprocessIndex >= s.globalSelectedSubprocesses.length - 1;
+      const remainingQueue = s.globalSelectedSubprocesses.slice(1);
       return {
         ...s,
         assessments: updatedAssessments,
-        currentSubprocessIndex: done ? s.currentSubprocessIndex : s.currentSubprocessIndex + 1,
-        step: done ? 'ranking' : 'questionnaire',
+        globalSelectedSubprocesses: remainingQueue,
+        currentSubprocessIndex: 0,
+        step: remainingQueue.length === 0 ? 'ranking' : 'questionnaire',
       };
     });
-  // state.globalSelectedSubprocesses and state.currentSubprocessIndex are
-  // needed to read the current subprocess outside setState.
-  }, [state.globalSelectedSubprocesses, state.currentSubprocessIndex, id]);
+  }, [state.globalSelectedSubprocesses, id]);
 
   const goBackInQuestionnaire = useCallback(() => {
     setState(s => {
@@ -240,9 +235,8 @@ export default function DiagnosticResumePage() {
     });
   }, []);
 
-  // remainingSubprocesses = state.globalSelectedSubprocesses (set by load()).
-  // currentItem is always the next unanswered subprocess in that queue.
-  const currentItem = state.globalSelectedSubprocesses[state.currentSubprocessIndex];
+  // currentItem is always the first item in the remaining queue.
+  const currentItem = state.globalSelectedSubprocesses[0];
 
   // ── Loading / not-found ────────────────────────────────────────────────────
 
