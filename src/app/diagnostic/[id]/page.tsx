@@ -39,6 +39,16 @@ function lookupSubprocess(subprocessId: string) {
 function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessment {
   const subprocessId = data.subprocess_id as string;
   const found = lookupSubprocess(subprocessId);
+  const storedScores = data.scores as CriteriaScores | undefined;
+
+  // When individual criteria scores were persisted, recompute all derived
+  // metrics (automationScore, annualHours, etc.) using the same formulas as
+  // createAssessment so the final report is fully accurate.
+  if (found && storedScores) {
+    return createAssessment(found.macro, found.process, found.subprocess, storedScores);
+  }
+
+  // Legacy fallback for responses saved before scores were persisted.
   return {
     subprocessId,
     subprocessName:   found?.subprocess.name ?? subprocessId,
@@ -180,6 +190,7 @@ export default function DiagnosticResumePage() {
         subprocess_id: a.subprocessId,
         process:       a.processName,
         score:         a.totalScore,
+        scores:        a.scores,
         answered_by:   '',
         created_at:    createdAt,
       }).catch(err => console.error('[Firestore] Failed to save response:', err));
@@ -246,6 +257,7 @@ export default function DiagnosticResumePage() {
         subprocess_id: assessment.subprocessId,
         process:       assessment.processName,
         score:         assessment.totalScore,
+        scores:        assessment.scores,
         answered_by:   '',
         created_at:    new Date().toISOString(),
       }).catch(err => console.error('[Firestore] Failed to save response:', err));

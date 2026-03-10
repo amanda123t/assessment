@@ -74,6 +74,7 @@ export default function AssessmentPage() {
         subprocess_id: a.subprocessId,
         process: a.processName,
         score: a.totalScore,
+        scores: a.scores,
         answered_by: email,
         created_at: createdAt,
       }).catch((err) =>
@@ -328,6 +329,7 @@ export default function AssessmentPage() {
         subprocess_id: assessmentForSave.subprocessId,
         process:       assessmentForSave.processName,
         score:         assessmentForSave.totalScore,
+        scores:        assessmentForSave.scores,
         answered_by:   email,
         created_at:    new Date().toISOString(),
       }).catch((err) => console.error('[Firestore] Failed to save response:', err));
