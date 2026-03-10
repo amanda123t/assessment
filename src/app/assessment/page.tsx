@@ -32,6 +32,7 @@ const INITIAL_STATE: AssessmentState = {
 export default function AssessmentPage() {
 
   const [state, setState] = useState<AssessmentState>(INITIAL_STATE);
+  const [company, setCompany] = useState('');
 
   // Stable session identifier — generated once per page mount
   const sessionId = useRef<string>(
@@ -52,6 +53,7 @@ export default function AssessmentPage() {
 
       addDoc(responsesCollection, {
         session_id: sessionId.current,
+        company: company,
         area: '',
         process: a.processName,
         subarea_id: a.subprocessId,
@@ -65,13 +67,18 @@ export default function AssessmentPage() {
 
     });
 
-  }, [state.step, state.assessments]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.step, state.assessments, company]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
   const goToExplore = useCallback(() => {
+    if (!company.trim()) {
+      alert('Informe o nome da empresa');
+      return;
+    }
     setState((s) => ({ ...s, step: 'explore' }));
-  }, []);
+  }, [company]);
 
   const goBackToStart = useCallback(() => {
     setState((s) => ({ ...s, step: 'start' }));
@@ -293,7 +300,7 @@ export default function AssessmentPage() {
 
       {state.step === 'start' ? (
 
-        <StartScreen onStart={goToExplore} />
+        <StartScreen onStart={goToExplore} company={company} onCompanyChange={setCompany} />
 
       ) : (
 

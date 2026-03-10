@@ -4,6 +4,8 @@ import { Activity, ClipboardList, BarChart3, TrendingUp, FileDown } from 'lucide
 
 interface Props {
   onStart: () => void;
+  company: string;
+  onCompanyChange: (value: string) => void;
 }
 
 const features = [
@@ -22,7 +24,7 @@ const criteria = [
   'Integrações entre Sistemas',
 ];
 
-export default function StartScreen({ onStart }: Props) {
+export default function StartScreen({ onStart, company, onCompanyChange }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex flex-col">
       {/* Header */}
@@ -54,13 +56,22 @@ export default function StartScreen({ onStart }: Props) {
             Diagnóstico gratuito &bull; leva menos de 3 minutos &bull; relatório exportável
           </p>
 
-          <button
-            onClick={onStart}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl text-base shadow-lg hover:shadow-xl transition-all duration-200"
-          >
-            Iniciar Avaliação
-          </button>
-          <p className="text-xs text-gray-400 mt-3">Sem cadastro inicial</p>
+          <div className="flex flex-col items-center gap-3 mb-2">
+            <input
+              type="text"
+              placeholder="Nome da empresa"
+              value={company}
+              onChange={(e) => onCompanyChange(e.target.value)}
+              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              onClick={onStart}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl text-base shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Iniciar Avaliação
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">Sem cadastro inicial</p>
         </div>
 
         {/* Feature cards */}
