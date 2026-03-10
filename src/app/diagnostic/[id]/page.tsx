@@ -55,34 +55,20 @@ function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessm
   };
 }
 
-/**
- * Build the queue of subprocesses that were selected for this diagnostic
- * but have not yet been answered.
- *
- * selectedIds — the IDs stored in diagnostics/{id}.selected_subprocess_ids
- *               (written by assessment/page.tsx when the questionnaire starts)
- * answeredIds — IDs that already have a response document in Firestore
- *
- * Falls back to the full processLibrary when selectedIds is empty so that
- * diagnostics created before this field was introduced still work.
- */
 function buildRemainingItems(
   selectedIds: string[],
   answeredIds: Set<string>,
 ): SelectedSubprocessItem[] {
   const items: SelectedSubprocessItem[] = [];
-  const useSelection = selectedIds.length > 0;
-  const selectedSet = new Set(selectedIds);
-
-  for (const macro of processLibrary) {
-    for (const process of macro.processes) {
-      for (const subprocess of process.subprocesses) {
-        const isSelected = !useSelection || selectedSet.has(subprocess.id);
-        if (isSelected && !answeredIds.has(subprocess.id)) {
-          items.push({ macroprocess: macro, process, subprocess });
-        }
-      }
-    }
+  for (const id of selectedIds) {
+    if (answeredIds.has(id)) continue;
+    const found = lookupSubprocess(id);
+    if (!found) continue;
+    items.push({
+      macroprocess: found.macro,
+      process:      found.process,
+      subprocess:   found.subprocess,
+    });
   }
   return items;
 }
