@@ -44,6 +44,12 @@ export default function AssessmentPage() {
   const [resumeLink, setResumeLink] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // Group mode
+  const [mode, setMode] = useState<'individual' | 'group'>('individual');
+  const [shareLink, setShareLink] = useState('');
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
   // Stable diagnostic identifier — generated once per page mount
   const diagnosticId = useRef(crypto.randomUUID());
   const alreadySaved = useRef(false);
@@ -108,6 +114,30 @@ export default function AssessmentPage() {
     }
 
     setState((s) => ({ ...s, step: 'explore' }));
+  }, [company]);
+
+  const goToExploreGroup = useCallback(async () => {
+    if (!company.trim()) {
+      alert('Informe o nome da empresa');
+      return;
+    }
+
+    try {
+      const docRef = await addDoc(collection(db, 'diagnostics'), {
+        company,
+        created_at: new Date().toISOString(),
+        mode: 'group',
+      });
+      diagnosticId.current = docRef.id;
+      const link = `${window.location.origin}/diagnostic/${docRef.id}`;
+      setMode('group');
+      setShareLink(link);
+      setShowShareModal(true);
+      setState((s) => ({ ...s, step: 'explore' }));
+    } catch (err) {
+      console.error('[Firestore] Failed to create group diagnostic:', err);
+      alert('Erro ao criar diagnóstico em grupo. Tente novamente.');
+    }
   }, [company]);
 
   const goBackToStart = useCallback(() => {
@@ -259,28 +289,22 @@ export default function AssessmentPage() {
 
   const startEvaluation = useCallback(() => {
 
-    // Create the diagnostic document here — not in goToExplore — because this
-    // is the first moment all three required fields are known together:
-    //   company              (entered on the start screen)
-    //   selected_subprocess_ids  (chosen on the explore screen)
-    //   created_at           (timestamp of when evaluation begins)
-    //
-    // Writing everything in one setDoc call (outside setState) guarantees the
-    // document is never created without selected_subprocess_ids, which is what
-    // the resume page uses to reconstruct the exact original queue.
-    addDoc(collection(db, 'diagnostics'), {
-      company,
-      created_at: new Date().toISOString(),
-      selected_subprocess_ids: state.globalSelectedSubprocesses.map((i) => i.subprocess.id),
-    }).then((docRef) => {
-      // Store the Firestore-generated ID so the resume link and all subsequent
-      // response writes reference the correct document.
-      diagnosticId.current = docRef.id;
-    }).catch((err) => console.error('[Firestore] Failed to create diagnostic:', err));
+    if (mode === 'individual') {
+      // Individual: create the diagnostic now (first moment all fields are known).
+      // selected_subprocess_ids lets the resume page rebuild the exact queue.
+      addDoc(collection(db, 'diagnostics'), {
+        company,
+        created_at: new Date().toISOString(),
+        selected_subprocess_ids: state.globalSelectedSubprocesses.map((i) => i.subprocess.id),
+      }).then((docRef) => {
+        diagnosticId.current = docRef.id;
+      }).catch((err) => console.error('[Firestore] Failed to create diagnostic:', err));
+    }
+    // Group: diagnostic already created in goToExploreGroup; diagnosticId.current is set.
 
     setState((s) => ({ ...s, currentSubprocessIndex: 0, step: 'questionnaire' }));
 
-  }, [company, state.globalSelectedSubprocesses]);
+  }, [mode, company, state.globalSelectedSubprocesses]);
 
   // ── Questionnaire ──────────────────────────────────────────────────────────
 
@@ -368,6 +392,10 @@ export default function AssessmentPage() {
     setContinueError(null);
     setShowResumeModal(false);
     setLinkCopied(false);
+    setMode('individual');
+    setShareLink('');
+    setShowShareModal(false);
+    setShareLinkCopied(false);
     alreadySaved.current = false;
     savedAssessmentIds.current = new Set();
   }, []);
@@ -427,6 +455,7 @@ export default function AssessmentPage() {
 
         <StartScreen
           onStart={goToExplore}
+          onStartGroup={goToExploreGroup}
           company={company}
           onCompanyChange={setCompany}
           email={email}
@@ -453,18 +482,72 @@ export default function AssessmentPage() {
                 </p>
               </div>
 
-              {state.step === 'questionnaire' && state.globalSelectedSubprocesses.length > 1 && (
-                <button
-                  onClick={openResumeModal}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
-                >
-                  Continuar depois
-                </button>
-              )}
+              <div className="flex items-center gap-4">
+                {mode === 'group' && (state.step === 'explore' || state.step === 'questionnaire') && (
+                  <button
+                    onClick={() => setShowShareModal(true)}
+                    className="text-sm text-gray-700 hover:text-gray-900 font-medium border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                  >
+                    🔗 Link de compartilhamento
+                  </button>
+                )}
+
+                {state.step === 'questionnaire' && state.globalSelectedSubprocesses.length > 1 && (
+                  <button
+                    onClick={openResumeModal}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                  >
+                    Continuar depois
+                  </button>
+                )}
+              </div>
 
             </div>
 
           </header>
+
+          {/* Share link modal (group mode) */}
+          {showShareModal && (
+            <div
+              className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowShareModal(false); }}
+            >
+              <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Link de compartilhamento
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Compartilhe este link com sua equipe. Cada colaborador pode selecionar e responder áreas diferentes — sem sobrepor as escolhas dos outros.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    value={shareLink}
+                    readOnly
+                    className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(shareLink);
+                      setShareLinkCopied(true);
+                      setTimeout(() => setShareLinkCopied(false), 2000);
+                    }}
+                    className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
+                  >
+                    Copiar
+                  </button>
+                </div>
+                {shareLinkCopied && (
+                  <p className="text-green-600 text-xs -mt-2">Link copiado!</p>
+                )}
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+                >
+                  Continuar para seleção
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Resume modal */}
           {showResumeModal && (

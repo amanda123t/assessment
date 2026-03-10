@@ -15,6 +15,8 @@ import { createAssessment, addAssessment } from '@/lib/assessmentEngine';
 import StepIndicator from '@/components/StepIndicator';
 import Questionnaire from '@/components/Questionnaire';
 import RankingScreen from '@/components/RankingScreen';
+import SubprocessExplorer from '@/components/SubprocessExplorer';
+import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -46,8 +48,6 @@ function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessm
     macroprocessName: found?.macro.name      ?? '',
     scores:           EMPTY_SCORES,
     totalScore:       (data.score as number) ?? 0,
-    // Criteria scores were not persisted — derived metrics default to 0.
-    // Priority labels are unaffected as they derive only from totalScore.
     automationScore:        0,
     annualHours:            0,
     automationSavingsHours: 0,
@@ -92,6 +92,16 @@ export default function DiagnosticResumePage() {
   const [company, setCompany] = useState('');
   const [state, setState] = useState<AssessmentState>(LOADING_STATE);
 
+  // Group mode
+  const [isGroupMode, setIsGroupMode] = useState(false);
+  const [groupShareLink, setGroupShareLink] = useState('');
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  // Subprocesses already answered by other collaborators — shown locked in explorer
+  const [lockedSubprocessIds, setLockedSubprocessIds] = useState<Set<string>>(new Set());
+  // This collaborator's own selection (group join explore step)
+  const [groupSelectedItems, setGroupSelectedItems] = useState<SelectedSubprocessItem[]>([]);
+
   // IDs that were already in Firestore before this session — used to filter saves.
   const initialAnsweredIds = useRef<Set<string>>(new Set());
   const alreadySaved = useRef(false);
@@ -102,39 +112,44 @@ export default function DiagnosticResumePage() {
     if (!id) { setPageStatus('not-found'); return; }
 
     async function load() {
-      // 1. Verify diagnostic exists
       const diagnosticSnap = await getDoc(doc(db, 'diagnostics', id));
       if (!diagnosticSnap.exists()) { setPageStatus('not-found'); return; }
 
       const diagData = diagnosticSnap.data();
       setCompany(diagData.company ?? '');
 
-      // 2. Load all responses for this diagnostic
       const q = query(collection(db, 'responses'), where('diagnostic_id', '==', id));
       const snapshot = await getDocs(q);
       const responses = snapshot.docs.map(d => d.data() as Record<string, unknown>);
 
-      // 3. Determine which subprocesses were already answered
       const answeredIds = new Set(responses.map(r => r.subprocess_id as string));
       initialAnsweredIds.current = answeredIds;
 
-      // 4. Rebuild SubprocessAssessment[] from stored responses
       const rebuiltAssessments: SubprocessAssessment[] = responses.map(reconstructAssessment);
 
-      // 5. Build the queue of remaining (unanswered) subprocesses.
-      //    selectedSubprocessIds is written by assessment/page.tsx when the
-      //    questionnaire starts; it limits the queue to the originally chosen
-      //    subprocesses instead of all 182 library entries.
-      const selectedSubprocessIds: string[] = diagData.selected_subprocess_ids ?? [];
-      const remainingItems = buildRemainingItems(selectedSubprocessIds, answeredIds);
-
-      // 6. Restore full state — jump straight to questionnaire or ranking
-      setState({
-        assessments: rebuiltAssessments,
-        globalSelectedSubprocesses: remainingItems,
-        currentSubprocessIndex: 0,
-        step: remainingItems.length === 0 ? 'ranking' : 'questionnaire',
-      });
+      if (diagData.mode === 'group') {
+        // Group join: go to explore so collaborator picks their areas.
+        // All already-answered subprocesses are locked in the explorer.
+        setIsGroupMode(true);
+        setLockedSubprocessIds(answeredIds);
+        setGroupShareLink(`${window.location.origin}/diagnostic/${id}`);
+        setState({
+          assessments: rebuiltAssessments,
+          globalSelectedSubprocesses: [],
+          currentSubprocessIndex: 0,
+          step: 'explore',
+        });
+      } else {
+        // Individual resume: rebuild remaining queue and jump straight to questionnaire.
+        const selectedSubprocessIds: string[] = diagData.selected_subprocess_ids ?? [];
+        const remainingItems = buildRemainingItems(selectedSubprocessIds, answeredIds);
+        setState({
+          assessments: rebuiltAssessments,
+          globalSelectedSubprocesses: remainingItems,
+          currentSubprocessIndex: 0,
+          step: remainingItems.length === 0 ? 'ranking' : 'questionnaire',
+        });
+      }
 
       setPageStatus('ready');
     }
@@ -146,20 +161,12 @@ export default function DiagnosticResumePage() {
   }, [id]);
 
   // ── Persist only NEW responses when ranking is reached ───────────────────────
-  //
-  // Both state.step and state.assessments are listed as dependencies so the
-  // effect always closes over the fully-populated assessments array (rebuilt
-  // from Firestore + new answers from this session).  The alreadySaved guard
-  // ensures the write happens exactly once even though the dependency on
-  // state.assessments means the effect may be scheduled more than once.
 
   useEffect(() => {
     if (state.step !== 'ranking') return;
     if (alreadySaved.current) return;
     alreadySaved.current = true;
 
-    // Only persist assessments that were not already in Firestore before
-    // this session started (rebuiltAssessments are excluded here).
     const newAssessments = state.assessments.filter(
       a => !initialAnsweredIds.current.has(a.subprocessId)
     );
@@ -179,6 +186,48 @@ export default function DiagnosticResumePage() {
     });
   }, [state.step, state.assessments, id]);
 
+  // ── Group explore handlers ────────────────────────────────────────────────
+
+  const toggleGroupSubprocess = useCallback((
+    subprocess: Subprocess,
+    macroprocess: Macroprocess,
+    process: Process,
+  ) => {
+    setGroupSelectedItems(prev => {
+      const exists = prev.some(i => i.subprocess.id === subprocess.id);
+      if (exists) return prev.filter(i => i.subprocess.id !== subprocess.id);
+      return [...prev, { macroprocess, process, subprocess }];
+    });
+  }, []);
+
+  const toggleGroupAll = useCallback((
+    subprocesses: Subprocess[],
+    macroprocess: Macroprocess,
+    process: Process,
+    selectAll: boolean,
+  ) => {
+    setGroupSelectedItems(prev => {
+      if (selectAll) {
+        const existingIds = new Set(prev.map(i => i.subprocess.id));
+        const toAdd = subprocesses
+          .filter(sp => !existingIds.has(sp.id) && !lockedSubprocessIds.has(sp.id))
+          .map(sp => ({ macroprocess, process, subprocess: sp }));
+        return [...prev, ...toAdd];
+      }
+      const idsToRemove = new Set(subprocesses.map(sp => sp.id));
+      return prev.filter(i => !idsToRemove.has(i.subprocess.id));
+    });
+  }, [lockedSubprocessIds]);
+
+  const startGroupEvaluation = useCallback(() => {
+    setState(s => ({
+      ...s,
+      globalSelectedSubprocesses: groupSelectedItems,
+      currentSubprocessIndex: 0,
+      step: 'questionnaire',
+    }));
+  }, [groupSelectedItems]);
+
   // ── Questionnaire handlers ────────────────────────────────────────────────
 
   const completeQuestionnaire = useCallback((
@@ -187,14 +236,9 @@ export default function DiagnosticResumePage() {
     macroprocess: Macroprocess,
     process: Process,
   ) => {
-    // subprocess comes directly from the Questionnaire prop — no state re-read,
-    // no processLibrary lookup.  subprocess.id is guaranteed to be the exact ID
-    // that was displayed to the user and stored in selected_subprocess_ids.
     const assessment = createAssessment(macroprocess, process, subprocess, scores);
 
-    // Persist immediately so progress is never lost if the user closes the
-    // tab before reaching the ranking screen.  initialAnsweredIds guards
-    // against duplicate writes on re-renders or strict-mode double-calls.
+    // Incremental save so progress survives tab closure.
     if (!initialAnsweredIds.current.has(assessment.subprocessId)) {
       initialAnsweredIds.current.add(assessment.subprocessId);
       addDoc(collection(db, 'responses'), {
@@ -227,8 +271,9 @@ export default function DiagnosticResumePage() {
     });
   }, []);
 
-  // currentItem is always the first item in the remaining queue.
   const currentItem = state.globalSelectedSubprocesses[0];
+
+  const groupSelectedIds = new Set(groupSelectedItems.map(i => i.subprocess.id));
 
   // ── Loading / not-found ────────────────────────────────────────────────────
 
@@ -270,13 +315,87 @@ export default function DiagnosticResumePage() {
             <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
             <p className="text-xs text-gray-400">Operational Efficiency Assessment</p>
           </div>
-          {company && (
-            <span className="text-xs text-gray-500 font-medium">{company}</span>
-          )}
+          <div className="flex items-center gap-4">
+            {company && (
+              <span className="text-xs text-gray-500 font-medium">{company}</span>
+            )}
+            {isGroupMode && (
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="text-sm text-gray-700 hover:text-gray-900 font-medium border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+              >
+                🔗 Link de compartilhamento
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
+      {/* Share link modal */}
+      {showShareModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowShareModal(false); }}
+        >
+          <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Link de compartilhamento
+            </h2>
+            <p className="text-sm text-gray-600">
+              Compartilhe este link com sua equipe. Cada colaborador pode selecionar áreas diferentes — sem sobrepor as escolhas dos outros.
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={groupShareLink}
+                readOnly
+                className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(groupShareLink);
+                  setShareLinkCopied(true);
+                  setTimeout(() => setShareLinkCopied(false), 2000);
+                }}
+                className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
+              >
+                Copiar
+              </button>
+            </div>
+            {shareLinkCopied && (
+              <p className="text-green-600 text-xs -mt-2">Link copiado!</p>
+            )}
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors text-left"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
       <StepIndicator step={state.step} />
+
+      {/* Group explore: collaborator picks their areas */}
+      {state.step === 'explore' && isGroupMode && (
+        <>
+          <SelectedSubprocessesPanel
+            count={groupSelectedItems.length}
+            onStart={startGroupEvaluation}
+            onClear={() => setGroupSelectedItems([])}
+          />
+          <SubprocessExplorer
+            selectedIds={groupSelectedIds}
+            customSubprocesses={[]}
+            onToggle={toggleGroupSubprocess}
+            onToggleAll={toggleGroupAll}
+            onAddCustom={() => {}}
+            onRemoveCustom={() => {}}
+            onBack={() => router.push('/assessment')}
+            lockedSubprocessIds={lockedSubprocessIds}
+          />
+        </>
+      )}
 
       <main>
 
@@ -297,11 +416,6 @@ export default function DiagnosticResumePage() {
           />
         )}
 
-        {/*
-          RankingScreen receives state.assessments which is:
-            rebuiltAssessments (from Firestore) + newAssessments (this session).
-          This guarantees the ranking always reflects all responses.
-        */}
         {state.step === 'ranking' && (
           <RankingScreen
             assessments={state.assessments}
