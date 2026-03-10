@@ -9,7 +9,7 @@ import {
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, getDocs, where, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, where, doc, getDoc, setDoc } from 'firebase/firestore';
 
 import { processLibrary } from '@/data/processLibrary';
 
@@ -101,19 +101,10 @@ export default function AssessmentPage() {
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
-  const goToExplore = useCallback(async () => {
+  const goToExplore = useCallback(() => {
     if (!company.trim()) {
       alert('Informe o nome da empresa');
       return;
-    }
-
-    try {
-      await setDoc(doc(db, 'diagnostics', diagnosticId.current), {
-        company: company,
-        created_at: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error('[Firestore] Failed to create diagnostic:', err);
     }
 
     setState((s) => ({ ...s, step: 'explore' }));
@@ -268,17 +259,24 @@ export default function AssessmentPage() {
 
   const startEvaluation = useCallback(() => {
 
-    setState((s) => {
-      // Persist the selected subprocess IDs so the resume page can restore
-      // exactly this queue rather than falling back to all 182 library entries.
-      updateDoc(doc(db, 'diagnostics', diagnosticId.current), {
-        selected_subprocess_ids: s.globalSelectedSubprocesses.map((i) => i.subprocess.id),
-      }).catch((err) => console.error('[Firestore] Failed to update diagnostic:', err));
+    // Create the diagnostic document here — not in goToExplore — because this
+    // is the first moment all three required fields are known together:
+    //   company              (entered on the start screen)
+    //   selected_subprocess_ids  (chosen on the explore screen)
+    //   created_at           (timestamp of when evaluation begins)
+    //
+    // Writing everything in one setDoc call (outside setState) guarantees the
+    // document is never created without selected_subprocess_ids, which is what
+    // the resume page uses to reconstruct the exact original queue.
+    setDoc(doc(db, 'diagnostics', diagnosticId.current), {
+      company,
+      created_at: new Date().toISOString(),
+      selected_subprocess_ids: state.globalSelectedSubprocesses.map((i) => i.subprocess.id),
+    }).catch((err) => console.error('[Firestore] Failed to create diagnostic:', err));
 
-      return { ...s, currentSubprocessIndex: 0, step: 'questionnaire' };
-    });
+    setState((s) => ({ ...s, currentSubprocessIndex: 0, step: 'questionnaire' }));
 
-  }, []);
+  }, [company, state.globalSelectedSubprocesses]);
 
   // ── Questionnaire ──────────────────────────────────────────────────────────
 
