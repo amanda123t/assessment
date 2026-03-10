@@ -62,6 +62,12 @@ export interface SelectedSubprocessItem {
   isCustom?: boolean;
 }
 
+// ── Custom area types (created at runtime in SubprocessExplorer) ──────────────
+
+export interface CustomAreaSubprocess { id: string; name: string; }
+export interface CustomAreaProcess    { id: string; name: string; subprocesses: CustomAreaSubprocess[]; }
+export interface CustomArea           { id: string; name: string; processes: CustomAreaProcess[]; }
+
 export interface AssessmentIdentification {
   company: string;
   area: string;

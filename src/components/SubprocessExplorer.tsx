@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ChevronRight, ChevronDown,
   DollarSign, ShoppingCart, TrendingUp, Users,
   Truck, UserCog, ShieldCheck, LucideIcon,
   Plus, X, Layers,
 } from 'lucide-react';
-import { Macroprocess, Process, Subprocess, SelectedSubprocessItem } from '@/types';
+import { Macroprocess, Process, Subprocess, SelectedSubprocessItem, CustomArea, CustomAreaProcess, CustomAreaSubprocess } from '@/types';
 import { processLibrary } from '@/data/processLibrary';
 
 const MACRO_ICONS: Record<string, LucideIcon> = {
@@ -31,13 +31,11 @@ interface Props {
   onRemoveCustom: (subprocessId: string) => void;
   onBack: () => void;
   lockedSubprocessIds?: Set<string>;
+  /** Pre-existing custom areas to restore on mount (e.g. after resume / share link). */
+  initialCustomAreas?: CustomArea[];
+  /** Called whenever the custom areas list changes so the parent can persist it. */
+  onCustomAreasChange?: (areas: CustomArea[]) => void;
 }
-
-// ── Local types for custom areas ──────────────────────────────────────────────
-
-interface CustomAreaSubprocess { id: string; name: string; }
-interface CustomAreaProcess    { id: string; name: string; subprocesses: CustomAreaSubprocess[]; }
-interface CustomArea           { id: string; name: string; processes: CustomAreaProcess[]; }
 
 // ── Modal: create a custom subprocess for an existing library process ─────────
 
@@ -279,15 +277,27 @@ export default function SubprocessExplorer({
   onRemoveCustom,
   onBack,
   lockedSubprocessIds = new Set(),
+  initialCustomAreas,
+  onCustomAreasChange,
 }: Props) {
   const [expandedMacros, setExpandedMacros]       = useState<Set<string>>(new Set());
   const [expandedProcesses, setExpandedProcesses] = useState<Set<string>>(new Set());
   const [showFormFor, setShowFormFor]             = useState<{ macro: Macroprocess; proc: Process } | null>(null);
   const [showNewAreaForm, setShowNewAreaForm]      = useState(false);
-  const [customAreas, setCustomAreas]             = useState<CustomArea[]>([]);
-  const [expandedCustomAreas, setExpandedCustomAreas]       = useState<Set<string>>(new Set());
-  const [expandedCustomProcesses, setExpandedCustomProcesses] = useState<Set<string>>(new Set());
+  const [customAreas, setCustomAreas]             = useState<CustomArea[]>(initialCustomAreas ?? []);
+  const [expandedCustomAreas, setExpandedCustomAreas]       = useState<Set<string>>(
+    new Set((initialCustomAreas ?? []).map(a => a.id))
+  );
+  const [expandedCustomProcesses, setExpandedCustomProcesses] = useState<Set<string>>(
+    new Set((initialCustomAreas ?? []).flatMap(a => a.processes.map(p => p.id)))
+  );
   const [showCustomSpFormFor, setShowCustomSpFormFor] = useState<string | null>(null); // procId
+
+  // Notify parent whenever custom areas list changes
+  useEffect(() => {
+    onCustomAreasChange?.(customAreas);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customAreas]);
 
   const toggleMacro = (id: string) => {
     setExpandedMacros(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
