@@ -41,16 +41,14 @@ export default function AssessmentPage() {
   const [continueError, setContinueError] = useState<string | null>(null);
   const [isContinuing, setIsContinuing] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeLink, setResumeLink] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
 
   // Stable diagnostic identifier — generated once per page mount
   const diagnosticId = useRef(crypto.randomUUID());
   const alreadySaved = useRef(false);
-
-  const resumeLink =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/diagnostic/${diagnosticId.current}`
-      : '';
+  // Tracks subprocess IDs saved incrementally so the ranking useEffect skips them
+  const savedAssessmentIds = useRef(new Set<string>());
 
   // ── Persist responses in Firestore when ranking is reached ──────────────────
 
@@ -63,6 +61,8 @@ export default function AssessmentPage() {
     const createdAt = new Date().toISOString();
 
     state.assessments.forEach((a) => {
+      // Skip any response already saved by the incremental path in completeQuestionnaire
+      if (savedAssessmentIds.current.has(a.subprocessId)) return;
       addDoc(collection(db, 'responses'), {
         diagnostic_id: diagnosticId.current,
         subprocess_id: a.subprocessId,
@@ -284,12 +284,37 @@ export default function AssessmentPage() {
 
   // ── Questionnaire ──────────────────────────────────────────────────────────
 
-  const completeQuestionnaire = useCallback((scores: CriteriaScores) => {
+  const completeQuestionnaire = useCallback((
+    scores: CriteriaScores,
+    subprocess: Subprocess,
+    macroprocess: Macroprocess,
+    process: Process,
+  ) => {
+
+    // Compute assessment outside setState to get totalScore for Firestore save.
+    // isCustom is not needed for the persisted fields so we omit it here.
+    const assessmentForSave = createAssessment(macroprocess, process, subprocess, scores);
+
+    // Incremental save — persists progress immediately so resuming works even
+    // if the user closes the tab before reaching the ranking screen.
+    if (!savedAssessmentIds.current.has(assessmentForSave.subprocessId)) {
+      savedAssessmentIds.current.add(assessmentForSave.subprocessId);
+      addDoc(collection(db, 'responses'), {
+        diagnostic_id: diagnosticId.current,
+        subprocess_id: assessmentForSave.subprocessId,
+        process:       assessmentForSave.processName,
+        score:         assessmentForSave.totalScore,
+        answered_by:   email,
+        created_at:    new Date().toISOString(),
+      }).catch((err) => console.error('[Firestore] Failed to save response:', err));
+    }
 
     setState((s) => {
 
-      const { macroprocess, process, subprocess, isCustom } =
-        s.globalSelectedSubprocesses[s.currentSubprocessIndex];
+      // subprocess / macroprocess / process come from Questionnaire props —
+      // no state re-read needed.  isCustom is not a Questionnaire concern so
+      // it is still read from state (custom subprocesses added at runtime).
+      const { isCustom } = s.globalSelectedSubprocesses[s.currentSubprocessIndex];
 
       const assessment = createAssessment(
         macroprocess,
@@ -317,7 +342,7 @@ export default function AssessmentPage() {
 
     });
 
-  }, []);
+  }, [email]);
 
   const goBackInQuestionnaire = useCallback(() => {
 
@@ -344,6 +369,12 @@ export default function AssessmentPage() {
     setShowResumeModal(false);
     setLinkCopied(false);
     alreadySaved.current = false;
+    savedAssessmentIds.current = new Set();
+  }, []);
+
+  const openResumeModal = useCallback(() => {
+    setResumeLink(`${window.location.origin}/diagnostic/${diagnosticId.current}`);
+    setShowResumeModal(true);
   }, []);
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -411,41 +442,29 @@ export default function AssessmentPage() {
 
           <header className="bg-white border-b border-gray-100 px-6 py-3 shadow-sm">
 
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-5xl mx-auto flex items-center justify-between">
 
-              <h1 className="text-sm font-bold text-gray-900 leading-none">
-                OEA
-              </h1>
+              <div>
+                <h1 className="text-sm font-bold text-gray-900 leading-none">
+                  OEA
+                </h1>
+                <p className="text-xs text-gray-400">
+                  Operational Efficiency Assessment
+                </p>
+              </div>
 
-              <p className="text-xs text-gray-400">
-                Operational Efficiency Assessment
-              </p>
+              {state.step === 'questionnaire' && state.globalSelectedSubprocesses.length > 1 && (
+                <button
+                  onClick={openResumeModal}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                >
+                  Continuar depois
+                </button>
+              )}
 
             </div>
 
           </header>
-
-          <StepIndicator step={state.step} />
-
-          {state.step === 'explore' && (
-
-            <SelectedSubprocessesPanel
-              count={state.globalSelectedSubprocesses.length}
-              onStart={startEvaluation}
-              onClear={clearSelection}
-            />
-
-          )}
-
-          {/* Continuar depois — floating button during explore & questionnaire */}
-          {(state.step === 'explore' || state.step === 'questionnaire') && (
-            <button
-              onClick={() => setShowResumeModal(true)}
-              className="fixed bottom-6 right-6 z-40 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
-              Continuar depois
-            </button>
-          )}
 
           {/* Resume modal */}
           {showResumeModal && (
@@ -458,7 +477,7 @@ export default function AssessmentPage() {
                   Continuar diagnóstico depois
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Use o link abaixo para continuar depois ou compartilhar com sua equipe.
+                  Use o link abaixo para continuar depois ou compartilhar com sua equipe. As respostas já dadas serão mantidas.
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -489,6 +508,19 @@ export default function AssessmentPage() {
               </div>
             </div>
           )}
+
+          <StepIndicator step={state.step} />
+
+          {state.step === 'explore' && (
+
+            <SelectedSubprocessesPanel
+              count={state.globalSelectedSubprocesses.length}
+              onStart={startEvaluation}
+              onClear={clearSelection}
+            />
+
+          )}
+
 
           <main>
 

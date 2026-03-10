@@ -55,34 +55,20 @@ function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessm
   };
 }
 
-/**
- * Build the queue of subprocesses that were selected for this diagnostic
- * but have not yet been answered.
- *
- * selectedIds — the IDs stored in diagnostics/{id}.selected_subprocess_ids
- *               (written by assessment/page.tsx when the questionnaire starts)
- * answeredIds — IDs that already have a response document in Firestore
- *
- * Falls back to the full processLibrary when selectedIds is empty so that
- * diagnostics created before this field was introduced still work.
- */
 function buildRemainingItems(
   selectedIds: string[],
   answeredIds: Set<string>,
 ): SelectedSubprocessItem[] {
   const items: SelectedSubprocessItem[] = [];
-  const useSelection = selectedIds.length > 0;
-  const selectedSet = new Set(selectedIds);
-
-  for (const macro of processLibrary) {
-    for (const process of macro.processes) {
-      for (const subprocess of process.subprocesses) {
-        const isSelected = !useSelection || selectedSet.has(subprocess.id);
-        if (isSelected && !answeredIds.has(subprocess.id)) {
-          items.push({ macroprocess: macro, process, subprocess });
-        }
-      }
-    }
+  for (const id of selectedIds) {
+    if (answeredIds.has(id)) continue;
+    const found = lookupSubprocess(id);
+    if (!found) continue;
+    items.push({
+      macroprocess: found.macro,
+      process:      found.process,
+      subprocess:   found.subprocess,
+    });
   }
   return items;
 }
@@ -195,10 +181,16 @@ export default function DiagnosticResumePage() {
 
   // ── Questionnaire handlers ────────────────────────────────────────────────
 
-  const completeQuestionnaire = useCallback((scores: CriteriaScores) => {
-    // Always read from the front of the remaining queue.
-    const { macroprocess, process, subprocess, isCustom } = state.globalSelectedSubprocesses[0];
-    const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
+  const completeQuestionnaire = useCallback((
+    scores: CriteriaScores,
+    subprocess: Subprocess,
+    macroprocess: Macroprocess,
+    process: Process,
+  ) => {
+    // subprocess comes directly from the Questionnaire prop — no state re-read,
+    // no processLibrary lookup.  subprocess.id is guaranteed to be the exact ID
+    // that was displayed to the user and stored in selected_subprocess_ids.
+    const assessment = createAssessment(macroprocess, process, subprocess, scores);
 
     // Persist immediately so progress is never lost if the user closes the
     // tab before reaching the ranking screen.  initialAnsweredIds guards
@@ -226,7 +218,7 @@ export default function DiagnosticResumePage() {
         step: remainingQueue.length === 0 ? 'ranking' : 'questionnaire',
       };
     });
-  }, [state.globalSelectedSubprocesses, id]);
+  }, [id]);
 
   const goBackInQuestionnaire = useCallback(() => {
     setState(s => {
