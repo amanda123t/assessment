@@ -491,7 +491,7 @@ export default function AssessmentPage() {
                   </button>
                 )}
 
-                {state.step === 'questionnaire' && state.globalSelectedSubprocesses.length > 1 && (
+                {state.step === 'questionnaire' && (
                   <button
                     onClick={openResumeModal}
                     className="text-sm text-white font-medium bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5 transition-colors"
