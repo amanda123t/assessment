@@ -356,7 +356,7 @@ export default function DiagnosticResumePage() {
                 🔗 Link de compartilhamento
               </button>
             )}
-            {state.step === 'questionnaire' && state.globalSelectedSubprocesses.length > 1 && (
+            {(state.step === 'questionnaire' || state.step === 'explore') && (
               <button
                 onClick={() => setShowContinueModal(true)}
                 className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
