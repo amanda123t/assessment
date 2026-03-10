@@ -2,13 +2,13 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { collection, addDoc, query, getDocs, where, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, where, doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { db } from '@/lib/firebase';
 import { processLibrary } from '@/data/processLibrary';
 import {
   AssessmentState, Macroprocess, Process, Subprocess,
-  CriteriaScores, SubprocessAssessment, SelectedSubprocessItem,
+  CriteriaScores, SubprocessAssessment, SelectedSubprocessItem, CustomArea,
 } from '@/types';
 import { createAssessment, addAssessment } from '@/lib/assessmentEngine';
 
@@ -65,20 +65,48 @@ function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessm
   };
 }
 
+function lookupCustomSubprocess(
+  subprocessId: string,
+  customAreas: CustomArea[],
+): SelectedSubprocessItem | null {
+  for (const area of customAreas) {
+    for (const proc of area.processes) {
+      for (const sp of proc.subprocesses) {
+        if (sp.id !== subprocessId) continue;
+        const macro: Macroprocess = { id: area.id, name: area.name, icon: 'custom', processes: [] };
+        const process: Process = {
+          id: proc.id, name: proc.name,
+          subprocesses: proc.subprocesses.map(s => ({
+            id: s.id, name: s.name, code: 'CUSTOM',
+            process: proc.name, macroprocess: area.name, category: 'custom',
+          })),
+        };
+        return {
+          macroprocess: macro, process,
+          subprocess: { id: sp.id, name: sp.name, code: 'CUSTOM', process: proc.name, macroprocess: area.name, category: 'custom' },
+          isCustom: true,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 function buildRemainingItems(
   selectedIds: string[],
   answeredIds: Set<string>,
+  customAreas: CustomArea[] = [],
 ): SelectedSubprocessItem[] {
   const items: SelectedSubprocessItem[] = [];
   for (const id of selectedIds) {
     if (answeredIds.has(id)) continue;
     const found = lookupSubprocess(id);
-    if (!found) continue;
-    items.push({
-      macroprocess: found.macro,
-      process:      found.process,
-      subprocess:   found.subprocess,
-    });
+    if (found) {
+      items.push({ macroprocess: found.macro, process: found.process, subprocess: found.subprocess });
+    } else {
+      const customItem = lookupCustomSubprocess(id, customAreas);
+      if (customItem) items.push(customItem);
+    }
   }
   return items;
 }
@@ -116,6 +144,16 @@ export default function DiagnosticResumePage() {
   const [showContinueModal, setShowContinueModal] = useState(false);
   const [continueLinkCopied, setContinueLinkCopied] = useState(false);
 
+  // Custom areas created in SubprocessExplorer, persisted to Firestore
+  const [customAreas, setCustomAreas] = useState<CustomArea[]>([]);
+  const handleCustomAreasChange = useCallback((areas: CustomArea[]) => {
+    setCustomAreas(areas);
+    if (id) {
+      updateDoc(doc(db, 'diagnostics', id), { custom_areas: areas })
+        .catch(err => console.error('[Firestore] Failed to update custom_areas:', err));
+    }
+  }, [id]);
+
   // IDs that were already in Firestore before this session — used to filter saves.
   const initialAnsweredIds = useRef<Set<string>>(new Set());
   const alreadySaved = useRef(false);
@@ -131,6 +169,10 @@ export default function DiagnosticResumePage() {
 
       const diagData = diagnosticSnap.data();
       setCompany(diagData.company ?? '');
+
+      // Restore custom areas so SubprocessExplorer can show them
+      const storedCustomAreas: CustomArea[] = diagData.custom_areas ?? [];
+      setCustomAreas(storedCustomAreas);
 
       const q = query(collection(db, 'responses'), where('diagnostic_id', '==', id));
       const snapshot = await getDocs(q);
@@ -156,7 +198,7 @@ export default function DiagnosticResumePage() {
       } else {
         // Individual resume: rebuild remaining queue and jump straight to questionnaire.
         const selectedSubprocessIds: string[] = diagData.selected_subprocess_ids ?? [];
-        const remainingItems = buildRemainingItems(selectedSubprocessIds, answeredIds);
+        const remainingItems = buildRemainingItems(selectedSubprocessIds, answeredIds, storedCustomAreas);
         setState({
           assessments: rebuiltAssessments,
           globalSelectedSubprocesses: remainingItems,
@@ -473,6 +515,8 @@ export default function DiagnosticResumePage() {
             onRemoveCustom={removeGroupCustomSubprocess}
             onBack={() => router.push('/assessment')}
             lockedSubprocessIds={lockedSubprocessIds}
+            initialCustomAreas={customAreas}
+            onCustomAreasChange={handleCustomAreasChange}
           />
         </>
       )}

@@ -4,12 +4,12 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   AssessmentState,
   Macroprocess, Process, Subprocess, CriteriaScores,
-  SelectedSubprocessItem,
+  SelectedSubprocessItem, CustomArea,
 } from '@/types';
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, getDocs, where, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, where, doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { processLibrary } from '@/data/processLibrary';
 
@@ -49,6 +49,18 @@ export default function AssessmentPage() {
   const [shareLink, setShareLink] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
+  // Custom areas created in SubprocessExplorer — persisted to Firestore
+  const [customAreas, setCustomAreas] = useState<CustomArea[]>([]);
+  const handleCustomAreasChange = useCallback((areas: CustomArea[]) => {
+    setCustomAreas(areas);
+    // For group mode: the diagnostic already exists, update it immediately
+    if (mode === 'group' && diagnosticId.current) {
+      updateDoc(doc(db, 'diagnostics', diagnosticId.current), { custom_areas: areas })
+        .catch(err => console.error('[Firestore] Failed to update custom_areas:', err));
+    }
+    // For individual mode: custom_areas are included when the diagnostic is created in startEvaluation
+  }, [mode]);
 
   // Stable diagnostic identifier — generated once per page mount
   const diagnosticId = useRef(crypto.randomUUID());
@@ -128,6 +140,7 @@ export default function AssessmentPage() {
         company,
         created_at: new Date().toISOString(),
         mode: 'group',
+        custom_areas: [],
       });
       diagnosticId.current = docRef.id;
       const link = `${window.location.origin}/diagnostic/${docRef.id}`;
@@ -297,6 +310,7 @@ export default function AssessmentPage() {
         company,
         created_at: new Date().toISOString(),
         selected_subprocess_ids: state.globalSelectedSubprocesses.map((i) => i.subprocess.id),
+        custom_areas: customAreas,
       }).then((docRef) => {
         diagnosticId.current = docRef.id;
       }).catch((err) => console.error('[Firestore] Failed to create diagnostic:', err));
@@ -305,7 +319,7 @@ export default function AssessmentPage() {
 
     setState((s) => ({ ...s, currentSubprocessIndex: 0, step: 'questionnaire' }));
 
-  }, [mode, company, state.globalSelectedSubprocesses]);
+  }, [mode, company, state.globalSelectedSubprocesses, customAreas]);
 
   // ── Questionnaire ──────────────────────────────────────────────────────────
 
@@ -626,6 +640,8 @@ export default function AssessmentPage() {
                   onRemoveCustom={removeCustomSubprocess}
                   onBack={goBackToStart}
                   lockedSubprocessIds={lockedSubprocessIds}
+                  initialCustomAreas={customAreas}
+                  onCustomAreasChange={handleCustomAreasChange}
                 />
               )
 
