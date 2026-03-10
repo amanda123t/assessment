@@ -40,9 +40,15 @@ export default function AssessmentPage() {
   const [answeredSubprocessIds, setAnsweredSubprocessIds] = useState<string[]>([]);
   const [continueError, setContinueError] = useState<string | null>(null);
   const [isContinuing, setIsContinuing] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeLink, setResumeLink] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
+
   // Stable diagnostic identifier — generated once per page mount
   const diagnosticId = useRef(crypto.randomUUID());
   const alreadySaved = useRef(false);
+  // Tracks subprocess IDs saved incrementally so the ranking useEffect skips them
+  const savedAssessmentIds = useRef(new Set<string>());
 
   // ── Persist responses in Firestore when ranking is reached ──────────────────
 
@@ -55,6 +61,8 @@ export default function AssessmentPage() {
     const createdAt = new Date().toISOString();
 
     state.assessments.forEach((a) => {
+      // Skip any response already saved by the incremental path in completeQuestionnaire
+      if (savedAssessmentIds.current.has(a.subprocessId)) return;
       addDoc(collection(db, 'responses'), {
         diagnostic_id: diagnosticId.current,
         subprocess_id: a.subprocessId,
@@ -283,6 +291,24 @@ export default function AssessmentPage() {
     process: Process,
   ) => {
 
+    // Compute assessment outside setState to get totalScore for Firestore save.
+    // isCustom is not needed for the persisted fields so we omit it here.
+    const assessmentForSave = createAssessment(macroprocess, process, subprocess, scores);
+
+    // Incremental save — persists progress immediately so resuming works even
+    // if the user closes the tab before reaching the ranking screen.
+    if (!savedAssessmentIds.current.has(assessmentForSave.subprocessId)) {
+      savedAssessmentIds.current.add(assessmentForSave.subprocessId);
+      addDoc(collection(db, 'responses'), {
+        diagnostic_id: diagnosticId.current,
+        subprocess_id: assessmentForSave.subprocessId,
+        process:       assessmentForSave.processName,
+        score:         assessmentForSave.totalScore,
+        answered_by:   email,
+        created_at:    new Date().toISOString(),
+      }).catch((err) => console.error('[Firestore] Failed to save response:', err));
+    }
+
     setState((s) => {
 
       // subprocess / macroprocess / process come from Questionnaire props —
@@ -316,7 +342,7 @@ export default function AssessmentPage() {
 
     });
 
-  }, []);
+  }, [email]);
 
   const goBackInQuestionnaire = useCallback(() => {
 
@@ -340,7 +366,15 @@ export default function AssessmentPage() {
     diagnosticId.current = crypto.randomUUID();
     setAnsweredSubprocessIds([]);
     setContinueError(null);
+    setShowResumeModal(false);
+    setLinkCopied(false);
     alreadySaved.current = false;
+    savedAssessmentIds.current = new Set();
+  }, []);
+
+  const openResumeModal = useCallback(() => {
+    setResumeLink(`${window.location.origin}/diagnostic/${diagnosticId.current}`);
+    setShowResumeModal(true);
   }, []);
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -408,19 +442,72 @@ export default function AssessmentPage() {
 
           <header className="bg-white border-b border-gray-100 px-6 py-3 shadow-sm">
 
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-5xl mx-auto flex items-center justify-between">
 
-              <h1 className="text-sm font-bold text-gray-900 leading-none">
-                OEA
-              </h1>
+              <div>
+                <h1 className="text-sm font-bold text-gray-900 leading-none">
+                  OEA
+                </h1>
+                <p className="text-xs text-gray-400">
+                  Operational Efficiency Assessment
+                </p>
+              </div>
 
-              <p className="text-xs text-gray-400">
-                Operational Efficiency Assessment
-              </p>
+              {state.step === 'questionnaire' && state.assessments.length > 0 && (
+                <button
+                  onClick={openResumeModal}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                >
+                  Continuar depois
+                </button>
+              )}
 
             </div>
 
           </header>
+
+          {/* Resume modal */}
+          {showResumeModal && (
+            <div
+              className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowResumeModal(false); }}
+            >
+              <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Continuar diagnóstico depois
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Use o link abaixo para continuar depois ou compartilhar com sua equipe. As respostas já dadas serão mantidas.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    value={resumeLink}
+                    readOnly
+                    className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(resumeLink);
+                      setLinkCopied(true);
+                      setTimeout(() => setLinkCopied(false), 2000);
+                    }}
+                    className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
+                  >
+                    Copiar
+                  </button>
+                </div>
+                {linkCopied && (
+                  <p className="text-green-600 text-xs -mt-2">Link copiado!</p>
+                )}
+                <button
+                  onClick={() => setShowResumeModal(false)}
+                  className="text-sm text-gray-500 hover:text-gray-700 transition-colors text-left"
+                >
+                  Voltar ao diagnóstico
+                </button>
+              </div>
+            </div>
+          )}
 
           <StepIndicator step={state.step} />
 
