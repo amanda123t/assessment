@@ -9,7 +9,7 @@ import {
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, getDocs, where } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, where, doc, getDoc } from 'firebase/firestore';
 
 import { processLibrary } from '@/data/processLibrary';
 
@@ -39,6 +39,9 @@ export default function AssessmentPage() {
 
   const [diagnosticId, setDiagnosticId] = useState<string | null>(null);
   const [answeredSubprocessIds, setAnsweredSubprocessIds] = useState<string[]>([]);
+  const [continueError, setContinueError] = useState<string | null>(null);
+  const [isContinuing, setIsContinuing] = useState(false);
+  const [idCopied, setIdCopied] = useState(false);
 
   // Stable session identifier — generated once per page mount
   const sessionId = useRef<string>(
@@ -119,6 +122,30 @@ export default function AssessmentPage() {
 
   const goBackToStart = useCallback(() => {
     setState((s) => ({ ...s, step: 'start' }));
+  }, []);
+
+  const handleContinueDiagnostic = useCallback(async (code: string) => {
+    setContinueError(null);
+    setIsContinuing(true);
+
+    try {
+      const diagnosticSnap = await getDoc(doc(db, 'diagnostics', code));
+
+      if (!diagnosticSnap.exists()) {
+        setContinueError('Diagnostic not found. Check the code.');
+        return;
+      }
+
+      const data = diagnosticSnap.data();
+      setCompany(data.company || '');
+      setDiagnosticId(code);
+      setState((s) => ({ ...s, step: 'explore' }));
+    } catch (err) {
+      console.error('[Firestore] Failed to load diagnostic:', err);
+      setContinueError('Diagnostic not found. Check the code.');
+    } finally {
+      setIsContinuing(false);
+    }
   }, []);
 
   // ── Subprocess selection ───────────────────────────────────────────────────
@@ -308,6 +335,8 @@ export default function AssessmentPage() {
     setState(INITIAL_STATE);
     setDiagnosticId(null);
     setAnsweredSubprocessIds([]);
+    setContinueError(null);
+    setIdCopied(false);
     alreadySaved.current = false;
   }, []);
 
@@ -359,7 +388,16 @@ export default function AssessmentPage() {
 
       {state.step === 'start' ? (
 
-        <StartScreen onStart={goToExplore} company={company} onCompanyChange={setCompany} email={email} onEmailChange={setEmail} />
+        <StartScreen
+          onStart={goToExplore}
+          company={company}
+          onCompanyChange={setCompany}
+          email={email}
+          onEmailChange={setEmail}
+          onContinue={handleContinueDiagnostic}
+          continueError={continueError}
+          isContinuing={isContinuing}
+        />
 
       ) : (
 
@@ -391,6 +429,28 @@ export default function AssessmentPage() {
               onClear={clearSelection}
             />
 
+          )}
+
+          {state.step === 'explore' && diagnosticId && (
+            <div className="max-w-4xl mx-auto px-6 pt-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+                <p className="text-sm text-blue-700">
+                  Your diagnostic code is:{' '}
+                  <span className="font-mono font-bold">{diagnosticId}</span>
+                  {'. '}Save this code to continue later.
+                </p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(diagnosticId);
+                    setIdCopied(true);
+                    setTimeout(() => setIdCopied(false), 2000);
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap flex-shrink-0 transition-colors"
+                >
+                  {idCopied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
           )}
 
           <main>
