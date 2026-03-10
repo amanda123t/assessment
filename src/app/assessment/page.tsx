@@ -8,6 +8,8 @@ import {
 } from '@/types';
 import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
 import { getSupabase } from '@/lib/supabaseClient';
+import { db } from '@/lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 import StepIndicator from '@/components/StepIndicator';
 import StartScreen from '@/components/StartScreen';
@@ -49,15 +51,29 @@ export default function AssessmentPage() {
       created_at:  new Date().toISOString(),
     }));
 
+    // Supabase persistence
     const client = getSupabase();
-    if (!client) return;
+    if (client) {
+      client
+        .from('responses')
+        .upsert(rows, { onConflict: 'session_id,subarea_id' })
+        .then(({ error }) => {
+          if (error) console.error('[Supabase] Failed to save responses:', error);
+        });
+    }
 
-    client
-      .from('responses')
-      .upsert(rows, { onConflict: 'session_id,subarea_id' })
-      .then(({ error }) => {
-        if (error) console.error('[Supabase] Failed to save responses:', error);
-      });
+    // Firestore persistence
+    const responsesCol = collection(db, 'responses');
+    state.assessments.forEach((a) => {
+      addDoc(responsesCol, {
+        session_id: sessionId.current,
+        area:       '',
+        process:    a.processName,
+        subarea_id: a.subprocessId,
+        score:      a.totalScore,
+        created_at: new Date().toISOString(),
+      }).catch((err) => console.error('[Firestore] Failed to save response:', err));
+    });
   // Run once when the step first transitions to 'ranking'.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.step]);
