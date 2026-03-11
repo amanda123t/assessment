@@ -193,15 +193,9 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   const dispFinancialImpact = refinedImpact?.financialImpact ?? totalFinancialImpact;
   const dispHourlyCost      = refinedImpact?.hourlyCost      ?? HOURLY_COST;
 
-  // ── Operational equivalencies (for executive readability) ─────────────────
+  // ── Operational equivalencies ─────────────────────────────────────────────
   /** Automatable hours converted to a monthly figure. */
   const dispSavingsHorasMes = dispSavingsHours / 12;
-  /** Automatable hours expressed in standard 8 h workdays (annual). */
-  const dispSavingsDiasHomemAno = dispSavingsHours / 8;
-  /** Estimated total people involved, derived from questionnaire scores. */
-  const totalEstimatedPeople = assessments.reduce(
-    (sum, a) => sum + (PEOPLE_MAP[a.scores.peopleInvolved] ?? 0), 0,
-  );
 
   const handleRecalculate = () => {
     const newPerSubprocess: typeof perSubprocessRefined = {};
@@ -479,14 +473,6 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
               <p className="text-xs text-gray-400">
                 ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsHorasMes)} horas</span> / mês
               </p>
-              <p className="text-xs text-gray-400">
-                ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsDiasHomemAno)} dias-homem</span> / ano
-              </p>
-              {totalEstimatedPeople > 0 && (
-                <p className="text-xs text-gray-400">
-                  <span className="font-semibold text-gray-600">{fmtD(totalEstimatedPeople)} colaboradores</span> envolvidos nos processos
-                </p>
-              )}
             </div>
           </div>
 
@@ -516,7 +502,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
             <p className="text-3xl font-extrabold text-emerald-600">≈ {fmtD(dispFteEquivalent)} FTE</p>
             <p className="text-xs text-gray-500 mt-0.5 mb-3">liberáveis com automação</p>
             <p className="text-xs text-gray-400 leading-relaxed">
-              Equivalente de esforço operacional que pode ser eliminado ou realocado através da automação dos subprocessos analisados. Não representa necessariamente redução de headcount.
+              Equivalente estimado considerando 1 FTE = 1.760 horas/ano. Representa o esforço operacional que pode ser eliminado ou realocado — não necessariamente redução de headcount.
             </p>
           </div>
 
@@ -549,7 +535,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                 </tr>
               </thead>
               <tbody>
-                {ranked.slice(0, 10).map((item, i) => {
+                {ranked.map((item, i) => {
                   const potential   = getAutomationPotential(item.totalScore);
                   const isEditing   = editingSubprocessId === item.subprocessId;
                   const spOverride  = subprocessOverrides[item.subprocessId] ?? { people: '', hourlyCost: '' };
