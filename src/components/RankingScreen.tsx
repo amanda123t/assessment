@@ -382,10 +382,6 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
           <h2 className="text-2xl font-bold text-gray-900">
             Oportunidades de Eficiência Operacional
           </h2>
-          <p className="text-gray-500 mt-2 max-w-2xl text-sm leading-relaxed">
-            Subprocessos priorizados pelo índice composto de automação e impacto operacional.
-            A ordem combina potencial de automação (automationScore) com volume de horas anuais mapeadas.
-          </p>
           {savedIdentification && (
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
               {savedIdentification.company       && <span>Empresa: <span className="font-medium text-gray-600">{savedIdentification.company}</span></span>}
@@ -396,21 +392,7 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
           )}
         </div>
 
-        {/* ── 1. Diagnóstico — header ───────────────────────────────────── */}
-        <section className="mb-6">
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity size={18} strokeWidth={1.75} />
-              <h3 className="font-semibold text-base">Diagnóstico de Eficiência Operacional</h3>
-            </div>
-            <p className="text-blue-100 text-sm">
-              {assessments.length} subprocesso{assessments.length !== 1 ? 's' : ''} avaliado{assessments.length !== 1 ? 's' : ''} ·{' '}
-              {fmt(dispAnnualHours)} horas operacionais/ano mapeadas
-            </p>
-          </div>
-        </section>
-
-        {/* ── 1b. Executive impact metrics ──────────────────────────────── */}
+        {/* ── 1. Executive impact metrics ───────────────────────────────── */}
         <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 
           {/* Card 1 — Operational Impact */}
@@ -461,27 +443,7 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
 
         </section>
 
-        {/* ── 2. Distribuição de Prioridades ───────────────────────────── */}
-        <section className={CARD}>
-          <h3 className="text-base font-semibold text-gray-800 mb-4">Distribuição de Prioridades</h3>
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: 'Alta Prioridade',  count: summary.alta,  bg: 'bg-red-50    border-red-100',    text: 'text-red-600',    dot: 'bg-red-500' },
-              { label: 'Média Prioridade', count: summary.media, bg: 'bg-orange-50 border-orange-100', text: 'text-orange-600', dot: 'bg-orange-400' },
-              { label: 'Baixa Prioridade', count: summary.baixa, bg: 'bg-gray-50   border-gray-200',   text: 'text-gray-600',   dot: 'bg-gray-400' },
-            ].map((card) => (
-              <div key={card.label} className={`${card.bg} border rounded-xl p-4`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-2 h-2 rounded-full ${card.dot}`} />
-                  <span className="text-xs text-gray-500 font-medium">{card.label}</span>
-                </div>
-                <p className={`text-3xl font-extrabold ${card.text}`}>{card.count}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── 3. Ranking de Potencial de Automação ─────────────────────── */}
+        {/* ── 2. Ranking de Potencial de Automação ─────────────────────── */}
         <section className={CARD}>
           <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
             <Trophy size={16} className="text-blue-600" strokeWidth={1.75} />
@@ -720,39 +682,25 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
           );
         })()}
 
-        {/* ── 5. Roadmap de Automação Sugerido ─────────────────────────── */}
-        {autoRoadmap.length > 0 && (
-          <section className={CARD}>
-            <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
-              <Target size={16} className="text-blue-500" strokeWidth={1.75} />
-              Roadmap de Automação Sugerido
-            </h3>
-            <p className="text-xs text-gray-400 mb-4">
-              Iniciativas ordenadas por horizonte de implementação e potencial de impacto
-            </p>
-            <div className="space-y-3">
-              {autoRoadmap.map((item, i) => (
-                <div
-                  key={item.subprocessId}
-                  className="flex gap-4 items-start p-4 rounded-xl bg-gray-50 border border-gray-100"
-                >
-                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 text-sm">{item.subprocessName}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {ROADMAP_LABELS[item.roadmapCategory]} · Economia est.: {fmtCurrency(item.estimatedSavings)}
-                    </p>
-                  </div>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 ${ROADMAP_BADGE[item.roadmapCategory]}`}>
-                    {item.timeline}
-                  </span>
+        {/* ── 5. Distribuição de Prioridades ───────────────────────────── */}
+        <section className={CARD}>
+          <h3 className="text-base font-semibold text-gray-800 mb-4">Distribuição de Prioridades</h3>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'Alta Prioridade',  count: summary.alta,  bg: 'bg-red-50    border-red-100',    text: 'text-red-600',    dot: 'bg-red-500' },
+              { label: 'Média Prioridade', count: summary.media, bg: 'bg-orange-50 border-orange-100', text: 'text-orange-600', dot: 'bg-orange-400' },
+              { label: 'Baixa Prioridade', count: summary.baixa, bg: 'bg-gray-50   border-gray-200',   text: 'text-gray-600',   dot: 'bg-gray-400' },
+            ].map((card) => (
+              <div key={card.label} className={`${card.bg} border rounded-xl p-4`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-2 h-2 rounded-full ${card.dot}`} />
+                  <span className="text-xs text-gray-500 font-medium">{card.label}</span>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+                <p className={`text-3xl font-extrabold ${card.text}`}>{card.count}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* ── 6. Insights do Diagnóstico (collapsed by default) ─────────── */}
         {insights.length > 0 && (
