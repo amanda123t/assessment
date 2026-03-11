@@ -21,7 +21,12 @@
  *   updatedAt     Timestamp
  */
 
-import { collection, doc, setDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import {
+  collection, doc, setDoc, query, where,
+  getDocs, onSnapshot,
+  serverTimestamp,
+  QuerySnapshot, DocumentData,
+} from 'firebase/firestore';
 import { db } from './firebase';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -131,37 +136,28 @@ export async function submitVote(
   );
 }
 
-/**
- * Load and aggregate all votes for an assessment.
- * Returns a Map keyed by subprocessId containing:
- *   - average, count, userVote
- *   - divergence (max − min) and consensusLevel
- *   - areaBreakdown (per-area averages, sorted alphabetically)
- */
-export async function fetchVoteSummaries(
-  assessmentId: string,
+// ── Aggregation (shared by both fetch and subscription) ───────────────────────
+
+type Accumulator = {
+  sum: number;
+  count: number;
+  min: number;
+  max: number;
+  userVote: number | null;
+  areas: Map<string, { sum: number; count: number }>;
+};
+
+function aggregateSnapshot(
+  snapshot: QuerySnapshot<DocumentData>,
   voterToken: string,
-): Promise<Map<string, VoteSummary>> {
-  const snapshot = await getDocs(
-    query(collection(db, 'votes'), where('assessmentId', '==', assessmentId)),
-  );
-
-  type Accumulator = {
-    sum: number;
-    count: number;
-    min: number;
-    max: number;
-    userVote: number | null;
-    areas: Map<string, { sum: number; count: number }>;
-  };
-
+): Map<string, VoteSummary> {
   const grouped = new Map<string, Accumulator>();
 
   snapshot.forEach((docSnap) => {
-    const d       = docSnap.data();
-    const spId    = d.subprocessId  as string;
-    const vote    = d.priorityVote  as number;
-    const area    = (d.voterArea as string | undefined) ?? 'Não informada';
+    const d    = docSnap.data();
+    const spId = d.subprocessId as string;
+    const vote = d.priorityVote as number;
+    const area = (d.voterArea as string | undefined) ?? 'Não informada';
 
     const acc = grouped.get(spId) ?? {
       sum: 0, count: 0,
@@ -211,4 +207,41 @@ export async function fetchVoteSummaries(
   });
 
   return result;
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * One-shot load — kept for compatibility.
+ * Prefer subscribeToVoteSummaries for live-updating UIs.
+ */
+export async function fetchVoteSummaries(
+  assessmentId: string,
+  voterToken: string,
+): Promise<Map<string, VoteSummary>> {
+  const snapshot = await getDocs(
+    query(collection(db, 'votes'), where('assessmentId', '==', assessmentId)),
+  );
+  return aggregateSnapshot(snapshot, voterToken);
+}
+
+/**
+ * Real-time subscription — fires immediately with current data, then again
+ * whenever any vote for the assessment is created or updated (including votes
+ * from other users who opened the shared link on different devices).
+ *
+ * Returns the Firestore unsubscribe function — call it in the useEffect cleanup.
+ */
+export function subscribeToVoteSummaries(
+  assessmentId: string,
+  voterToken: string,
+  onUpdate: (summaries: Map<string, VoteSummary>) => void,
+): () => void {
+  const q = query(collection(db, 'votes'), where('assessmentId', '==', assessmentId));
+
+  return onSnapshot(
+    q,
+    (snapshot) => onUpdate(aggregateSnapshot(snapshot, voterToken)),
+    (err) => console.error('[subscribeToVoteSummaries]', err),
+  );
 }

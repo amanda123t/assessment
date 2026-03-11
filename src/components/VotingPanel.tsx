@@ -8,7 +8,7 @@ import {
   getStoredVoterIdentity,
   saveVoterIdentity,
   submitVote,
-  fetchVoteSummaries,
+  subscribeToVoteSummaries,
   VoteSummary,
   ConsensusLevel,
 } from '@/lib/votes';
@@ -139,7 +139,7 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
   const [saved, setSaved]           = useState<Set<string>>(new Set());
   const [expanded, setExpanded]     = useState<Set<string>>(new Set());
 
-  // ── Initialise identity + load existing votes ─────────────────────────────
+  // ── Initialise identity + subscribe to live vote updates ─────────────────
 
   useEffect(() => {
     const token    = getOrCreateVoterToken();
@@ -153,14 +153,23 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
       setIdentityReady(true);
     }
 
-    fetchVoteSummaries(assessmentId, token)
-      .then((data) => {
-        setSummaries(data);
+    // Real-time listener: fires immediately with current data, then again
+    // whenever ANY vote for this assessment changes (own or other users').
+    const unsubscribe = subscribeToVoteSummaries(assessmentId, token, (data) => {
+      setSummaries(data);
+
+      // Pre-fill the user's saved vote ONLY if they haven't yet made a
+      // selection in this session.  This prevents the listener from
+      // overwriting a value the user picked but hasn't saved yet.
+      setSelections(prev => {
+        if (prev.size > 0) return prev;
         const pre = new Map<string, number>();
         data.forEach((s, spId) => { if (s.userVote !== null) pre.set(spId, s.userVote); });
-        setSelections(pre);
-      })
-      .catch((err) => console.error('[VotingPanel] Failed to load summaries:', err));
+        return pre;
+      });
+    });
+
+    return unsubscribe;
   }, [assessmentId]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -183,8 +192,8 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
     setSaving(prev => new Set(prev).add(spId));
     try {
       await submitVote(assessmentId, spId, voterToken, voterName, voterArea, vote);
-      const updated = await fetchVoteSummaries(assessmentId, voterToken);
-      setSummaries(updated);
+      // No manual re-fetch needed: the onSnapshot subscription fires
+      // automatically when the write is committed and updates summaries.
       setSaved(prev => new Set(prev).add(spId));
       setTimeout(() => {
         setSaved(prev => { const n = new Set(prev); n.delete(spId); return n; });
