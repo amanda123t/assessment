@@ -8,7 +8,7 @@ import {
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
-import { FTE_HOURS_YEAR, HOURLY_COST, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
+import { FTE_HOURS_YEAR, HOURLY_COST, PEOPLE_MAP, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
@@ -18,6 +18,11 @@ interface Props {
 
 function fmt(n: number): string {
   return n.toLocaleString('pt-BR');
+}
+
+/** Formats a number with up to 1 decimal place (pt-BR locale). */
+function fmtD(n: number): string {
+  return n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 }
 
 function getAutomationPotential(score: number): { label: string; color: string } {
@@ -191,6 +196,22 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
   const dispHourlyCost        = refinedImpact?.hourlyCost        ?? HOURLY_COST;
   const dispFteCurrent        = refinedImpact?.fteCurrent        ?? totalFteCurrent;
   const dispFteAfterAutomation = refinedImpact?.fteAfterAutomation ?? totalFteAfterAuto;
+
+  // ── Operational equivalencies (for executive readability) ─────────────────
+  /** Automatable hours converted to a monthly figure. */
+  const dispSavingsHorasMes = dispSavingsHours / 12;
+  /** Monthly automatable hours expressed in standard 8 h workdays. */
+  const dispSavingsDiasMes  = dispSavingsHorasMes / 8;
+  /** Total hours the current team dedicates monthly (1 FTE = 160 h/month). */
+  const dispCurrentHorasMes = dispFteCurrent * 160;
+  /** Estimated total people involved, derived from questionnaire scores. */
+  const totalEstimatedPeople = assessments.reduce(
+    (sum, a) => sum + (PEOPLE_MAP[a.scores.peopleInvolved] ?? 0), 0,
+  );
+  /** Average automatable hours per person per month (null when no people data). */
+  const horasPorPessoaMes = totalEstimatedPeople > 0
+    ? dispSavingsHorasMes / totalEstimatedPeople
+    : null;
 
   const handleRecalculate = () => {
     const newPerSubprocess: typeof perSubprocessRefined = {};
@@ -410,7 +431,20 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Impacto Operacional</p>
             </div>
             <p className="text-3xl font-extrabold text-gray-900">{fmt(dispSavingsHours)}</p>
-            <p className="text-xs text-gray-500 mt-0.5 mb-3">horas operacionais potencialmente automatizáveis/ano</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-2">horas automatizáveis / ano</p>
+            <div className="space-y-0.5 mb-3">
+              <p className="text-xs text-gray-400">
+                ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsHorasMes)} horas</span> / mês
+              </p>
+              <p className="text-xs text-gray-400">
+                ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsDiasMes)} dias</span> de trabalho / mês
+              </p>
+              {horasPorPessoaMes !== null && (
+                <p className="text-xs text-gray-400">
+                  ≈ <span className="font-semibold text-gray-600">{fmtD(horasPorPessoaMes)} horas</span> por pessoa / mês
+                </p>
+              )}
+            </div>
             <div className="flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-2">
               <span className="text-sm font-bold text-blue-700">≈ {dispFteEquivalent.toLocaleString('pt-BR')} FTE</span>
               <span className="text-xs text-blue-500">de capacidade operacional</span>
@@ -461,7 +495,10 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Capacidade Atual</p>
             </div>
             <p className="text-3xl font-extrabold text-gray-900">{dispFteCurrent.toLocaleString('pt-BR')} FTE</p>
-            <p className="text-xs text-gray-500 mt-0.5">necessários hoje para executar os processos avaliados</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-2">necessários hoje para executar os processos avaliados</p>
+            <p className="text-xs text-gray-400">
+              ≈ <span className="font-semibold text-gray-600">{fmtD(dispCurrentHorasMes)} horas</span> de trabalho / mês
+            </p>
           </div>
 
           {/* Card — Potencial de automação (FTE liberável) */}
@@ -473,7 +510,15 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Potencial de Automação</p>
             </div>
             <p className="text-3xl font-extrabold text-blue-600">{dispFteEquivalent.toLocaleString('pt-BR')} FTE</p>
-            <p className="text-xs text-gray-500 mt-0.5">equivalente de capacidade liberável com automação</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-2">liberado com automação</p>
+            <div className="space-y-0.5">
+              <p className="text-xs text-gray-400">
+                ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsHorasMes)} horas</span> / mês liberadas
+              </p>
+              <p className="text-xs text-gray-400">
+                ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsDiasMes)} dias</span> de trabalho / mês
+              </p>
+            </div>
           </div>
 
           {/* Card — Capacidade após automação */}

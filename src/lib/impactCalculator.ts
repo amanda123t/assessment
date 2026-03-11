@@ -55,7 +55,7 @@ const TIME_MAP: Record<number, number> = {
  *   3 "4–6 pessoas"    → 5
  *   4 "Mais de 6"      → 7
  */
-const PEOPLE_MAP: Record<number, number> = {
+export const PEOPLE_MAP: Record<number, number> = {
   1: 1,
   2: 2.5,
   3: 5,
