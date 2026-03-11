@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-const CORRECT_CODE = 'Meta4321@';
+const CORRECT_CODE = 'Amanda6789@';
 const STORAGE_KEY  = 'oea_access_granted';
 
 export default function PasswordGate({ children }: { children: React.ReactNode }) {

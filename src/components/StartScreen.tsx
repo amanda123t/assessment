@@ -54,29 +54,76 @@ export default function StartScreen({
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-16">
         <div className="max-w-3xl w-full text-center">
-          <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full mb-6 uppercase tracking-wide">
-            Consultoria de Eficiência
-          </span>
+          {/* 1. Title */}
           <h2 className="text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
-            Identifique oportunidades de{' '}
-            <span className="text-blue-600">eficiência operacional</span>
-            {' '}em minutos
+            Descubra onde sua operação pode{' '}
+            <span className="text-blue-600">ganhar eficiência</span>
           </h2>
-          <p className="text-lg text-gray-500 mb-4 max-w-xl mx-auto">
-            Avalie seus processos, descubra gargalos operacionais e priorize as iniciativas
-            de automação com maior retorno.
+
+          {/* 2. Subtitle */}
+          <p className="text-lg text-gray-500 mb-3 max-w-xl mx-auto">
+            Avalie seus processos, identifique gargalos operacionais e priorize automações com maior retorno.
           </p>
-          <p className="text-sm text-gray-400 mb-8">
-            Diagnóstico gratuito &bull; leva menos de 3 minutos &bull; relatório exportável
+
+          {/* 3. Credibility line */}
+          <p className="text-sm text-gray-400 mb-4">
+            Diagnóstico rápido &bull; baseado em benchmarks operacionais &bull; relatório exportável
+          </p>
+
+          {/* 4. APQC reference */}
+          <p className="text-xs text-gray-500 mb-8 max-w-md mx-auto">
+            Biblioteca com processos de referência por indústria. Baseado no{' '}
+            <a
+              href="https://www.apqc.org/process-classification-framework"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              Process Classification Framework (PCF) do APQC
+            </a>
+            .
           </p>
 
           <div className="flex flex-col items-center gap-3 mb-2">
+            {/* 3. Industry selector (before email) */}
+            <div className="w-72">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Selecione sua indústria
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {INDUSTRIES.map((ind) => (
+                  <label
+                    key={ind.id}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-150 ${
+                      industry === ind.id
+                        ? 'bg-blue-50 border-blue-400 text-blue-700'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="industry"
+                      value={ind.id}
+                      checked={industry === ind.id}
+                      onChange={() => onIndustryChange(ind.id)}
+                      className="accent-blue-600 w-3.5 h-3.5 shrink-0"
+                    />
+                    <span className="text-xs font-medium">{ind.name}</span>
+                  </label>
+                ))}
+              </div>
+              {!industry && (
+                <p className="text-xs text-gray-400 mt-1.5">Selecione uma indústria para iniciar</p>
+              )}
+            </div>
+
+            {/* 4. Email field */}
             <input
               type="text"
               placeholder="Nome da empresa"
               value={company}
               onChange={(e) => onCompanyChange(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400 mt-1"
             />
             <input
               type="email"
@@ -86,32 +133,7 @@ export default function StartScreen({
               className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
 
-            {/* Industry selector */}
-            <div className="w-72 mt-1">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Selecione sua indústria
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {INDUSTRIES.map((ind) => (
-                  <button
-                    key={ind.id}
-                    onClick={() => onIndustryChange(ind.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150 ${
-                      industry === ind.id
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-                    }`}
-                  >
-                    {ind.name}
-                  </button>
-                ))}
-              </div>
-              {!industry && (
-                <p className="text-xs text-gray-400 mt-1.5">Selecione uma indústria para iniciar</p>
-              )}
-            </div>
-
-            {/* Mode selection */}
+            {/* 5. Action buttons */}
             <div className="flex gap-3 mt-1 w-72">
               <button
                 onClick={onStart}
