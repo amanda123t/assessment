@@ -9,7 +9,7 @@ import {
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
-import { FTE_HOURS_YEAR, HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
+import { FTE_HOURS_YEAR, HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, getAutomationRate, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
@@ -196,8 +196,8 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   // ── Operational equivalencies (for executive readability) ─────────────────
   /** Automatable hours converted to a monthly figure. */
   const dispSavingsHorasMes = dispSavingsHours / 12;
-  /** Monthly automatable hours expressed in standard 8 h workdays. */
-  const dispSavingsDiasMes  = dispSavingsHorasMes / 8;
+  /** Automatable hours expressed in standard 8 h workdays (annual). */
+  const dispSavingsDiasHomemAno = dispSavingsHours / 8;
   /** Estimated total people involved, derived from questionnaire scores. */
   const totalEstimatedPeople = assessments.reduce(
     (sum, a) => sum + (PEOPLE_MAP[a.scores.peopleInvolved] ?? 0), 0,
@@ -212,23 +212,13 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     assessments.forEach((a) => {
       const override = subprocessOverrides[a.subprocessId];
 
-      // People: when overridden, recalculate annual hours from base volume × time ×
-      // new people count.  Do NOT scale a.annualHours — it already includes the
-      // original people estimate, so multiplying again would double-count.
-      const rawSpPeople     = parseFloat(override?.people ?? '');
-      const effectivePeople = (!isNaN(rawSpPeople) && rawSpPeople > 0) ? rawSpPeople : null;
+      // People does not affect annualHours — it is used for workload distribution
+      // display only (hours per person).  Annual hours come from volume × time only.
+      const newAnnual = a.annualHours;
 
       // Cost: subprocess override → HOURLY_COST
       const rawSpCost     = parseFloat(override?.hourlyCost ?? '');
       const effectiveCost = (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost : HOURLY_COST;
-
-      const newAnnual = effectivePeople !== null
-        ? Math.round(
-            (VOLUME_MAP[a.scores.operationalVolume] ?? 0) *
-            (TIME_MAP[a.scores.executionTime]       ?? 0) *
-            effectivePeople * 12 / 60
-          )
-        : a.annualHours;
 
       const newSavings         = calculateAutomationSavings(newAnnual, a.automationScore);
       const fteSp              = calculateFteEquivalent(newSavings);
@@ -490,7 +480,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                 ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsHorasMes)} horas</span> / mês
               </p>
               <p className="text-xs text-gray-400">
-                ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsDiasMes)} dias</span> de trabalho / mês
+                ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsDiasHomemAno)} dias-homem</span> / ano
               </p>
               {totalEstimatedPeople > 0 && (
                 <p className="text-xs text-gray-400">
@@ -541,7 +531,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
           <div className="flex items-start gap-2 mb-4 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5">
             <Pencil size={13} className="text-blue-500 flex-shrink-0 mt-0.5" strokeWidth={1.75} />
             <p className="text-xs text-blue-700 leading-relaxed">
-              Clique no lápis para ajustar <span className="font-semibold">pessoas</span> e <span className="font-semibold">custo/h</span> por subprocesso, depois clique em <span className="font-semibold">&quot;Recalcular estimativa&quot;</span> para atualizar os totais.
+              Ajuste <span className="font-semibold">número de pessoas</span> ou <span className="font-semibold">custo/h</span> para refinar o cálculo de impacto.
             </p>
           </div>
           <div className="overflow-x-auto rounded-xl border border-gray-200">
@@ -550,7 +540,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 w-10">Rank</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500">Subprocesso</th>
-                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-28">Horas Autom.</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-36">Horas / Automação</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-20">Pontuação</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Potencial</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Pessoas</th>
@@ -581,6 +571,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                   const spAnnual    = refined?.annualHours    ?? item.annualHours;
                   const spHorasMes  = spAnnual / 12;
                   const spFte       = refined?.fteCurrent     ?? calculateFteCurrent(item.annualHours);
+                  const automationPct = Math.round(getAutomationRate(item.automationScore) * 100);
 
                   return (
                     <tr key={item.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
@@ -602,13 +593,22 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                             <span>· ≈ {fmt(spAnnual)} h/ano</span>
                             <span>· ≈ {fmtD(spFte)} FTE</span>
                           </div>
+                          <div className="text-[10px] text-indigo-500 font-medium">
+                            Automação estimada: {automationPct}%
+                          </div>
                         </div>
                       </td>
 
-                      {/* Horas Autom. */}
+                      {/* Horas totais / % automatizável / Horas automatizáveis */}
                       <td className="px-3 py-2.5 text-center text-xs text-gray-700">
-                        {fmt(dispSavings)} h
-                        {refined && <span className="ml-1 text-blue-400 font-bold">*</span>}
+                        <div className="space-y-0.5">
+                          <div className="text-gray-500">{fmt(spAnnual)} h/ano</div>
+                          <div className="text-indigo-500 font-medium">{automationPct}% autom.</div>
+                          <div className="font-semibold text-gray-800">
+                            {fmt(dispSavings)} h autom.
+                            {refined && <span className="ml-1 text-blue-400 font-bold">*</span>}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Pontuação */}
@@ -638,8 +638,8 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                             className="w-20 border border-blue-300 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         ) : (
-                          <span className={`text-xs ${isSpPeople ? 'font-bold text-blue-700' : 'text-gray-400'}`}>
-                            {viewPeople ?? '—'}
+                          <span className={`text-xs ${isSpPeople ? 'font-bold text-blue-700' : 'text-gray-600'}`}>
+                            {viewPeople ?? fmtD(PEOPLE_MAP[item.scores.peopleInvolved] ?? 0)}
                           </span>
                         )}
                       </td>

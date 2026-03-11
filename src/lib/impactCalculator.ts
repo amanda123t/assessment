@@ -6,13 +6,16 @@
  * rather than boundary values.
  *
  * Annual effort formula:
- *   annualHours = (volumeEstimado × tempoPessoaEstimado × pessoasEstimadas × 12) / 60
+ *   annualHours = (volumeEstimado × tempoExecucaoEstimado × 12) / 60
  *
- * - volumeEstimado    → midpoint of operationalVolume range (executions/month)
- * - tempoPessoaEstimado → midpoint of executionTime range (minutes per person per task)
- * - pessoasEstimadas  → midpoint of peopleInvolved range
- * - 12               → months per year
- * - ÷ 60             → converts minutes to hours
+ * - volumeEstimado          → midpoint of operationalVolume range (executions/month)
+ * - tempoExecucaoEstimado   → midpoint of executionTime range (minutes per execution)
+ * - 12                      → months per year
+ * - ÷ 60                    → converts minutes to hours
+ *
+ * Note: peopleInvolved is NOT multiplied into the hours formula.  When multiple
+ * people divide the work, the total execution time per task remains the same;
+ * people only affects the per-person workload distribution.
  */
 
 import { CriteriaScores, RealValues } from '@/types';
@@ -33,7 +36,7 @@ export const VOLUME_MAP: Record<number, number> = {
 };
 
 /**
- * Maps executionTime score (1–4) → estimated minutes per person per task.
+ * Maps executionTime score (1–4) → estimated minutes per execution.
  * Uses the midpoint of each answer range shown in the questionnaire:
  *   1 "Menos de 5 minutos"  → 3
  *   2 "5 a 15 minutos"      → 10
@@ -49,7 +52,7 @@ export const TIME_MAP: Record<number, number> = {
 
 /**
  * Maps peopleInvolved score (1–4) → estimated number of people.
- * Uses the midpoint of each answer range shown in the questionnaire:
+ * Used for workload distribution display only — not multiplied into hours.
  *   1 "1 pessoa"       → 1
  *   2 "2–3 pessoas"    → 2.5
  *   3 "4–6 pessoas"    → 5
@@ -64,9 +67,9 @@ export const PEOPLE_MAP: Record<number, number> = {
 
 /**
  * Assumed average productive hours per FTE per year.
- * Standard 40 h/week × 50 weeks.
+ * Standard 8 h/day × 220 working days.
  */
-export const FTE_HOURS_YEAR = 2000;
+export const FTE_HOURS_YEAR = 1760;
 
 /**
  * Assumed total hourly cost of an operational employee.
@@ -76,10 +79,11 @@ export const HOURLY_COST = 50;
 
 /**
  * Calculate annual operational effort in hours.
- * Formula: (volume × timePerPerson × people × 12) / 60
+ * Formula: (volume × timeMinutes × 12) / 60
  *
- * Each dimension uses the real value provided by the user when available,
- * falling back to the midpoint of the selected questionnaire range.
+ * People are NOT multiplied here — when multiple people divide the same work
+ * the total execution time per task does not change; peopleInvolved is used
+ * only for per-person workload distribution.
  *
  * @param scores     - Questionnaire scores (1–4) for each criterion.
  * @param realValues - Optional user-supplied exact values that override midpoints.
@@ -87,31 +91,36 @@ export const HOURLY_COST = 50;
 export function calculateAnnualHours(scores: CriteriaScores, realValues?: RealValues): number {
   const volume  = realValues?.volume      ?? VOLUME_MAP[scores.operationalVolume]  ?? 0;
   const minutes = realValues?.timeMinutes ?? TIME_MAP[scores.executionTime]        ?? 0;
-  const people  = realValues?.people      ?? PEOPLE_MAP[scores.peopleInvolved]     ?? 1;
-  return Math.round((volume * minutes * people * 12) / 60);
+  return Math.round((volume * minutes * 12) / 60);
+}
+
+/**
+ * Return the automation savings rate for a given automation score.
+ * >= 80 → 70%
+ * >= 60 → 40%
+ * >= 40 → 20%
+ * else  → 10%
+ */
+export function getAutomationRate(automationScore: number): number {
+  if (automationScore >= 80) return 0.70;
+  if (automationScore >= 60) return 0.40;
+  if (automationScore >= 40) return 0.20;
+  return 0.10;
 }
 
 /**
  * Estimate automation savings hours based on automationScore threshold.
- * >= 80 → 70% savings
- * >= 60 → 40% savings
- * >= 40 → 20% savings
- * else  → 10% savings
  */
 export function calculateAutomationSavings(
   annualHours: number,
   automationScore: number
 ): number {
-  let rate = 0.10;
-  if (automationScore >= 80) rate = 0.70;
-  else if (automationScore >= 60) rate = 0.40;
-  else if (automationScore >= 40) rate = 0.20;
-  return Math.round(annualHours * rate);
+  return Math.round(annualHours * getAutomationRate(automationScore));
 }
 
 /**
  * Calculate the FTE currently required to run the process.
- * Formula: annualHours / FTE_HOURS_YEAR
+ * Formula: annualHours / FTE_HOURS_YEAR (1 FTE = 1760 h/year)
  * Rounded to one decimal place.
  */
 export function calculateFteCurrent(annualHours: number): number {
@@ -120,7 +129,7 @@ export function calculateFteCurrent(annualHours: number): number {
 
 /**
  * Calculate the FTE equivalent of automatable hours (FTE freed by automation).
- * Formula: automatableHours / FTE_HOURS_YEAR
+ * Formula: automatableHours / FTE_HOURS_YEAR (1 FTE = 1760 h/year)
  * Rounded to one decimal place.
  */
 export function calculateFteEquivalent(automatableHours: number): number {
