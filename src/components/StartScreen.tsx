@@ -54,40 +54,39 @@ export default function StartScreen({
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-16">
         <div className="max-w-3xl w-full text-center">
-          <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full mb-6 uppercase tracking-wide">
-            Consultoria de Eficiência
-          </span>
+          {/* 1. Title */}
           <h2 className="text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
-            Identifique oportunidades de{' '}
-            <span className="text-blue-600">eficiência operacional</span>
-            {' '}em minutos
+            Descubra onde sua operação pode{' '}
+            <span className="text-blue-600">ganhar eficiência</span>
           </h2>
-          <p className="text-lg text-gray-500 mb-4 max-w-xl mx-auto">
-            Avalie seus processos, descubra gargalos operacionais e priorize as iniciativas
-            de automação com maior retorno.
+
+          {/* 2. Subtitle */}
+          <p className="text-lg text-gray-500 mb-3 max-w-xl mx-auto">
+            Avalie seus processos, identifique gargalos operacionais e priorize automações com maior retorno.
           </p>
-          <p className="text-sm text-gray-400 mb-8">
-            Diagnóstico gratuito &bull; leva menos de 3 minutos &bull; relatório exportável
+
+          {/* 3. Credibility line */}
+          <p className="text-sm text-gray-400 mb-4">
+            Diagnóstico rápido &bull; baseado em benchmarks operacionais &bull; relatório exportável
+          </p>
+
+          {/* 4. APQC reference */}
+          <p className="text-xs text-gray-500 mb-8 max-w-md mx-auto">
+            Biblioteca com processos de referência por indústria. Baseado no{' '}
+            <a
+              href="https://www.apqc.org/process-classification-framework"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              Process Classification Framework (PCF) do APQC
+            </a>
+            .
           </p>
 
           <div className="flex flex-col items-center gap-3 mb-2">
-            <input
-              type="text"
-              placeholder="Nome da empresa"
-              value={company}
-              onChange={(e) => onCompanyChange(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <input
-              type="email"
-              placeholder="Seu email"
-              value={email}
-              onChange={(e) => onEmailChange(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-
-            {/* Industry selector */}
-            <div className="w-72 mt-1">
+            {/* 3. Industry selector (before email) */}
+            <div className="w-72">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                 Selecione sua indústria
               </p>
@@ -111,7 +110,23 @@ export default function StartScreen({
               )}
             </div>
 
-            {/* Mode selection */}
+            {/* 4. Email field */}
+            <input
+              type="text"
+              placeholder="Nome da empresa"
+              value={company}
+              onChange={(e) => onCompanyChange(e.target.value)}
+              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400 mt-1"
+            />
+            <input
+              type="email"
+              placeholder="Seu email"
+              value={email}
+              onChange={(e) => onEmailChange(e.target.value)}
+              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+
+            {/* 5. Action buttons */}
             <div className="flex gap-3 mt-1 w-72">
               <button
                 onClick={onStart}
