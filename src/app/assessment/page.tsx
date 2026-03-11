@@ -11,7 +11,7 @@ import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } f
 import { db } from '@/lib/firebase';
 import { collection, addDoc, query, getDocs, where, doc, getDoc, updateDoc } from 'firebase/firestore';
 
-import { processLibrary } from '@/data/processLibrary';
+import { getAllMacroprocesses } from '@/data/industryLibrary';
 
 import StepIndicator from '@/components/StepIndicator';
 import StartScreen from '@/components/StartScreen';
@@ -445,7 +445,7 @@ export default function AssessmentPage() {
   );
 
   const allStandardSubprocesses = useMemo(
-    () => processLibrary.flatMap((m) => m.processes.flatMap((p) => p.subprocesses)),
+    () => getAllMacroprocesses().flatMap((m) => m.processes.flatMap((p) => p.subprocesses)),
     []
   );
 

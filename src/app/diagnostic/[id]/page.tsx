@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { collection, addDoc, query, getDocs, where, doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { db } from '@/lib/firebase';
-import { processLibrary } from '@/data/processLibrary';
+import { lookupSubprocessById } from '@/data/industryLibrary';
 import {
   AssessmentState, Macroprocess, Process, Subprocess,
   CriteriaScores, SubprocessAssessment, SelectedSubprocessItem, CustomArea, RealValues,
@@ -25,20 +25,10 @@ const EMPTY_SCORES: CriteriaScores = {
   reworkOrErrors: 0, systemsOrSpreadsheets: 0, systemIntegrations: 0,
 };
 
-function lookupSubprocess(subprocessId: string) {
-  for (const macro of processLibrary) {
-    for (const process of macro.processes) {
-      for (const subprocess of process.subprocesses) {
-        if (subprocess.id === subprocessId) return { macro, process, subprocess };
-      }
-    }
-  }
-  return null;
-}
-
 function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessment {
   const subprocessId = data.subprocess_id as string;
-  const found = lookupSubprocess(subprocessId);
+  const looked = lookupSubprocessById(subprocessId);
+  const found = looked ? { macro: looked.macroprocess, process: looked.process, subprocess: looked.subprocess } : null;
   const storedScores = data.scores as CriteriaScores | undefined;
 
   // When individual criteria scores were persisted, recompute all derived
@@ -103,7 +93,8 @@ function buildRemainingItems(
   const items: SelectedSubprocessItem[] = [];
   for (const id of selectedIds) {
     if (answeredIds.has(id)) continue;
-    const found = lookupSubprocess(id);
+    const looked = lookupSubprocessById(id);
+    const found = looked ? { macro: looked.macroprocess, process: looked.process, subprocess: looked.subprocess } : null;
     if (found) {
       items.push({ macroprocess: found.macro, process: found.process, subprocess: found.subprocess });
     } else {

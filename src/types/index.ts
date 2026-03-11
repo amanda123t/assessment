@@ -23,6 +23,18 @@ export interface Macroprocess {
   processes: Process[];
 }
 
+/**
+ * Represents a vertical industry with its specific macroprocesses.
+ * Base macroprocesses (cross-industry) are kept in processLibrary and are
+ * automatically combined with these industry-specific ones at runtime.
+ */
+export interface Industry {
+  id: string;
+  name: string;
+  /** Industry-specific macroprocesses added on top of the cross-industry base library. */
+  macroprocesses: Macroprocess[];
+}
+
 export interface CriteriaScores {
   operationalVolume: number;
   peopleInvolved: number;

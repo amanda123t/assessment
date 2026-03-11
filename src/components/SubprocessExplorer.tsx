@@ -8,7 +8,7 @@ import {
   Plus, X, Layers,
 } from 'lucide-react';
 import { Macroprocess, Process, Subprocess, SelectedSubprocessItem, CustomArea, CustomAreaProcess, CustomAreaSubprocess } from '@/types';
-import { processLibrary } from '@/data/processLibrary';
+import { INDUSTRIES, getMacroprocessesForIndustry } from '@/data/industryLibrary';
 
 const MACRO_ICONS: Record<string, LucideIcon> = {
   'finance':         DollarSign,
@@ -280,11 +280,14 @@ export default function SubprocessExplorer({
   initialCustomAreas,
   onCustomAreasChange,
 }: Props) {
+  const [industryId, setIndustryId]               = useState<string | null>(null);
   const [expandedMacros, setExpandedMacros]       = useState<Set<string>>(new Set());
   const [expandedProcesses, setExpandedProcesses] = useState<Set<string>>(new Set());
   const [showFormFor, setShowFormFor]             = useState<{ macro: Macroprocess; proc: Process } | null>(null);
   const [showNewAreaForm, setShowNewAreaForm]      = useState(false);
   const [customAreas, setCustomAreas]             = useState<CustomArea[]>(initialCustomAreas ?? []);
+
+  const activeLibrary = getMacroprocessesForIndustry(industryId);
   const [expandedCustomAreas, setExpandedCustomAreas]       = useState<Set<string>>(
     new Set((initialCustomAreas ?? []).map(a => a.id))
   );
@@ -391,9 +394,39 @@ export default function SubprocessExplorer({
         </p>
       </div>
 
+      {/* Industry selector */}
+      <div className="mb-5 bg-white rounded-xl border border-gray-200 p-4">
+        <p className="text-xs font-semibold text-gray-500 mb-2">Selecione sua indústria para ver os macroprocessos específicos:</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => { setIndustryId(null); setExpandedMacros(new Set()); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              industryId === null
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+            }`}
+          >
+            Geral (base)
+          </button>
+          {INDUSTRIES.map((ind) => (
+            <button
+              key={ind.id}
+              onClick={() => { setIndustryId(ind.id); setExpandedMacros(new Set()); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                industryId === ind.id
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+              }`}
+            >
+              {ind.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Collapsible tree — library areas */}
       <div className="space-y-2">
-        {processLibrary.map((macro) => {
+        {activeLibrary.map((macro) => {
           const Icon = MACRO_ICONS[macro.id];
           const isMacroExpanded = expandedMacros.has(macro.id);
           const standardSelectedInMacro = macro.processes.reduce(
