@@ -70,31 +70,6 @@ export default function StartScreen({
             Diagnóstico gratuito &bull; leva menos de 3 minutos &bull; relatório exportável
           </p>
 
-          {/* Industry selector */}
-          <div className="mb-8 max-w-2xl mx-auto">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Selecione sua indústria
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {INDUSTRIES.map((ind) => (
-                <button
-                  key={ind.id}
-                  onClick={() => onIndustryChange(ind.id)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-150 ${
-                    industry === ind.id
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600 hover:shadow-sm'
-                  }`}
-                >
-                  {ind.name}
-                </button>
-              ))}
-            </div>
-            {!industry && (
-              <p className="text-xs text-gray-400 mt-2">Selecione uma indústria para iniciar o diagnóstico</p>
-            )}
-          </div>
-
           <div className="flex flex-col items-center gap-3 mb-2">
             <input
               type="text"
@@ -110,6 +85,31 @@ export default function StartScreen({
               onChange={(e) => onEmailChange(e.target.value)}
               className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
+
+            {/* Industry selector */}
+            <div className="w-72 mt-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Selecione sua indústria
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {INDUSTRIES.map((ind) => (
+                  <button
+                    key={ind.id}
+                    onClick={() => onIndustryChange(ind.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150 ${
+                      industry === ind.id
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                    }`}
+                  >
+                    {ind.name}
+                  </button>
+                ))}
+              </div>
+              {!industry && (
+                <p className="text-xs text-gray-400 mt-1.5">Selecione uma indústria para iniciar</p>
+              )}
+            </div>
 
             {/* Mode selection */}
             <div className="flex gap-3 mt-1 w-72">

@@ -8,7 +8,7 @@ import {
   Plus, X, Layers,
 } from 'lucide-react';
 import { Macroprocess, Process, Subprocess, SelectedSubprocessItem, CustomArea, CustomAreaProcess, CustomAreaSubprocess } from '@/types';
-import { INDUSTRIES, getMacroprocessesForIndustry } from '@/data/industryLibrary';
+import { getMacroprocessesForIndustry } from '@/data/industryLibrary';
 
 const MACRO_ICONS: Record<string, LucideIcon> = {
   'finance':         DollarSign,
@@ -397,35 +397,6 @@ export default function SubprocessExplorer({
         </p>
       </div>
 
-      {/* Industry selector */}
-      <div className="mb-5 bg-white rounded-xl border border-gray-200 p-4">
-        <p className="text-xs font-semibold text-gray-500 mb-2">Selecione sua indústria para ver os macroprocessos específicos:</p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => { setIndustryId(null); setExpandedMacros(new Set()); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              industryId === null
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-            }`}
-          >
-            Geral (base)
-          </button>
-          {INDUSTRIES.map((ind) => (
-            <button
-              key={ind.id}
-              onClick={() => { setIndustryId(ind.id); setExpandedMacros(new Set()); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                industryId === ind.id
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
-              }`}
-            >
-              {ind.name}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Collapsible tree — library areas */}
       <div className="space-y-2">
