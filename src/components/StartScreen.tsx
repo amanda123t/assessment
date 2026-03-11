@@ -48,12 +48,12 @@ export default function StartScreen({ onStart, onStartGroup, company, onCompanyC
           </span>
           <h2 className="text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
             Identifique oportunidades de{' '}
-            <span className="text-blue-600">automação e eficiência operacional</span>
+            <span className="text-blue-600">eficiência operacional</span>
             {' '}em minutos
           </h2>
           <p className="text-lg text-gray-500 mb-4 max-w-xl mx-auto">
             Avalie seus processos, descubra gargalos operacionais e priorize as iniciativas
-            de automação com maior retorno — com base em critérios objetivos.
+            de automação com maior retorno.
           </p>
           <p className="text-sm text-gray-400 mb-10">
             Diagnóstico gratuito &bull; leva menos de 3 minutos &bull; relatório exportável
