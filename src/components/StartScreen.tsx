@@ -90,19 +90,26 @@ export default function StartScreen({
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                 Selecione sua indústria
               </p>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-col gap-1.5">
                 {INDUSTRIES.map((ind) => (
-                  <button
+                  <label
                     key={ind.id}
-                    onClick={() => onIndustryChange(ind.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150 ${
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-150 ${
                       industry === ind.id
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600'
+                        ? 'bg-blue-50 border-blue-400 text-blue-700'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-gray-50'
                     }`}
                   >
-                    {ind.name}
-                  </button>
+                    <input
+                      type="radio"
+                      name="industry"
+                      value={ind.id}
+                      checked={industry === ind.id}
+                      onChange={() => onIndustryChange(ind.id)}
+                      className="accent-blue-600 w-3.5 h-3.5 shrink-0"
+                    />
+                    <span className="text-xs font-medium">{ind.name}</span>
+                  </label>
                 ))}
               </div>
               {!industry && (
