@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase';
 import { processLibrary } from '@/data/processLibrary';
 import {
   AssessmentState, Macroprocess, Process, Subprocess,
-  CriteriaScores, SubprocessAssessment, SelectedSubprocessItem, CustomArea,
+  CriteriaScores, SubprocessAssessment, SelectedSubprocessItem, CustomArea, RealValues,
 } from '@/types';
 import { createAssessment, addAssessment } from '@/lib/assessmentEngine';
 
@@ -307,8 +307,9 @@ export default function DiagnosticResumePage() {
     subprocess: Subprocess,
     macroprocess: Macroprocess,
     process: Process,
+    realValues?: RealValues,
   ) => {
-    const assessment = createAssessment(macroprocess, process, subprocess, scores);
+    const assessment = createAssessment(macroprocess, process, subprocess, scores, undefined, realValues);
 
     // Incremental save so progress survives tab closure.
     if (!initialAnsweredIds.current.has(assessment.subprocessId)) {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ClipboardCheck } from 'lucide-react';
-import { Macroprocess, Process, Subprocess, CriteriaScores, CRITERIA } from '@/types';
+import { Macroprocess, Process, Subprocess, CriteriaScores, RealValues, CRITERIA } from '@/types';
 import { getEmptyScores, calculateTotalScore } from '@/lib/scoring';
 
 interface Props {
@@ -16,9 +16,60 @@ interface Props {
     subprocess: Subprocess,
     macroprocess: Macroprocess,
     process: Process,
+    realValues: RealValues,
   ) => void;
   onBack: () => void;
 }
+
+// ─── Optional real-value input config ────────────────────────────────────────
+
+/** Config for the optional numeric input shown below certain criteria cards. */
+interface RealInputConfig {
+  label: string;
+  placeholder: string;
+  stateKey: keyof RealValuesRaw;
+}
+
+const REAL_INPUT: Partial<Record<keyof CriteriaScores, RealInputConfig>> = {
+  operationalVolume: {
+    label:       'Valor mensal real (opcional)',
+    placeholder: 'ex: 350',
+    stateKey:    'volume',
+  },
+  executionTime: {
+    label:       'Tempo médio real por pessoa, em minutos (opcional)',
+    placeholder: 'ex: 12',
+    stateKey:    'timeMinutes',
+  },
+  peopleInvolved: {
+    label:       'Quantidade exata de pessoas (opcional)',
+    placeholder: 'ex: 4',
+    stateKey:    'people',
+  },
+};
+
+// Raw state stores strings so inputs are fully controlled without NaN issues
+interface RealValuesRaw {
+  volume:      string;
+  timeMinutes: string;
+  people:      string;
+}
+
+const EMPTY_REAL: RealValuesRaw = { volume: '', timeMinutes: '', people: '' };
+
+function parseRealValues(raw: RealValuesRaw): RealValues {
+  const parse = (v: string) => {
+    const n = parseFloat(v);
+    return !isNaN(n) && n > 0 ? n : undefined;
+  };
+  return {
+    volume:      parse(raw.volume),
+    timeMinutes: parse(raw.timeMinutes),
+    people:      parse(raw.people),
+  };
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Questionnaire({
   macroprocess,
@@ -29,10 +80,9 @@ export default function Questionnaire({
   onComplete,
   onBack,
 }: Props) {
-  // State initialises fresh on every mount. The parent passes key={subprocess.id}
-  // which forces a remount whenever the subprocess changes, so scores always
-  // start empty for each new subprocess.
+  // Scores reset on every subprocess remount (parent uses key={subprocess.id})
   const [scores, setScores] = useState<CriteriaScores>(getEmptyScores());
+  const [realRaw, setRealRaw] = useState<RealValuesRaw>(EMPTY_REAL);
 
   const allAnswered = Object.values(scores).every((s) => s > 0);
   const totalScore = calculateTotalScore(scores);
@@ -41,6 +91,15 @@ export default function Questionnaire({
 
   const handleScore = (key: keyof CriteriaScores, value: number) => {
     setScores((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleRealInput = (stateKey: keyof RealValuesRaw, value: string) => {
+    setRealRaw((prev) => ({ ...prev, [stateKey]: value }));
+  };
+
+  const handleSubmit = () => {
+    if (!allAnswered) return;
+    onComplete(scores, subprocess, macroprocess, process, parseRealValues(realRaw));
   };
 
   return (
@@ -54,7 +113,7 @@ export default function Questionnaire({
           ← Voltar
         </button>
 
-        {/* Progress counter — primary label */}
+        {/* Progress counter */}
         <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-1">
           Subprocesso {currentIndex + 1} de {total}
         </p>
@@ -72,10 +131,9 @@ export default function Questionnaire({
           {macroprocess.name} › {process.name}
         </p>
 
-        {/* Subprocess name — main heading */}
+        {/* Subprocess name */}
         <h2 className="text-xl font-bold text-gray-900">{subprocess.name}</h2>
 
-        {/* Subheading with icon */}
         <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
           <ClipboardCheck size={14} className="text-gray-400" strokeWidth={1.75} />
           Selecione uma opção para cada critério
@@ -86,6 +144,8 @@ export default function Questionnaire({
       <div className="space-y-4">
         {CRITERIA.map((criterion) => {
           const currentScore = scores[criterion.key];
+          const realInputCfg = REAL_INPUT[criterion.key];
+
           return (
             <div key={criterion.key} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
               <div className="mb-4">
@@ -93,6 +153,7 @@ export default function Questionnaire({
                 <p className="text-xs text-gray-500 mt-0.5">{criterion.description}</p>
               </div>
 
+              {/* Range buttons */}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {criterion.options.map((optLabel, optIdx) => {
                   const val = optIdx + 1;
@@ -112,6 +173,24 @@ export default function Questionnaire({
                   );
                 })}
               </div>
+
+              {/* Optional real-value input */}
+              {realInputCfg && (
+                <div className="mt-3 flex items-center gap-3">
+                  <label className="text-xs text-gray-400 whitespace-nowrap">
+                    {realInputCfg.label}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={realRaw[realInputCfg.stateKey]}
+                    onChange={(e) => handleRealInput(realInputCfg.stateKey, e.target.value)}
+                    placeholder={realInputCfg.placeholder}
+                    className="w-28 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                  />
+                </div>
+              )}
             </div>
           );
         })}
@@ -126,7 +205,7 @@ export default function Questionnaire({
           }
         </span>
         <button
-          onClick={() => { if (allAnswered) onComplete(scores, subprocess, macroprocess, process); }}
+          onClick={handleSubmit}
           disabled={!allAnswered}
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white disabled:text-gray-400 font-semibold px-6 py-2.5 rounded-lg transition-colors text-sm"
         >

@@ -92,6 +92,20 @@ export interface AssessmentState {
   generatedAt?: string;
 }
 
+/**
+ * Optional real values provided by the user to override the range midpoints
+ * used in impact calculations. When present, these take precedence over the
+ * questionnaire score midpoints in calculateAnnualHours.
+ */
+export interface RealValues {
+  /** Actual monthly executions — overrides operationalVolume range midpoint. */
+  volume?: number;
+  /** Actual minutes per person per task — overrides executionTime range midpoint. */
+  timeMinutes?: number;
+  /** Actual number of people involved — overrides peopleInvolved range midpoint. */
+  people?: number;
+}
+
 export const CRITERIA = [
   {
     key: 'operationalVolume' as keyof CriteriaScores,
