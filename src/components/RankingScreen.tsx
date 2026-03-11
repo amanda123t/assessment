@@ -9,7 +9,7 @@ import {
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
-import { FTE_HOURS_YEAR, HOURLY_COST, PEOPLE_MAP, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
+import { FTE_HOURS_YEAR, HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
@@ -213,9 +213,9 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   const totalEstimatedPeople = assessments.reduce(
     (sum, a) => sum + (PEOPLE_MAP[a.scores.peopleInvolved] ?? 0), 0,
   );
-  /** Average automatable hours per person per month (null when no people data). */
+  /** Equivalent operational effort per person per month (current hours ÷ people). */
   const horasPorPessoaMes = totalEstimatedPeople > 0
-    ? dispSavingsHorasMes / totalEstimatedPeople
+    ? dispCurrentHorasMes / totalEstimatedPeople
     : null;
 
   const handleRecalculate = () => {
@@ -501,9 +501,14 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
               <p className="text-xs text-gray-400">
                 ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsDiasMes)} dias</span> de trabalho / mês
               </p>
+              {totalEstimatedPeople > 0 && (
+                <p className="text-xs text-gray-400">
+                  <span className="font-semibold text-gray-600">{fmtD(totalEstimatedPeople)} colaboradores</span> envolvidos nos processos
+                </p>
+              )}
               {horasPorPessoaMes !== null && (
                 <p className="text-xs text-gray-400">
-                  ≈ <span className="font-semibold text-gray-600">{fmtD(horasPorPessoaMes)} horas</span> por pessoa / mês
+                  ≈ <span className="font-semibold text-gray-600">{fmtD(horasPorPessoaMes)} h</span> esforço equivalente por pessoa / mês
                 </p>
               )}
             </div>
@@ -548,16 +553,19 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
         {/* ── 1b. FTE Breakdown ─────────────────────────────────────────── */}
         <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 
-          {/* Card — Capacidade operacional atual */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          {/* Card — Esforço operacional atual */}
+          <div
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
+            title="Representa o esforço equivalente de pessoas necessário para executar os processos analisados."
+          >
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
                 <Activity size={15} className="text-slate-500" strokeWidth={1.75} />
               </div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Capacidade Atual</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Esforço Operacional Atual</p>
             </div>
             <p className="text-3xl font-extrabold text-gray-900">{dispFteCurrent.toLocaleString('pt-BR')} FTE</p>
-            <p className="text-xs text-gray-500 mt-0.5 mb-2">necessários hoje para executar os processos avaliados</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-2">FTE equivalentes — esforço de trabalho para executar os processos avaliados</p>
             <p className="text-xs text-gray-400">
               ≈ <span className="font-semibold text-gray-600">{fmtD(dispCurrentHorasMes)} horas</span> de trabalho / mês
             </p>
@@ -637,14 +645,38 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                   const isSpPeople  = !!spOverride.people;
                   const isSpCost    = !!spOverride.hourlyCost;
 
+                  // Calculation-transparency values
+                  const spVolume    = VOLUME_MAP[item.scores.operationalVolume] ?? 0;
+                  const spTime      = TIME_MAP[item.scores.executionTime]       ?? 0;
+                  const spPeople    = viewPeople
+                    ? parseFloat(viewPeople)
+                    : (PEOPLE_MAP[item.scores.peopleInvolved] ?? 0);
+                  const spAnnual    = refined?.annualHours    ?? item.annualHours;
+                  const spHorasMes  = spAnnual / 12;
+                  const spFte       = refined?.fteCurrent     ?? calculateFteCurrent(item.annualHours);
+
                   return (
                     <tr key={item.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
 
                       {/* Rank */}
                       <td className="px-3 py-2.5 text-center font-bold text-gray-400 text-xs">{item.rank}</td>
 
-                      {/* Name */}
-                      <td className="px-3 py-2.5 text-gray-900 text-xs">{item.subprocessName}</td>
+                      {/* Name + calculation inputs */}
+                      <td className="px-3 py-2.5 text-gray-900 text-xs">
+                        <div className="font-medium">{item.subprocessName}</div>
+                        <div className="mt-1 text-[10px] text-gray-400 space-y-0.5">
+                          <div className="flex flex-wrap gap-x-2">
+                            <span>Vol: <span className="text-gray-500">{fmt(spVolume)}/mês</span></span>
+                            <span>· Tempo: <span className="text-gray-500">{spTime} min</span></span>
+                            <span>· Pessoas: <span className={`${isSpPeople ? 'text-blue-500' : 'text-gray-500'}`}>{fmtD(spPeople)}</span></span>
+                          </div>
+                          <div className="flex flex-wrap gap-x-2 text-gray-400">
+                            <span>≈ {fmtD(spHorasMes)} h/mês</span>
+                            <span>· ≈ {fmt(spAnnual)} h/ano</span>
+                            <span>· ≈ {fmtD(spFte)} FTE</span>
+                          </div>
+                        </div>
+                      </td>
 
                       {/* Horas Autom. */}
                       <td className="px-3 py-2.5 text-center text-xs text-gray-700">
