@@ -548,6 +548,7 @@ export default function DiagnosticResumePage() {
           <RankingScreen
             assessments={state.assessments}
             onRestart={() => router.push('/assessment')}
+            diagnosticId={id}
           />
         )}
 

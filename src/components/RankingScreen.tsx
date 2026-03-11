@@ -15,6 +15,8 @@ import PDFDiagnosticReport from './PDFDiagnosticReport';
 interface Props {
   assessments: SubprocessAssessment[];
   onRestart: () => void;
+  /** When provided, a "Compartilhar relatório" button appears that links to /diagnostic/{id}/report */
+  diagnosticId?: string;
 }
 
 function fmt(n: number): string {
@@ -153,9 +155,11 @@ const EMPTY_FORM: IdForm = { company: '', area: '', respondentName: '', email: '
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export default function RankingScreen({ assessments, onRestart }: Props) {
+export default function RankingScreen({ assessments, onRestart, diagnosticId }: Props) {
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [showIdModal, setShowIdModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
   const [idForm, setIdForm] = useState<IdForm>(EMPTY_FORM);
   const [savedIdentification, setSavedIdentification] = useState<AssessmentIdentification | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -383,8 +387,65 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
         </div>
       )}
 
+      {/* ── Share report modal ────────────────────────────────────────── */}
+      {showShareModal && diagnosticId && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowShareModal(false); }}
+        >
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold text-gray-900">Compartilhar relatório</h3>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-5">
+              Qualquer pessoa com este link pode visualizar o relatório e votar na prioridade dos subprocessos.
+              Nenhum login é necessário.
+            </p>
+
+            <div className="flex gap-2">
+              <input
+                readOnly
+                value={typeof window !== 'undefined'
+                  ? `${window.location.origin}/diagnostic/${diagnosticId}/report`
+                  : ''}
+                className="border border-gray-200 rounded-lg px-3 py-2 w-full text-sm font-mono bg-gray-50 text-gray-700"
+              />
+              <button
+                onClick={() => {
+                  const link = `${window.location.origin}/diagnostic/${diagnosticId}/report`;
+                  navigator.clipboard.writeText(link);
+                  setShareLinkCopied(true);
+                  setTimeout(() => setShareLinkCopied(false), 2000);
+                }}
+                className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors"
+              >
+                Copiar link
+              </button>
+            </div>
+            {shareLinkCopied && (
+              <p className="text-emerald-600 text-xs mt-2">Link copiado!</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Action bar ────────────────────────────────────────────────── */}
       <div className="flex justify-end gap-3 mb-8">
+        {diagnosticId && (
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors shadow-sm"
+          >
+            <Zap size={14} strokeWidth={1.75} />
+            Compartilhar relatório
+          </button>
+        )}
         <button
           onClick={() => setShowIdModal(true)}
           disabled={generatingPdf}
