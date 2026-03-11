@@ -13,10 +13,36 @@ export interface RoadmapItem {
   /** Composite 0–100: proxy for implementation complexity derived from criteria scores. */
   effortScore: number;
   estimatedSavings: number;
+  /** Automatable hours per year (mirrors SubprocessAssessment.automationSavingsHours). */
+  savingsHours: number;
   /** automationScore × log(annualHours + 1) — composite priority metric. */
   priorityScore: number;
   roadmapCategory: RoadmapCategory;
   timeline: '0–3 meses' | '3–6 meses' | '6–12 meses';
+  /** Technology recommendation derived from questionnaire scores. */
+  suggestedTechnology: string;
+}
+
+/**
+ * Suggest an automation technology based on questionnaire criteria scores.
+ *
+ * Rules (evaluated in priority order):
+ *  - Many spreadsheets + long manual execution → RPA + OCR
+ *  - Many system integrations → API + Workflow
+ *  - High rework / error rate → Workflow + Regras de Negócio
+ *  - Many spreadsheets → RPA
+ *  - Long manual execution time → RPA + OCR
+ *  - Fallback → Automação de Processos (BPA)
+ */
+export function suggestAutomationTechnology(a: SubprocessAssessment): string {
+  const { systemsOrSpreadsheets, systemIntegrations, reworkOrErrors, executionTime } = a.scores;
+
+  if (systemsOrSpreadsheets >= 3 && executionTime >= 3) return 'RPA + OCR';
+  if (systemIntegrations >= 3)                          return 'API + Workflow';
+  if (reworkOrErrors >= 3)                              return 'Workflow + Regras de Negócio';
+  if (systemsOrSpreadsheets >= 3)                       return 'RPA';
+  if (executionTime >= 3)                               return 'RPA + OCR';
+  return 'Automação de Processos (BPA)';
 }
 
 /**
@@ -97,15 +123,17 @@ export function buildAutomationRoadmap(assessments: SubprocessAssessment[]): Roa
   const medianImpactScore = computeMedian(withScores.map((x) => x.impactScore));
 
   const items: RoadmapItem[] = withScores.map(({ assessment: a, impactScore, priorityScore }) => ({
-    subprocessId:    a.subprocessId,
-    subprocessName:  a.subprocessName,
-    macroprocessName: a.macroprocessName,
-    processName:     a.processName,
-    automationScore: a.automationScore,
+    subprocessId:       a.subprocessId,
+    subprocessName:     a.subprocessName,
+    macroprocessName:   a.macroprocessName,
+    processName:        a.processName,
+    automationScore:    a.automationScore,
     impactScore,
-    effortScore:     calculateEffortScore(a),
-    estimatedSavings: a.financialImpact,
+    effortScore:        calculateEffortScore(a),
+    estimatedSavings:   a.financialImpact,
+    savingsHours:       a.automationSavingsHours,
     priorityScore,
+    suggestedTechnology: suggestAutomationTechnology(a),
     ...classifyPhase(a.automationScore, impactScore, medianImpactScore),
   }));
 

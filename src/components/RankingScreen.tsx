@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   Trophy, FileDown, RotateCcw, Activity,
   Lightbulb, TrendingUp, DollarSign, Target, ChevronDown, X, Pencil,
+  Zap, Layers, Clock,
 } from 'lucide-react';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
@@ -701,6 +702,126 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
             <p className="text-xs text-blue-400 mt-2 pl-1">* Horas recalculadas com valores refinados</p>
           )}
         </section>
+
+        {/* ── 3. Plano de Automação por Fases ──────────────────────────── */}
+        {autoRoadmap.length > 0 && (() => {
+          // Map roadmap categories → the three user-facing phases
+          const fase1 = autoRoadmap.filter(r => r.roadmapCategory === 'quick-wins');
+          const fase2 = autoRoadmap.filter(r => r.roadmapCategory === 'strategic' || r.roadmapCategory === 'transformation');
+          const fase3 = autoRoadmap.filter(r => r.roadmapCategory === 'low-priority');
+
+          const phases = [
+            {
+              num:   1,
+              label: 'Automação Rápida',
+              desc:  'Automatizações que podem ser implementadas rapidamente com tecnologias simples.',
+              icon:  <Zap size={15} className="text-emerald-600" strokeWidth={1.75} />,
+              bg:    'bg-emerald-50',
+              border:'border-emerald-200',
+              title: 'text-emerald-700',
+              badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+              dot:   'bg-emerald-500',
+              items: fase1,
+            },
+            {
+              num:   2,
+              label: 'Projetos Estruturantes',
+              desc:  'Automação que exige integração sistêmica ou workflow.',
+              icon:  <Layers size={15} className="text-blue-600" strokeWidth={1.75} />,
+              bg:    'bg-blue-50',
+              border:'border-blue-200',
+              title: 'text-blue-700',
+              badge: 'bg-blue-100 text-blue-800 border-blue-200',
+              dot:   'bg-blue-500',
+              items: fase2,
+            },
+            {
+              num:   3,
+              label: 'Baixa Prioridade',
+              desc:  'Automação não prioritária no curto e médio prazo.',
+              icon:  <Clock size={15} className="text-gray-500" strokeWidth={1.75} />,
+              bg:    'bg-gray-50',
+              border:'border-gray-200',
+              title: 'text-gray-600',
+              badge: 'bg-gray-100 text-gray-700 border-gray-200',
+              dot:   'bg-gray-400',
+              items: fase3,
+            },
+          ] as const;
+
+          return (
+            <section className={CARD}>
+              <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                <Zap size={16} className="text-blue-600" strokeWidth={1.75} />
+                Plano de Automação por Fases
+              </h3>
+              <p className="text-xs text-gray-400 mb-5">
+                Gerado automaticamente com base na matriz de impacto e facilidade de automação.
+              </p>
+
+              <div className="space-y-4">
+                {phases.map((phase) => (
+                  <div key={phase.num} className={`rounded-xl border p-4 ${phase.bg} ${phase.border}`}>
+                    {/* Phase header */}
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${phase.dot}`}>
+                        {phase.num}
+                      </div>
+                      {phase.icon}
+                      <span className={`text-sm font-bold ${phase.title}`}>
+                        Fase {phase.num} — {phase.label}
+                      </span>
+                      <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full border ${phase.badge}`}>
+                        {phase.items.length} subprocesso{phase.items.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3 pl-7">{phase.desc}</p>
+
+                    {phase.items.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic pl-7">Nenhum subprocesso nesta fase.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {/* Column headers */}
+                        <div className="grid grid-cols-12 gap-2 px-3 pb-1 border-b border-black/5">
+                          <span className="col-span-5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Subprocesso</span>
+                          <span className="col-span-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wide text-center">Horas econ./ano</span>
+                          <span className="col-span-4 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Tecnologia sugerida</span>
+                        </div>
+                        {phase.items.map((item) => (
+                          <div
+                            key={item.subprocessId}
+                            className="grid grid-cols-12 gap-2 items-center bg-white/70 rounded-lg px-3 py-2.5"
+                          >
+                            {/* Name + process */}
+                            <div className="col-span-5">
+                              <p className="text-xs font-medium text-gray-800 leading-snug">{item.subprocessName}</p>
+                              <p className="text-[10px] text-gray-400 truncate">{item.processName}</p>
+                            </div>
+
+                            {/* Savings hours */}
+                            <div className="col-span-3 text-center">
+                              <span className="text-sm font-bold text-gray-700">
+                                {item.savingsHours.toLocaleString('pt-BR')}
+                              </span>
+                              <span className="text-[10px] text-gray-400 ml-0.5">h</span>
+                            </div>
+
+                            {/* Technology badge */}
+                            <div className="col-span-4">
+                              <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border leading-snug ${phase.badge}`}>
+                                {item.suggestedTechnology}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* ── 4. Matriz de Priorização de Automação ────────────────────── */}
         {(() => {
