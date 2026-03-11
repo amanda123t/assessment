@@ -449,9 +449,12 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
             <Trophy size={16} className="text-blue-600" strokeWidth={1.75} />
             Ranking de Potencial de Automação
           </h3>
-          <p className="text-xs text-gray-400 mb-4">
-            Clique em <Pencil size={11} className="inline text-gray-400" strokeWidth={1.75} /> para ajustar pessoas e custo/h por subprocesso, depois clique em &quot;Recalcular estimativa&quot; para atualizar os totais.
-          </p>
+          <div className="flex items-start gap-2 mb-4 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5">
+            <Pencil size={13} className="text-blue-500 flex-shrink-0 mt-0.5" strokeWidth={1.75} />
+            <p className="text-xs text-blue-700 leading-relaxed">
+              Clique no lápis para ajustar <span className="font-semibold">pessoas</span> e <span className="font-semibold">custo/h</span> por subprocesso, depois clique em <span className="font-semibold">&quot;Recalcular estimativa&quot;</span> para atualizar os totais.
+            </p>
+          </div>
           <div className="overflow-x-auto rounded-xl border border-gray-200">
             <table className="w-full text-sm" style={{ minWidth: 720 }}>
               <thead>
