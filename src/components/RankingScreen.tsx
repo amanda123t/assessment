@@ -376,7 +376,7 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
 
       {/* Page title — outside the printable card area */}
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-2xl font-bold text-blue-600">
           Oportunidades de Eficiência Operacional
         </h2>
         {savedIdentification && (
@@ -577,9 +577,9 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
                           <button
                             onClick={() => setEditingSubprocessId(item.subprocessId)}
                             title="Editar valores"
-                            className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            className="p-1.5 rounded-md border border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-400 transition-colors"
                           >
-                            <Pencil size={13} strokeWidth={1.75} />
+                            <Pencil size={15} strokeWidth={1.75} />
                           </button>
                         )}
                       </td>
