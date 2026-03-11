@@ -667,6 +667,7 @@ export default function AssessmentPage() {
               <RankingScreen
                 assessments={state.assessments}
                 onRestart={restart}
+                diagnosticId={diagnosticId.current}
               />
 
             )}
