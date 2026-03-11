@@ -156,7 +156,6 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
   const [idForm, setIdForm] = useState<IdForm>(EMPTY_FORM);
   const [savedIdentification, setSavedIdentification] = useState<AssessmentIdentification | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [refineForm, setRefineForm] = useState({ people: '', hourlyCost: String(HOURLY_COST) });
   const [refinedImpact, setRefinedImpact] = useState<{
     annualHours: number; savingsHours: number; fteEquivalent: number;
     capacityGain: number; financialImpact: number; hourlyCost: number;
@@ -200,23 +199,14 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
     assessments.forEach((a) => {
       const override = subprocessOverrides[a.subprocessId];
 
-      // People priority: subprocess override → global default → model PEOPLE_MAP (null = keep original)
-      const rawSpPeople = parseFloat(override?.people ?? '');
-      const rawGlPeople = parseFloat(refineForm.people);
-      const effectivePeople =
-        (!isNaN(rawSpPeople) && rawSpPeople > 0) ? rawSpPeople :
-        (!isNaN(rawGlPeople) && rawGlPeople > 0) ? rawGlPeople :
-        null;
+      // People: subprocess override only (null = keep original)
+      const rawSpPeople   = parseFloat(override?.people ?? '');
+      const effectivePeople = (!isNaN(rawSpPeople) && rawSpPeople > 0) ? rawSpPeople : null;
 
-      // Cost priority: subprocess override → global default → HOURLY_COST
-      const rawSpCost = parseFloat(override?.hourlyCost ?? '');
-      const rawGlCost = parseFloat(refineForm.hourlyCost);
-      const effectiveCost =
-        (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost :
-        (!isNaN(rawGlCost) && rawGlCost > 0) ? rawGlCost :
-        HOURLY_COST;
+      // Cost: subprocess override → HOURLY_COST
+      const rawSpCost     = parseFloat(override?.hourlyCost ?? '');
+      const effectiveCost = (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost : HOURLY_COST;
 
-      // Recalculate annualHours
       let newAnnual: number;
       if (effectivePeople !== null) {
         const currentMultiplier = PEOPLE_DIVISORS[a.scores.peopleInvolved] ?? 1.0;
@@ -225,9 +215,9 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
         newAnnual = a.annualHours;
       }
 
-      const newSavings    = calculateAutomationSavings(newAnnual, a.automationScore);
-      const fteSp         = Math.round((newSavings / FTE_HOURS_YEAR) * 10) / 10;
-      const financialSp   = Math.round(newSavings * effectiveCost);
+      const newSavings  = calculateAutomationSavings(newAnnual, a.automationScore);
+      const fteSp       = Math.round((newSavings / FTE_HOURS_YEAR) * 10) / 10;
+      const financialSp = Math.round(newSavings * effectiveCost);
 
       newPerSubprocess[a.subprocessId] = {
         annualHours:     newAnnual,
@@ -247,10 +237,6 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
       ? Math.round((newSavingsTotal / newAnnualTotal) * 100)
       : 0;
 
-    // For the card footer note use the global default cost (or HOURLY_COST)
-    const glCost = parseFloat(refineForm.hourlyCost);
-    const displayCost = (!isNaN(glCost) && glCost > 0) ? glCost : HOURLY_COST;
-
     setPerSubprocessRefined(newPerSubprocess);
     setRefinedImpact({
       annualHours:     newAnnualTotal,
@@ -258,7 +244,7 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
       fteEquivalent,
       capacityGain,
       financialImpact: newFinancialTotal,
-      hourlyCost:      displayCost,
+      hourlyCost:      HOURLY_COST,
     });
   };
 
@@ -475,52 +461,6 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
 
         </section>
 
-        {/* ── 1c. Refinement block ──────────────────────────────────────── */}
-        <section className="mb-6 bg-gray-50 border border-gray-200 rounded-2xl p-6">
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">Refinar estimativa de impacto</h3>
-          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-            As estimativas apresentadas utilizam faixas de pessoas envolvidas e custo médio administrativo.<br />
-            Informe valores padrão abaixo ou edite cada subprocesso individualmente na tabela de ranking.
-          </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
-            <div>
-              <label className={LABEL_CLASS}>Número médio de pessoas envolvidas</label>
-              <input
-                type="number"
-                min="1"
-                value={refineForm.people}
-                onChange={(e) => setRefineForm((f) => ({ ...f, people: e.target.value }))}
-                placeholder="Ex: 5"
-                className={INPUT_CLASS}
-              />
-            </div>
-            <div>
-              <label className={LABEL_CLASS}>Custo médio por hora (R$)</label>
-              <input
-                type="number"
-                min="1"
-                value={refineForm.hourlyCost}
-                onChange={(e) => setRefineForm((f) => ({ ...f, hourlyCost: e.target.value }))}
-                placeholder="Ex: 50"
-                className={INPUT_CLASS}
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleRecalculate}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
-            >
-              Recalcular estimativa
-            </button>
-            {refinedImpact && (
-              <span className="text-xs text-blue-600 font-medium">
-                ✓ Estimativas atualizadas com valores refinados
-              </span>
-            )}
-          </div>
-        </section>
-
         {/* ── 2. Distribuição de Prioridades ───────────────────────────── */}
         <section className={CARD}>
           <h3 className="text-base font-semibold text-gray-800 mb-4">Distribuição de Prioridades</h3>
@@ -548,7 +488,7 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
             Ranking de Potencial de Automação
           </h3>
           <p className="text-xs text-gray-400 mb-4">
-            Clique em <Pencil size={11} className="inline text-gray-400" strokeWidth={1.75} /> para ajustar pessoas e custo/h por subprocesso. Esses valores se sobrepõem aos padrões globais.
+            Clique em <Pencil size={11} className="inline text-gray-400" strokeWidth={1.75} /> para ajustar pessoas e custo/h por subprocesso, depois clique em &quot;Recalcular estimativa&quot; para atualizar os totais.
           </p>
           <div className="overflow-x-auto rounded-xl border border-gray-200">
             <table className="w-full text-sm" style={{ minWidth: 720 }}>
@@ -573,8 +513,8 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
                   const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
 
                   // View-mode display values
-                  const viewPeople  = spOverride.people     || refineForm.people     || null;
-                  const viewCost    = spOverride.hourlyCost || refineForm.hourlyCost || null;
+                  const viewPeople  = spOverride.people     || null;
+                  const viewCost    = spOverride.hourlyCost || null;
                   const isSpPeople  = !!spOverride.people;
                   const isSpCost    = !!spOverride.hourlyCost;
 
@@ -616,7 +556,7 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
                                 [item.subprocessId]: { ...spOverride, people: e.target.value },
                               }))
                             }
-                            placeholder={refineForm.people || 'padrão'}
+                            placeholder="padrão"
                             className="w-20 border border-blue-300 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         ) : (
@@ -639,7 +579,7 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
                                 [item.subprocessId]: { ...spOverride, hourlyCost: e.target.value },
                               }))
                             }
-                            placeholder={refineForm.hourlyCost || String(HOURLY_COST)}
+                            placeholder={String(HOURLY_COST)}
                             className="w-20 border border-blue-300 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         ) : (
@@ -686,6 +626,19 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
                 })}
               </tbody>
             </table>
+          </div>
+          <div className="flex items-center gap-3 mt-4">
+            <button
+              onClick={handleRecalculate}
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
+            >
+              Recalcular estimativa
+            </button>
+            {refinedImpact && (
+              <span className="text-xs text-blue-600 font-medium">
+                ✓ Estimativas atualizadas com valores refinados
+              </span>
+            )}
           </div>
           {Object.keys(perSubprocessRefined).length > 0 && (
             <p className="text-xs text-blue-400 mt-2 pl-1">* Horas recalculadas com valores refinados</p>
