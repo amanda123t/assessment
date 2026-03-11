@@ -13,7 +13,7 @@
 
 import { Macroprocess, Process, Subprocess, CriteriaScores, SubprocessAssessment } from '@/types';
 import { calculateTotalScore, calculateAutomationScore } from './scoring';
-import { calculateAnnualHours, calculateAutomationSavings, calculateFinancialImpact } from './impactCalculator';
+import { calculateAnnualHours, calculateAutomationSavings, calculateFinancialImpact, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from './impactCalculator';
 
 /** Create an initial empty assessment entry for a subprocess. */
 export function createAssessment(
@@ -28,6 +28,9 @@ export function createAssessment(
   const annualHours = calculateAnnualHours(scores);
   const automationSavingsHours = calculateAutomationSavings(annualHours, automationScore);
   const financialImpact = calculateFinancialImpact(automationSavingsHours);
+  const fteCurrent = calculateFteCurrent(annualHours);
+  const fteAutomatable = calculateFteEquivalent(automationSavingsHours);
+  const fteAfterAutomation = calculateFteAfterAutomation(fteCurrent, fteAutomatable);
 
   return {
     subprocessId: subprocess.id,
@@ -42,6 +45,9 @@ export function createAssessment(
     annualHours,
     automationSavingsHours,
     financialImpact,
+    fteCurrent,
+    fteAutomatable,
+    fteAfterAutomation,
     isCustom,
   };
 }

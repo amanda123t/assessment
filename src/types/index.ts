@@ -49,6 +49,12 @@ export interface SubprocessAssessment {
   automationSavingsHours: number;
   /** Estimated financial impact of automation savings (hourly cost × savings hours). */
   financialImpact: number;
+  /** FTE currently required to run the process (annualHours / FTE_HOURS_YEAR). */
+  fteCurrent: number;
+  /** FTE equivalent of automatable hours (automationSavingsHours / FTE_HOURS_YEAR). */
+  fteAutomatable: number;
+  /** FTE remaining after automation — max(0, fteCurrent - fteAutomatable). */
+  fteAfterAutomation: number;
   /** True for subprocesses created at runtime (not in processLibrary). */
   isCustom?: boolean;
 }

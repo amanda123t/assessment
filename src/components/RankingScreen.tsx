@@ -8,7 +8,7 @@ import {
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
-import { FTE_HOURS_YEAR, HOURLY_COST, calculateAutomationSavings } from '@/lib/impactCalculator';
+import { FTE_HOURS_YEAR, HOURLY_COST, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 
 interface Props {
@@ -128,9 +128,6 @@ const ROADMAP_BADGE: Record<RoadmapCategory, string> = {
 
 // ─── Card style constant ─────────────────────────────────────────────────────
 
-/** Back-calculation divisors — must mirror PEOPLE_MAP in impactCalculator.ts */
-const PEOPLE_DIVISORS: Record<number, number> = { 1: 1.0, 2: 1.4, 3: 1.8, 4: 2.2 };
-
 const CARD = 'bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6';
 
 // ─── Identification modal ────────────────────────────────────────────────────
@@ -159,13 +156,14 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
   const [refinedImpact, setRefinedImpact] = useState<{
     annualHours: number; savingsHours: number; fteEquivalent: number;
     capacityGain: number; financialImpact: number; hourlyCost: number;
+    fteCurrent: number; fteAfterAutomation: number;
   } | null>(null);
   const [subprocessOverrides, setSubprocessOverrides] = useState<
     Record<string, { people: string; hourlyCost: string }>
   >({});
   const [editingSubprocessId, setEditingSubprocessId] = useState<string | null>(null);
   const [perSubprocessRefined, setPerSubprocessRefined] = useState<
-    Record<string, { annualHours: number; savingsHours: number; fteEquivalent: number; financialImpact: number; hourlyCost: number }>
+    Record<string, { annualHours: number; savingsHours: number; fteEquivalent: number; financialImpact: number; hourlyCost: number; fteCurrent: number; fteAfterAutomation: number }>
   >({});
 
   const ranked = buildRanking(assessments);
@@ -177,18 +175,22 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
   const totalSavingsHours    = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
 
-  const totalFteEquivalent = Math.round((totalSavingsHours / FTE_HOURS_YEAR) * 10) / 10;
-  const totalCapacityGain  = totalAnnualHours > 0
+  const totalFteEquivalent    = Math.round((totalSavingsHours / FTE_HOURS_YEAR) * 10) / 10;
+  const totalFteCurrent       = Math.round((totalAnnualHours / FTE_HOURS_YEAR) * 10) / 10;
+  const totalFteAfterAuto     = Math.max(0, Math.round((totalFteCurrent - totalFteEquivalent) * 10) / 10);
+  const totalCapacityGain     = totalAnnualHours > 0
     ? Math.round((totalSavingsHours / totalAnnualHours) * 100)
     : 0;
 
   // Display values — fall back to model defaults when no refinement has been applied
-  const dispAnnualHours     = refinedImpact?.annualHours     ?? totalAnnualHours;
-  const dispSavingsHours    = refinedImpact?.savingsHours    ?? totalSavingsHours;
-  const dispFteEquivalent   = refinedImpact?.fteEquivalent   ?? totalFteEquivalent;
-  const dispCapacityGain    = refinedImpact?.capacityGain    ?? totalCapacityGain;
-  const dispFinancialImpact = refinedImpact?.financialImpact ?? totalFinancialImpact;
-  const dispHourlyCost      = refinedImpact?.hourlyCost      ?? HOURLY_COST;
+  const dispAnnualHours       = refinedImpact?.annualHours       ?? totalAnnualHours;
+  const dispSavingsHours      = refinedImpact?.savingsHours      ?? totalSavingsHours;
+  const dispFteEquivalent     = refinedImpact?.fteEquivalent     ?? totalFteEquivalent;
+  const dispCapacityGain      = refinedImpact?.capacityGain      ?? totalCapacityGain;
+  const dispFinancialImpact   = refinedImpact?.financialImpact   ?? totalFinancialImpact;
+  const dispHourlyCost        = refinedImpact?.hourlyCost        ?? HOURLY_COST;
+  const dispFteCurrent        = refinedImpact?.fteCurrent        ?? totalFteCurrent;
+  const dispFteAfterAutomation = refinedImpact?.fteAfterAutomation ?? totalFteAfterAuto;
 
   const handleRecalculate = () => {
     const newPerSubprocess: typeof perSubprocessRefined = {};
@@ -199,32 +201,32 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
     assessments.forEach((a) => {
       const override = subprocessOverrides[a.subprocessId];
 
-      // People: subprocess override only (null = keep original)
-      const rawSpPeople   = parseFloat(override?.people ?? '');
+      // People: if provided, multiply base annualHours by headcount to get total team effort
+      const rawSpPeople     = parseFloat(override?.people ?? '');
       const effectivePeople = (!isNaN(rawSpPeople) && rawSpPeople > 0) ? rawSpPeople : null;
 
       // Cost: subprocess override → HOURLY_COST
       const rawSpCost     = parseFloat(override?.hourlyCost ?? '');
       const effectiveCost = (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost : HOURLY_COST;
 
-      let newAnnual: number;
-      if (effectivePeople !== null) {
-        const currentMultiplier = PEOPLE_DIVISORS[a.scores.peopleInvolved] ?? 1.0;
-        newAnnual = Math.round((a.annualHours / currentMultiplier) * effectivePeople);
-      } else {
-        newAnnual = a.annualHours;
-      }
+      const newAnnual = effectivePeople !== null
+        ? Math.round(a.annualHours * effectivePeople)
+        : a.annualHours;
 
-      const newSavings  = calculateAutomationSavings(newAnnual, a.automationScore);
-      const fteSp       = Math.round((newSavings / FTE_HOURS_YEAR) * 10) / 10;
-      const financialSp = Math.round(newSavings * effectiveCost);
+      const newSavings         = calculateAutomationSavings(newAnnual, a.automationScore);
+      const fteSp              = calculateFteEquivalent(newSavings);
+      const fteCurrentSp       = calculateFteCurrent(newAnnual);
+      const fteAfterAutoSp     = calculateFteAfterAutomation(fteCurrentSp, fteSp);
+      const financialSp        = Math.round(newSavings * effectiveCost);
 
       newPerSubprocess[a.subprocessId] = {
-        annualHours:     newAnnual,
-        savingsHours:    newSavings,
-        fteEquivalent:   fteSp,
-        financialImpact: financialSp,
-        hourlyCost:      effectiveCost,
+        annualHours:      newAnnual,
+        savingsHours:     newSavings,
+        fteEquivalent:    fteSp,
+        financialImpact:  financialSp,
+        hourlyCost:       effectiveCost,
+        fteCurrent:       fteCurrentSp,
+        fteAfterAutomation: fteAfterAutoSp,
       };
 
       newAnnualTotal    += newAnnual;
@@ -232,19 +234,23 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
       newFinancialTotal += financialSp;
     });
 
-    const fteEquivalent = Math.round((newSavingsTotal / FTE_HOURS_YEAR) * 10) / 10;
-    const capacityGain  = newAnnualTotal > 0
+    const fteEquivalent    = calculateFteEquivalent(newSavingsTotal);
+    const fteCurrent       = calculateFteCurrent(newAnnualTotal);
+    const fteAfterAutomation = calculateFteAfterAutomation(fteCurrent, fteEquivalent);
+    const capacityGain     = newAnnualTotal > 0
       ? Math.round((newSavingsTotal / newAnnualTotal) * 100)
       : 0;
 
     setPerSubprocessRefined(newPerSubprocess);
     setRefinedImpact({
-      annualHours:     newAnnualTotal,
-      savingsHours:    newSavingsTotal,
+      annualHours:       newAnnualTotal,
+      savingsHours:      newSavingsTotal,
       fteEquivalent,
       capacityGain,
-      financialImpact: newFinancialTotal,
-      hourlyCost:      HOURLY_COST,
+      financialImpact:   newFinancialTotal,
+      hourlyCost:        HOURLY_COST,
+      fteCurrent,
+      fteAfterAutomation,
     });
   };
 
@@ -374,23 +380,23 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
         </button>
       </div>
 
+      {/* Page title — outside the printable card area */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-blue-600">
+          Oportunidades de Eficiência Operacional
+        </h2>
+        {savedIdentification && (
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+            {savedIdentification.company       && <span>Empresa: <span className="font-medium text-gray-600">{savedIdentification.company}</span></span>}
+            {savedIdentification.area          && <span>Área: <span className="font-medium text-gray-600">{savedIdentification.area}</span></span>}
+            {savedIdentification.respondentName && <span>Respondente: <span className="font-medium text-gray-600">{savedIdentification.respondentName}</span></span>}
+            {savedIdentification.email         && <span>E-mail: <span className="font-medium text-gray-600">{savedIdentification.email}</span></span>}
+          </div>
+        )}
+      </div>
+
       {/* ── Results content ───────────────────────────────────────────── */}
       <div id="diagnostic-results" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
-
-        {/* Page title */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Oportunidades de Eficiência Operacional
-          </h2>
-          {savedIdentification && (
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-              {savedIdentification.company       && <span>Empresa: <span className="font-medium text-gray-600">{savedIdentification.company}</span></span>}
-              {savedIdentification.area          && <span>Área: <span className="font-medium text-gray-600">{savedIdentification.area}</span></span>}
-              {savedIdentification.respondentName && <span>Respondente: <span className="font-medium text-gray-600">{savedIdentification.respondentName}</span></span>}
-              {savedIdentification.email         && <span>E-mail: <span className="font-medium text-gray-600">{savedIdentification.email}</span></span>}
-            </div>
-          )}
-        </div>
 
         {/* ── 1. Executive impact metrics ───────────────────────────────── */}
         <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -443,15 +449,59 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
 
         </section>
 
+        {/* ── 1b. FTE Breakdown ─────────────────────────────────────────── */}
+        <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+
+          {/* Card — Capacidade operacional atual */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
+                <Activity size={15} className="text-slate-500" strokeWidth={1.75} />
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Capacidade Atual</p>
+            </div>
+            <p className="text-3xl font-extrabold text-gray-900">{dispFteCurrent.toLocaleString('pt-BR')} FTE</p>
+            <p className="text-xs text-gray-500 mt-0.5">necessários hoje para executar os processos avaliados</p>
+          </div>
+
+          {/* Card — Potencial de automação (FTE liberável) */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <TrendingUp size={15} className="text-blue-600" strokeWidth={1.75} />
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Potencial de Automação</p>
+            </div>
+            <p className="text-3xl font-extrabold text-blue-600">{dispFteEquivalent.toLocaleString('pt-BR')} FTE</p>
+            <p className="text-xs text-gray-500 mt-0.5">equivalente de capacidade liberável com automação</p>
+          </div>
+
+          {/* Card — Capacidade após automação */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <Target size={15} className="text-emerald-600" strokeWidth={1.75} />
+              </div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Capacidade Após Automação</p>
+            </div>
+            <p className="text-3xl font-extrabold text-emerald-600">{dispFteAfterAutomation.toLocaleString('pt-BR')} FTE</p>
+            <p className="text-xs text-gray-500 mt-0.5">FTE remanescente para execução residual do processo</p>
+          </div>
+
+        </section>
+
         {/* ── 2. Ranking de Potencial de Automação ─────────────────────── */}
         <section className={CARD}>
           <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
             <Trophy size={16} className="text-blue-600" strokeWidth={1.75} />
             Ranking de Potencial de Automação
           </h3>
-          <p className="text-xs text-gray-400 mb-4">
-            Clique em <Pencil size={11} className="inline text-gray-400" strokeWidth={1.75} /> para ajustar pessoas e custo/h por subprocesso, depois clique em &quot;Recalcular estimativa&quot; para atualizar os totais.
-          </p>
+          <div className="flex items-start gap-2 mb-4 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5">
+            <Pencil size={13} className="text-blue-500 flex-shrink-0 mt-0.5" strokeWidth={1.75} />
+            <p className="text-xs text-blue-700 leading-relaxed">
+              Clique no lápis para ajustar <span className="font-semibold">pessoas</span> e <span className="font-semibold">custo/h</span> por subprocesso, depois clique em <span className="font-semibold">&quot;Recalcular estimativa&quot;</span> para atualizar os totais.
+            </p>
+          </div>
           <div className="overflow-x-auto rounded-xl border border-gray-200">
             <table className="w-full text-sm" style={{ minWidth: 720 }}>
               <thead>
@@ -577,9 +627,9 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
                           <button
                             onClick={() => setEditingSubprocessId(item.subprocessId)}
                             title="Editar valores"
-                            className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            className="p-1.5 rounded-md border border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-400 transition-colors"
                           >
-                            <Pencil size={13} strokeWidth={1.75} />
+                            <Pencil size={15} strokeWidth={1.75} />
                           </button>
                         )}
                       </td>
