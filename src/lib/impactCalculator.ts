@@ -25,7 +25,7 @@ import { CriteriaScores, RealValues } from '@/types';
  *   3 "200 a 500"    → 350
  *   4 "Mais de 500"  → 750
  */
-const VOLUME_MAP: Record<number, number> = {
+export const VOLUME_MAP: Record<number, number> = {
   1: 25,
   2: 125,
   3: 350,
@@ -40,7 +40,7 @@ const VOLUME_MAP: Record<number, number> = {
  *   3 "15 a 30 minutos"     → 22
  *   4 "Mais de 30 minutos"  → 45
  */
-const TIME_MAP: Record<number, number> = {
+export const TIME_MAP: Record<number, number> = {
   1: 3,
   2: 10,
   3: 22,
