@@ -11,7 +11,7 @@
  * that can be passed to components or to the ranking/export modules.
  */
 
-import { Macroprocess, Process, Subprocess, CriteriaScores, SubprocessAssessment } from '@/types';
+import { Macroprocess, Process, Subprocess, CriteriaScores, SubprocessAssessment, RealValues } from '@/types';
 import { calculateTotalScore, calculateAutomationScore } from './scoring';
 import { calculateAnnualHours, calculateAutomationSavings, calculateFinancialImpact, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from './impactCalculator';
 
@@ -22,10 +22,11 @@ export function createAssessment(
   subprocess: Subprocess,
   scores: CriteriaScores,
   isCustom?: boolean,
+  realValues?: RealValues,
 ): SubprocessAssessment {
   const totalScore = calculateTotalScore(scores);
   const automationScore = calculateAutomationScore(scores);
-  const annualHours = calculateAnnualHours(scores);
+  const annualHours = calculateAnnualHours(scores, realValues);
   const automationSavingsHours = calculateAutomationSavings(annualHours, automationScore);
   const financialImpact = calculateFinancialImpact(automationSavingsHours);
   const fteCurrent = calculateFteCurrent(annualHours);

@@ -15,7 +15,7 @@
  * - ÷ 60             → converts minutes to hours
  */
 
-import { CriteriaScores } from '@/types';
+import { CriteriaScores, RealValues } from '@/types';
 
 /**
  * Maps operationalVolume score (1–4) → estimated monthly executions.
@@ -76,15 +76,18 @@ export const HOURLY_COST = 50;
 
 /**
  * Calculate annual operational effort in hours.
- * Formula: (volumeEstimado × tempoPessoaEstimado × pessoasEstimadas × 12) / 60
+ * Formula: (volume × timePerPerson × people × 12) / 60
  *
- * The executionTime field represents time per person per task, so the total
- * team effort is volume × timePerPerson × numberOfPeople × 12 months.
+ * Each dimension uses the real value provided by the user when available,
+ * falling back to the midpoint of the selected questionnaire range.
+ *
+ * @param scores     - Questionnaire scores (1–4) for each criterion.
+ * @param realValues - Optional user-supplied exact values that override midpoints.
  */
-export function calculateAnnualHours(scores: CriteriaScores): number {
-  const volume  = VOLUME_MAP[scores.operationalVolume]  ?? 0;
-  const minutes = TIME_MAP[scores.executionTime]        ?? 0;
-  const people  = PEOPLE_MAP[scores.peopleInvolved]     ?? 1;
+export function calculateAnnualHours(scores: CriteriaScores, realValues?: RealValues): number {
+  const volume  = realValues?.volume      ?? VOLUME_MAP[scores.operationalVolume]  ?? 0;
+  const minutes = realValues?.timeMinutes ?? TIME_MAP[scores.executionTime]        ?? 0;
+  const people  = realValues?.people      ?? PEOPLE_MAP[scores.peopleInvolved]     ?? 1;
   return Math.round((volume * minutes * people * 12) / 60);
 }
 
