@@ -374,23 +374,23 @@ export default function RankingScreen({ assessments, onRestart }: Props) {
         </button>
       </div>
 
+      {/* Page title — outside the printable card area */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-gray-900">
+          Oportunidades de Eficiência Operacional
+        </h2>
+        {savedIdentification && (
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+            {savedIdentification.company       && <span>Empresa: <span className="font-medium text-gray-600">{savedIdentification.company}</span></span>}
+            {savedIdentification.area          && <span>Área: <span className="font-medium text-gray-600">{savedIdentification.area}</span></span>}
+            {savedIdentification.respondentName && <span>Respondente: <span className="font-medium text-gray-600">{savedIdentification.respondentName}</span></span>}
+            {savedIdentification.email         && <span>E-mail: <span className="font-medium text-gray-600">{savedIdentification.email}</span></span>}
+          </div>
+        )}
+      </div>
+
       {/* ── Results content ───────────────────────────────────────────── */}
       <div id="diagnostic-results" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
-
-        {/* Page title */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Oportunidades de Eficiência Operacional
-          </h2>
-          {savedIdentification && (
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-              {savedIdentification.company       && <span>Empresa: <span className="font-medium text-gray-600">{savedIdentification.company}</span></span>}
-              {savedIdentification.area          && <span>Área: <span className="font-medium text-gray-600">{savedIdentification.area}</span></span>}
-              {savedIdentification.respondentName && <span>Respondente: <span className="font-medium text-gray-600">{savedIdentification.respondentName}</span></span>}
-              {savedIdentification.email         && <span>E-mail: <span className="font-medium text-gray-600">{savedIdentification.email}</span></span>}
-            </div>
-          )}
-        </div>
 
         {/* ── 1. Executive impact metrics ───────────────────────────────── */}
         <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
