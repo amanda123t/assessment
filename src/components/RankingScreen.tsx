@@ -185,38 +185,23 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   const totalSavingsHours    = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
   const totalFinancialImpact = assessments.reduce((s, a) => s + a.financialImpact, 0);
 
-  const totalFteEquivalent    = Math.round((totalSavingsHours / FTE_HOURS_YEAR) * 10) / 10;
-  const totalFteCurrent       = Math.round((totalAnnualHours / FTE_HOURS_YEAR) * 10) / 10;
-  const totalFteAfterAuto     = Math.max(0, Math.round((totalFteCurrent - totalFteEquivalent) * 10) / 10);
-  const totalCapacityGain     = totalAnnualHours > 0
-    ? Math.round((totalSavingsHours / totalAnnualHours) * 100)
-    : 0;
+  const totalFteEquivalent = Math.round((totalSavingsHours / FTE_HOURS_YEAR) * 10) / 10;
 
   // Display values — fall back to model defaults when no refinement has been applied
-  const dispAnnualHours       = refinedImpact?.annualHours       ?? totalAnnualHours;
-  const dispSavingsHours      = refinedImpact?.savingsHours      ?? totalSavingsHours;
-  const dispFteEquivalent     = refinedImpact?.fteEquivalent     ?? totalFteEquivalent;
-  const dispCapacityGain      = refinedImpact?.capacityGain      ?? totalCapacityGain;
-  const dispFinancialImpact   = refinedImpact?.financialImpact   ?? totalFinancialImpact;
-  const dispHourlyCost        = refinedImpact?.hourlyCost        ?? HOURLY_COST;
-  const dispFteCurrent        = refinedImpact?.fteCurrent        ?? totalFteCurrent;
-  const dispFteAfterAutomation = refinedImpact?.fteAfterAutomation ?? totalFteAfterAuto;
+  const dispSavingsHours    = refinedImpact?.savingsHours    ?? totalSavingsHours;
+  const dispFteEquivalent   = refinedImpact?.fteEquivalent   ?? totalFteEquivalent;
+  const dispFinancialImpact = refinedImpact?.financialImpact ?? totalFinancialImpact;
+  const dispHourlyCost      = refinedImpact?.hourlyCost      ?? HOURLY_COST;
 
   // ── Operational equivalencies (for executive readability) ─────────────────
   /** Automatable hours converted to a monthly figure. */
   const dispSavingsHorasMes = dispSavingsHours / 12;
   /** Monthly automatable hours expressed in standard 8 h workdays. */
   const dispSavingsDiasMes  = dispSavingsHorasMes / 8;
-  /** Total hours the current team dedicates monthly (1 FTE = 160 h/month). */
-  const dispCurrentHorasMes = dispFteCurrent * 160;
   /** Estimated total people involved, derived from questionnaire scores. */
   const totalEstimatedPeople = assessments.reduce(
     (sum, a) => sum + (PEOPLE_MAP[a.scores.peopleInvolved] ?? 0), 0,
   );
-  /** Equivalent operational effort per person per month (current hours ÷ people). */
-  const horasPorPessoaMes = totalEstimatedPeople > 0
-    ? dispCurrentHorasMes / totalEstimatedPeople
-    : null;
 
   const handleRecalculate = () => {
     const newPerSubprocess: typeof perSubprocessRefined = {};
@@ -227,7 +212,9 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     assessments.forEach((a) => {
       const override = subprocessOverrides[a.subprocessId];
 
-      // People: if provided, multiply base annualHours by headcount to get total team effort
+      // People: when overridden, recalculate annual hours from base volume × time ×
+      // new people count.  Do NOT scale a.annualHours — it already includes the
+      // original people estimate, so multiplying again would double-count.
       const rawSpPeople     = parseFloat(override?.people ?? '');
       const effectivePeople = (!isNaN(rawSpPeople) && rawSpPeople > 0) ? rawSpPeople : null;
 
@@ -236,7 +223,11 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
       const effectiveCost = (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost : HOURLY_COST;
 
       const newAnnual = effectivePeople !== null
-        ? Math.round(a.annualHours * effectivePeople)
+        ? Math.round(
+            (VOLUME_MAP[a.scores.operationalVolume] ?? 0) *
+            (TIME_MAP[a.scores.executionTime]       ?? 0) *
+            effectivePeople * 12 / 60
+          )
         : a.annualHours;
 
       const newSavings         = calculateAutomationSavings(newAnnual, a.automationScore);
@@ -506,34 +497,10 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                   <span className="font-semibold text-gray-600">{fmtD(totalEstimatedPeople)} colaboradores</span> envolvidos nos processos
                 </p>
               )}
-              {horasPorPessoaMes !== null && (
-                <p className="text-xs text-gray-400">
-                  ≈ <span className="font-semibold text-gray-600">{fmtD(horasPorPessoaMes)} h</span> esforço equivalente por pessoa / mês
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-2">
-              <span className="text-sm font-bold text-blue-700">≈ {dispFteEquivalent.toLocaleString('pt-BR')} FTE</span>
-              <span className="text-xs text-blue-500">de capacidade operacional</span>
             </div>
           </div>
 
-          {/* Card 2 — Operational Capacity Gain */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                <Activity size={15} className="text-emerald-600" strokeWidth={1.75} />
-              </div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Ganho de Capacidade</p>
-            </div>
-            <p className="text-3xl font-extrabold text-emerald-600">+{dispCapacityGain}%</p>
-            <p className="text-xs text-gray-500 mt-0.5 mb-3">aumento na capacidade operacional</p>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              A equipe atual poderia processar ~{dispCapacityGain}% mais volume sem aumento de headcount.
-            </p>
-          </div>
-
-          {/* Card 3 — Financial Impact (scenario) */}
+          {/* Card 2 — Financial Impact (scenario) */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
@@ -548,59 +515,19 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
             </p>
           </div>
 
-        </section>
-
-        {/* ── 1b. FTE Breakdown ─────────────────────────────────────────── */}
-        <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-
-          {/* Card — Esforço operacional atual */}
-          <div
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
-            title="Representa o esforço equivalente de pessoas necessário para executar os processos analisados."
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
-                <Activity size={15} className="text-slate-500" strokeWidth={1.75} />
-              </div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Esforço Operacional Atual</p>
-            </div>
-            <p className="text-3xl font-extrabold text-gray-900">{dispFteCurrent.toLocaleString('pt-BR')} FTE</p>
-            <p className="text-xs text-gray-500 mt-0.5 mb-2">FTE equivalentes — esforço de trabalho para executar os processos avaliados</p>
-            <p className="text-xs text-gray-400">
-              ≈ <span className="font-semibold text-gray-600">{fmtD(dispCurrentHorasMes)} horas</span> de trabalho / mês
-            </p>
-          </div>
-
-          {/* Card — Potencial de automação (FTE liberável) */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                <TrendingUp size={15} className="text-blue-600" strokeWidth={1.75} />
-              </div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Potencial de Automação</p>
-            </div>
-            <p className="text-3xl font-extrabold text-blue-600">{dispFteEquivalent.toLocaleString('pt-BR')} FTE</p>
-            <p className="text-xs text-gray-500 mt-0.5 mb-2">liberado com automação</p>
-            <div className="space-y-0.5">
-              <p className="text-xs text-gray-400">
-                ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsHorasMes)} horas</span> / mês liberadas
-              </p>
-              <p className="text-xs text-gray-400">
-                ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsDiasMes)} dias</span> de trabalho / mês
-              </p>
-            </div>
-          </div>
-
-          {/* Card — Capacidade após automação */}
+          {/* Card 3 — FTE Reduction potential */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                <Target size={15} className="text-emerald-600" strokeWidth={1.75} />
+                <Activity size={15} className="text-emerald-600" strokeWidth={1.75} />
               </div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Capacidade Após Automação</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Redução Potencial de FTE</p>
             </div>
-            <p className="text-3xl font-extrabold text-emerald-600">{dispFteAfterAutomation.toLocaleString('pt-BR')} FTE</p>
-            <p className="text-xs text-gray-500 mt-0.5">FTE remanescente para execução residual do processo</p>
+            <p className="text-3xl font-extrabold text-emerald-600">≈ {fmtD(dispFteEquivalent)} FTE</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-3">liberáveis com automação</p>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Equivalente de esforço operacional que pode ser eliminado ou realocado através da automação dos subprocessos analisados. Não representa necessariamente redução de headcount.
+            </p>
           </div>
 
         </section>
