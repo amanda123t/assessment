@@ -62,6 +62,9 @@ function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessm
     annualHours:            0,
     automationSavingsHours: 0,
     financialImpact:        0,
+    fteCurrent:             0,
+    fteAutomatable:         0,
+    fteAfterAutomation:     0,
   };
 }
 

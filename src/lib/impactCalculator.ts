@@ -4,7 +4,9 @@
  * Converts questionnaire scores (1–4) into operational impact estimates:
  * - Annual operational hours (volume × time × 12 months)
  * - Automation savings hours (based on automationScore thresholds)
- * - FTE equivalent of automatable hours
+ * - FTE currently required to run the process (fteCurrent)
+ * - FTE equivalent of automatable hours (fteAutomatable)
+ * - FTE remaining after automation (fteAfterAutomation)
  * - Operational capacity gain percentage
  * - Estimated financial impact (scenario, based on R$3,000/month salary profile)
  */
@@ -28,21 +30,6 @@ const TIME_MAP: Record<number, number> = {
 };
 
 /**
- * Maps peopleInvolved score (1–4) → effort multiplier.
- * Reflects the cumulative operational effort when multiple people execute the same task.
- * 1 person → 1.0× (base)
- * 2–3 people → 1.5×
- * 4–6 people → 2.0×
- * 6+ people → 3.0×
- */
-const PEOPLE_MAP: Record<number, number> = {
-  1: 1.0,
-  2: 1.4,
-  3: 1.8,
-  4: 2.2,
-};
-
-/**
  * Assumed average productive hours per FTE per year.
  * Standard 40 h/week × 50 weeks.
  */
@@ -56,14 +43,13 @@ export const HOURLY_COST = 50;
 
 /**
  * Calculate annual operational effort in hours.
- * Formula: (volume_per_month × minutes_per_task × 12 × peopleMultiplier) / 60
- * peopleMultiplier accounts for the cumulative effort when multiple people execute the task.
+ * Formula: (volume_per_month × minutes_per_task × 12) / 60
+ * Represents the process effort defined by volume × time, independent of headcount.
  */
 export function calculateAnnualHours(scores: CriteriaScores): number {
   const volume = VOLUME_MAP[scores.operationalVolume] ?? 0;
   const minutes = TIME_MAP[scores.executionTime] ?? 0;
-  const peopleMultiplier = PEOPLE_MAP[scores.peopleInvolved] ?? 1.0;
-  return Math.round((volume * minutes * 12 * peopleMultiplier) / 60);
+  return Math.round((volume * minutes * 12) / 60);
 }
 
 /**
@@ -85,12 +71,30 @@ export function calculateAutomationSavings(
 }
 
 /**
- * Calculate the FTE equivalent of automatable hours.
+ * Calculate the FTE currently required to run the process.
+ * Formula: annualHours / FTE_HOURS_YEAR
+ * Rounded to one decimal place.
+ */
+export function calculateFteCurrent(annualHours: number): number {
+  return Math.round((annualHours / FTE_HOURS_YEAR) * 10) / 10;
+}
+
+/**
+ * Calculate the FTE equivalent of automatable hours (FTE freed by automation).
  * Formula: automatableHours / FTE_HOURS_YEAR
  * Rounded to one decimal place.
  */
 export function calculateFteEquivalent(automatableHours: number): number {
   return Math.round((automatableHours / FTE_HOURS_YEAR) * 10) / 10;
+}
+
+/**
+ * Calculate the FTE remaining after automation.
+ * Formula: max(0, fteCurrent - fteAutomatable)
+ * Rounded to one decimal place.
+ */
+export function calculateFteAfterAutomation(fteCurrent: number, fteAutomatable: number): number {
+  return Math.max(0, Math.round((fteCurrent - fteAutomatable) * 10) / 10);
 }
 
 /**
