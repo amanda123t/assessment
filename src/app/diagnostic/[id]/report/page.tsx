@@ -17,7 +17,7 @@ import { useParams } from 'next/navigation';
 import { collection, query, getDocs, where, doc, getDoc } from 'firebase/firestore';
 
 import { db } from '@/lib/firebase';
-import { processLibrary } from '@/data/processLibrary';
+import { lookupSubprocessById } from '@/data/industryLibrary';
 import { CriteriaScores, SubprocessAssessment } from '@/types';
 import { createAssessment } from '@/lib/assessmentEngine';
 
@@ -26,16 +26,6 @@ import VotingPanel from '@/components/VotingPanel';
 
 // ── Helpers (mirrors diagnostic/[id]/page.tsx) ────────────────────────────────
 
-function lookupSubprocess(subprocessId: string) {
-  for (const macro of processLibrary) {
-    for (const process of macro.processes) {
-      for (const subprocess of process.subprocesses) {
-        if (subprocess.id === subprocessId) return { macro, process, subprocess };
-      }
-    }
-  }
-  return null;
-}
 
 const EMPTY_SCORES: CriteriaScores = {
   operationalVolume: 0, peopleInvolved: 0, executionTime: 0,
@@ -44,7 +34,8 @@ const EMPTY_SCORES: CriteriaScores = {
 
 function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessment {
   const subprocessId  = data.subprocess_id as string;
-  const found         = lookupSubprocess(subprocessId);
+  const looked        = lookupSubprocessById(subprocessId);
+  const found         = looked ? { macro: looked.macroprocess, process: looked.process, subprocess: looked.subprocess } : null;
   const storedScores  = data.scores as CriteriaScores | undefined;
 
   if (found && storedScores) {
