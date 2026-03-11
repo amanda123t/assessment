@@ -23,11 +23,12 @@ interface Props {
 
 // ─── Optional real-value input config ────────────────────────────────────────
 
-/** Config for the optional numeric input shown below certain criteria cards. */
 interface RealInputConfig {
   label: string;
   placeholder: string;
   stateKey: keyof RealValuesRaw;
+  /** Maps the typed value to the corresponding range score (1–4). */
+  autoScore: (v: number) => number;
 }
 
 const REAL_INPUT: Partial<Record<keyof CriteriaScores, RealInputConfig>> = {
@@ -35,20 +36,23 @@ const REAL_INPUT: Partial<Record<keyof CriteriaScores, RealInputConfig>> = {
     label:       'Valor mensal real (opcional)',
     placeholder: 'ex: 350',
     stateKey:    'volume',
+    autoScore:   (v) => v < 50 ? 1 : v <= 200 ? 2 : v <= 500 ? 3 : 4,
   },
   executionTime: {
     label:       'Tempo médio real por pessoa, em minutos (opcional)',
     placeholder: 'ex: 12',
     stateKey:    'timeMinutes',
+    autoScore:   (v) => v < 5 ? 1 : v <= 15 ? 2 : v <= 30 ? 3 : 4,
   },
   peopleInvolved: {
     label:       'Quantidade exata de pessoas (opcional)',
     placeholder: 'ex: 4',
     stateKey:    'people',
+    autoScore:   (v) => v <= 1 ? 1 : v <= 3 ? 2 : v <= 6 ? 3 : 4,
   },
 };
 
-// Raw state stores strings so inputs are fully controlled without NaN issues
+// Raw state uses strings so inputs are fully controlled
 interface RealValuesRaw {
   volume:      string;
   timeMinutes: string;
@@ -80,7 +84,6 @@ export default function Questionnaire({
   onComplete,
   onBack,
 }: Props) {
-  // Scores reset on every subprocess remount (parent uses key={subprocess.id})
   const [scores, setScores] = useState<CriteriaScores>(getEmptyScores());
   const [realRaw, setRealRaw] = useState<RealValuesRaw>(EMPTY_REAL);
 
@@ -93,8 +96,27 @@ export default function Questionnaire({
     setScores((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleRealInput = (stateKey: keyof RealValuesRaw, value: string) => {
-    setRealRaw((prev) => ({ ...prev, [stateKey]: value }));
+  /**
+   * Handles real-value input change:
+   * 1. Sanitises the string to digits + at most one decimal point (blocks letters).
+   * 2. Auto-selects the matching range button so the criterion counts as answered.
+   */
+  const handleRealInput = (
+    criterionKey: keyof CriteriaScores,
+    cfg: RealInputConfig,
+    rawValue: string,
+  ) => {
+    // Strip anything that isn't a digit or decimal point; allow only one dot
+    const clean = rawValue.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+
+    setRealRaw((prev) => ({ ...prev, [cfg.stateKey]: clean }));
+
+    // Auto-select the matching range so the criterion is considered answered
+    const n = parseFloat(clean);
+    if (!isNaN(n) && n > 0) {
+      const autoScore = cfg.autoScore(n);
+      setScores((prev) => ({ ...prev, [criterionKey]: autoScore }));
+    }
   };
 
   const handleSubmit = () => {
@@ -113,12 +135,10 @@ export default function Questionnaire({
           ← Voltar
         </button>
 
-        {/* Progress counter */}
         <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-1">
           Subprocesso {currentIndex + 1} de {total}
         </p>
 
-        {/* Progress bar */}
         <div className="w-full bg-gray-100 rounded-full h-1 mb-4">
           <div
             className="bg-blue-600 h-1 rounded-full transition-all duration-500"
@@ -126,12 +146,10 @@ export default function Questionnaire({
           />
         </div>
 
-        {/* Breadcrumb */}
         <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">
           {macroprocess.name} › {process.name}
         </p>
 
-        {/* Subprocess name */}
         <h2 className="text-xl font-bold text-gray-900">{subprocess.name}</h2>
 
         <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
@@ -174,18 +192,17 @@ export default function Questionnaire({
                 })}
               </div>
 
-              {/* Optional real-value input */}
+              {/* Optional real-value input — auto-selects matching range on input */}
               {realInputCfg && (
                 <div className="mt-3 flex items-center gap-3">
                   <label className="text-xs text-gray-400 whitespace-nowrap">
                     {realInputCfg.label}
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    step="any"
+                    type="text"
+                    inputMode="decimal"
                     value={realRaw[realInputCfg.stateKey]}
-                    onChange={(e) => handleRealInput(realInputCfg.stateKey, e.target.value)}
+                    onChange={(e) => handleRealInput(criterion.key, realInputCfg, e.target.value)}
                     placeholder={realInputCfg.placeholder}
                     className="w-28 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                   />
