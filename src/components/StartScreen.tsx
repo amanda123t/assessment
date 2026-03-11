@@ -90,31 +90,16 @@ export default function StartScreen({
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                 Selecione sua indústria
               </p>
-              <div className="flex flex-col gap-1.5">
+              <select
+                value={industry ?? ''}
+                onChange={(e) => onIndustryChange(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-gray-700"
+              >
+                <option value="" disabled>Selecione uma indústria...</option>
                 {INDUSTRIES.map((ind) => (
-                  <label
-                    key={ind.id}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-150 ${
-                      industry === ind.id
-                        ? 'bg-blue-50 border-blue-400 text-blue-700'
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="industry"
-                      value={ind.id}
-                      checked={industry === ind.id}
-                      onChange={() => onIndustryChange(ind.id)}
-                      className="accent-blue-600 w-3.5 h-3.5 shrink-0"
-                    />
-                    <span className="text-xs font-medium">{ind.name}</span>
-                  </label>
+                  <option key={ind.id} value={ind.id}>{ind.name}</option>
                 ))}
-              </div>
-              {!industry && (
-                <p className="text-xs text-gray-400 mt-1.5">Selecione uma indústria para iniciar</p>
-              )}
+              </select>
             </div>
 
             {/* 4. Email field */}
