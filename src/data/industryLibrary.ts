@@ -450,6 +450,379 @@ const servicosBpoMacroprocesses: Macroprocess[] = [
   },
 ];
 
+// ── Saúde ─────────────────────────────────────────────────────────────────────
+
+const saudeMacroprocesses: Macroprocess[] = [
+  {
+    id: 'sde-gp',
+    name: 'Gestão de Pacientes',
+    icon: '🏥',
+    processes: [
+      {
+        id: 'sde-gp-adm',
+        name: 'Admissão e Alta',
+        subprocesses: [
+          { id: 'sde-gp-01', code: 'SDE-GP-01', name: 'Registrar admissão do paciente',         process: 'Admissão e Alta',          macroprocess: 'Gestão de Pacientes',    category: 'Patient Management' },
+          { id: 'sde-gp-02', code: 'SDE-GP-02', name: 'Processar alta hospitalar',              process: 'Admissão e Alta',          macroprocess: 'Gestão de Pacientes',    category: 'Patient Management' },
+        ],
+      },
+      {
+        id: 'sde-gp-pro',
+        name: 'Prontuário Eletrônico',
+        subprocesses: [
+          { id: 'sde-gp-03', code: 'SDE-GP-03', name: 'Atualizar prontuário do paciente',       process: 'Prontuário Eletrônico',    macroprocess: 'Gestão de Pacientes',    category: 'Patient Management' },
+          { id: 'sde-gp-04', code: 'SDE-GP-04', name: 'Registrar evolução clínica',             process: 'Prontuário Eletrônico',    macroprocess: 'Gestão de Pacientes',    category: 'Patient Management' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'sde-ag',
+    name: 'Agendamento',
+    icon: '📅',
+    processes: [
+      {
+        id: 'sde-ag-con',
+        name: 'Agendamento de Consultas',
+        subprocesses: [
+          { id: 'sde-ag-01', code: 'SDE-AG-01', name: 'Agendar consulta médica',                process: 'Agendamento de Consultas', macroprocess: 'Agendamento',            category: 'Scheduling' },
+          { id: 'sde-ag-02', code: 'SDE-AG-02', name: 'Confirmar e lembrar agendamento',        process: 'Agendamento de Consultas', macroprocess: 'Agendamento',            category: 'Scheduling' },
+          { id: 'sde-ag-03', code: 'SDE-AG-03', name: 'Registrar cancelamento ou falta',        process: 'Agendamento de Consultas', macroprocess: 'Agendamento',            category: 'Scheduling' },
+        ],
+      },
+      {
+        id: 'sde-ag-exa',
+        name: 'Agendamento de Exames',
+        subprocesses: [
+          { id: 'sde-ag-04', code: 'SDE-AG-04', name: 'Solicitar autorização de exame',         process: 'Agendamento de Exames',    macroprocess: 'Agendamento',            category: 'Scheduling' },
+          { id: 'sde-ag-05', code: 'SDE-AG-05', name: 'Agendar exame e notificar paciente',     process: 'Agendamento de Exames',    macroprocess: 'Agendamento',            category: 'Scheduling' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'sde-fat',
+    name: 'Faturamento Hospitalar',
+    icon: '💊',
+    processes: [
+      {
+        id: 'sde-fat-tiss',
+        name: 'Faturamento para Convênios',
+        subprocesses: [
+          { id: 'sde-fat-01', code: 'SDE-FAT-01', name: 'Montar conta hospitalar (TISS)',       process: 'Faturamento para Convênios', macroprocess: 'Faturamento Hospitalar', category: 'Healthcare Billing' },
+          { id: 'sde-fat-02', code: 'SDE-FAT-02', name: 'Submeter lote de cobrança',            process: 'Faturamento para Convênios', macroprocess: 'Faturamento Hospitalar', category: 'Healthcare Billing' },
+          { id: 'sde-fat-03', code: 'SDE-FAT-03', name: 'Controlar e contestar glosas',         process: 'Faturamento para Convênios', macroprocess: 'Faturamento Hospitalar', category: 'Healthcare Billing' },
+        ],
+      },
+    ],
+  },
+];
+
+// ── Logística / Transporte ────────────────────────────────────────────────────
+
+const logisticaMacroprocesses: Macroprocess[] = [
+  {
+    id: 'log-fr',
+    name: 'Gestão de Frotas',
+    icon: '🚛',
+    processes: [
+      {
+        id: 'log-fr-prog',
+        name: 'Programação de Rotas',
+        subprocesses: [
+          { id: 'log-fr-01', code: 'LOG-FR-01', name: 'Programar rota de entrega',               process: 'Programação de Rotas',     macroprocess: 'Gestão de Frotas',       category: 'Fleet Management' },
+          { id: 'log-fr-02', code: 'LOG-FR-02', name: 'Registrar saída de veículo',              process: 'Programação de Rotas',     macroprocess: 'Gestão de Frotas',       category: 'Fleet Management' },
+          { id: 'log-fr-03', code: 'LOG-FR-03', name: 'Registrar chegada e ocorrências',         process: 'Programação de Rotas',     macroprocess: 'Gestão de Frotas',       category: 'Fleet Management' },
+        ],
+      },
+      {
+        id: 'log-fr-mnt',
+        name: 'Manutenção de Veículos',
+        subprocesses: [
+          { id: 'log-fr-04', code: 'LOG-FR-04', name: 'Agendar manutenção preventiva',           process: 'Manutenção de Veículos',   macroprocess: 'Gestão de Frotas',       category: 'Fleet Management' },
+          { id: 'log-fr-05', code: 'LOG-FR-05', name: 'Registrar manutenção corretiva',          process: 'Manutenção de Veículos',   macroprocess: 'Gestão de Frotas',       category: 'Fleet Management' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'log-arm',
+    name: 'Armazenagem',
+    icon: '🏗️',
+    processes: [
+      {
+        id: 'log-arm-rec',
+        name: 'Recebimento',
+        subprocesses: [
+          { id: 'log-arm-01', code: 'LOG-ARM-01', name: 'Conferir carga recebida',               process: 'Recebimento',              macroprocess: 'Armazenagem',            category: 'Warehouse Operations' },
+          { id: 'log-arm-02', code: 'LOG-ARM-02', name: 'Registrar entrada em estoque',          process: 'Recebimento',              macroprocess: 'Armazenagem',            category: 'Warehouse Operations' },
+        ],
+      },
+      {
+        id: 'log-arm-exp',
+        name: 'Expedição',
+        subprocesses: [
+          { id: 'log-arm-03', code: 'LOG-ARM-03', name: 'Separar e embalar pedido',              process: 'Expedição',                macroprocess: 'Armazenagem',            category: 'Warehouse Operations' },
+          { id: 'log-arm-04', code: 'LOG-ARM-04', name: 'Emitir nota fiscal de saída',           process: 'Expedição',                macroprocess: 'Armazenagem',            category: 'Warehouse Operations' },
+          { id: 'log-arm-05', code: 'LOG-ARM-05', name: 'Emitir romaneio de carga',              process: 'Expedição',                macroprocess: 'Armazenagem',            category: 'Warehouse Operations' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'log-rastr',
+    name: 'Rastreamento de Entregas',
+    icon: '📍',
+    processes: [
+      {
+        id: 'log-rastr-mon',
+        name: 'Monitoramento',
+        subprocesses: [
+          { id: 'log-rastr-01', code: 'LOG-RST-01', name: 'Atualizar status de entrega',         process: 'Monitoramento',            macroprocess: 'Rastreamento de Entregas', category: 'Delivery Tracking' },
+          { id: 'log-rastr-02', code: 'LOG-RST-02', name: 'Registrar ocorrência de entrega',     process: 'Monitoramento',            macroprocess: 'Rastreamento de Entregas', category: 'Delivery Tracking' },
+          { id: 'log-rastr-03', code: 'LOG-RST-03', name: 'Confirmar entrega ao destinatário',   process: 'Monitoramento',            macroprocess: 'Rastreamento de Entregas', category: 'Delivery Tracking' },
+        ],
+      },
+    ],
+  },
+];
+
+// ── Seguros ───────────────────────────────────────────────────────────────────
+
+const segurosMacroprocesses: Macroprocess[] = [
+  {
+    id: 'seg-ap',
+    name: 'Emissão de Apólices',
+    icon: '📜',
+    processes: [
+      {
+        id: 'seg-ap-prop',
+        name: 'Proposta e Aceitação',
+        subprocesses: [
+          { id: 'seg-ap-01', code: 'SEG-AP-01', name: 'Cadastrar proposta de seguro',            process: 'Proposta e Aceitação',     macroprocess: 'Emissão de Apólices',    category: 'Policy Issuance' },
+          { id: 'seg-ap-02', code: 'SEG-AP-02', name: 'Analisar risco e aceitar proposta',       process: 'Proposta e Aceitação',     macroprocess: 'Emissão de Apólices',    category: 'Policy Issuance' },
+          { id: 'seg-ap-03', code: 'SEG-AP-03', name: 'Emitir apólice e enviar ao segurado',     process: 'Proposta e Aceitação',     macroprocess: 'Emissão de Apólices',    category: 'Policy Issuance' },
+        ],
+      },
+      {
+        id: 'seg-ap-end',
+        name: 'Endosso e Cancelamento',
+        subprocesses: [
+          { id: 'seg-ap-04', code: 'SEG-AP-04', name: 'Processar endosso de apólice',            process: 'Endosso e Cancelamento',   macroprocess: 'Emissão de Apólices',    category: 'Policy Issuance' },
+          { id: 'seg-ap-05', code: 'SEG-AP-05', name: 'Processar cancelamento de apólice',       process: 'Endosso e Cancelamento',   macroprocess: 'Emissão de Apólices',    category: 'Policy Issuance' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'seg-sin',
+    name: 'Gestão de Sinistros',
+    icon: '⚠️',
+    processes: [
+      {
+        id: 'seg-sin-avi',
+        name: 'Aviso e Análise',
+        subprocesses: [
+          { id: 'seg-sin-01', code: 'SEG-SIN-01', name: 'Registrar aviso de sinistro',           process: 'Aviso e Análise',          macroprocess: 'Gestão de Sinistros',    category: 'Claims Management' },
+          { id: 'seg-sin-02', code: 'SEG-SIN-02', name: 'Analisar cobertura e documentação',     process: 'Aviso e Análise',          macroprocess: 'Gestão de Sinistros',    category: 'Claims Management' },
+          { id: 'seg-sin-03', code: 'SEG-SIN-03', name: 'Regulação e liquidação do sinistro',    process: 'Aviso e Análise',          macroprocess: 'Gestão de Sinistros',    category: 'Claims Management' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'seg-cob',
+    name: 'Cobrança de Prêmios',
+    icon: '💰',
+    processes: [
+      {
+        id: 'seg-cob-prm',
+        name: 'Emissão e Cobrança',
+        subprocesses: [
+          { id: 'seg-cob-01', code: 'SEG-COB-01', name: 'Emitir boleto de prêmio',               process: 'Emissão e Cobrança',       macroprocess: 'Cobrança de Prêmios',    category: 'Premium Billing' },
+          { id: 'seg-cob-02', code: 'SEG-COB-02', name: 'Baixar pagamento de prêmio',            process: 'Emissão e Cobrança',       macroprocess: 'Cobrança de Prêmios',    category: 'Premium Billing' },
+          { id: 'seg-cob-03', code: 'SEG-COB-03', name: 'Processar renovação de apólice',        process: 'Emissão e Cobrança',       macroprocess: 'Cobrança de Prêmios',    category: 'Premium Billing' },
+        ],
+      },
+    ],
+  },
+];
+
+// ── Tecnologia / SaaS ─────────────────────────────────────────────────────────
+
+const tecnologiaMacroprocesses: Macroprocess[] = [
+  {
+    id: 'tec-ob',
+    name: 'Onboarding de Clientes',
+    icon: '🚀',
+    processes: [
+      {
+        id: 'tec-ob-prov',
+        name: 'Provisionamento',
+        subprocesses: [
+          { id: 'tec-ob-01', code: 'TEC-OB-01', name: 'Criar conta e ambiente do cliente',       process: 'Provisionamento',          macroprocess: 'Onboarding de Clientes', category: 'Customer Onboarding' },
+          { id: 'tec-ob-02', code: 'TEC-OB-02', name: 'Configurar parâmetros iniciais',          process: 'Provisionamento',          macroprocess: 'Onboarding de Clientes', category: 'Customer Onboarding' },
+          { id: 'tec-ob-03', code: 'TEC-OB-03', name: 'Habilitar usuários e permissões',         process: 'Provisionamento',          macroprocess: 'Onboarding de Clientes', category: 'Customer Onboarding' },
+        ],
+      },
+      {
+        id: 'tec-ob-trn',
+        name: 'Treinamento e Ativação',
+        subprocesses: [
+          { id: 'tec-ob-04', code: 'TEC-OB-04', name: 'Enviar materiais de onboarding',          process: 'Treinamento e Ativação',   macroprocess: 'Onboarding de Clientes', category: 'Customer Onboarding' },
+          { id: 'tec-ob-05', code: 'TEC-OB-05', name: 'Registrar conclusão de onboarding',       process: 'Treinamento e Ativação',   macroprocess: 'Onboarding de Clientes', category: 'Customer Onboarding' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tec-sup',
+    name: 'Suporte Técnico',
+    icon: '🛟',
+    processes: [
+      {
+        id: 'tec-sup-cha',
+        name: 'Gestão de Chamados',
+        subprocesses: [
+          { id: 'tec-sup-01', code: 'TEC-SUP-01', name: 'Abrir e classificar chamado',           process: 'Gestão de Chamados',       macroprocess: 'Suporte Técnico',        category: 'Technical Support' },
+          { id: 'tec-sup-02', code: 'TEC-SUP-02', name: 'Escalar chamado crítico (L2/L3)',       process: 'Gestão de Chamados',       macroprocess: 'Suporte Técnico',        category: 'Technical Support' },
+          { id: 'tec-sup-03', code: 'TEC-SUP-03', name: 'Encerrar chamado e registrar solução',  process: 'Gestão de Chamados',       macroprocess: 'Suporte Técnico',        category: 'Technical Support' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tec-bil',
+    name: 'Billing / Cobrança',
+    icon: '🧾',
+    processes: [
+      {
+        id: 'tec-bil-rec',
+        name: 'Cobrança Recorrente',
+        subprocesses: [
+          { id: 'tec-bil-01', code: 'TEC-BIL-01', name: 'Gerar fatura recorrente (MRR)',         process: 'Cobrança Recorrente',      macroprocess: 'Billing / Cobrança',     category: 'SaaS Billing' },
+          { id: 'tec-bil-02', code: 'TEC-BIL-02', name: 'Processar pagamento / falha',           process: 'Cobrança Recorrente',      macroprocess: 'Billing / Cobrança',     category: 'SaaS Billing' },
+          { id: 'tec-bil-03', code: 'TEC-BIL-03', name: 'Gerenciar upgrade / downgrade de plano', process: 'Cobrança Recorrente',     macroprocess: 'Billing / Cobrança',     category: 'SaaS Billing' },
+        ],
+      },
+    ],
+  },
+];
+
+// ── Telecom ───────────────────────────────────────────────────────────────────
+
+const telecomMacroprocesses: Macroprocess[] = [
+  {
+    id: 'tel-at',
+    name: 'Ativação de Serviços',
+    icon: '📡',
+    processes: [
+      {
+        id: 'tel-at-lin',
+        name: 'Ativação de Linha',
+        subprocesses: [
+          { id: 'tel-at-01', code: 'TEL-AT-01', name: 'Ativar linha / SIM card',                 process: 'Ativação de Linha',        macroprocess: 'Ativação de Serviços',   category: 'Service Activation' },
+          { id: 'tel-at-02', code: 'TEL-AT-02', name: 'Configurar plano e serviços adicionais',  process: 'Ativação de Linha',        macroprocess: 'Ativação de Serviços',   category: 'Service Activation' },
+          { id: 'tel-at-03', code: 'TEL-AT-03', name: 'Validar ativação e notificar cliente',    process: 'Ativação de Linha',        macroprocess: 'Ativação de Serviços',   category: 'Service Activation' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tel-port',
+    name: 'Portabilidade',
+    icon: '🔄',
+    processes: [
+      {
+        id: 'tel-port-sol',
+        name: 'Processamento de Portabilidade',
+        subprocesses: [
+          { id: 'tel-port-01', code: 'TEL-PRT-01', name: 'Receber solicitação de portabilidade', process: 'Processamento de Portabilidade', macroprocess: 'Portabilidade',       category: 'Number Portability' },
+          { id: 'tel-port-02', code: 'TEL-PRT-02', name: 'Validar elegibilidade e documentação', process: 'Processamento de Portabilidade', macroprocess: 'Portabilidade',       category: 'Number Portability' },
+          { id: 'tel-port-03', code: 'TEL-PRT-03', name: 'Confirmar portabilidade no sistema',   process: 'Processamento de Portabilidade', macroprocess: 'Portabilidade',       category: 'Number Portability' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tel-cob',
+    name: 'Cobrança e Faturamento',
+    icon: '📋',
+    processes: [
+      {
+        id: 'tel-cob-fat',
+        name: 'Geração de Faturas',
+        subprocesses: [
+          { id: 'tel-cob-01', code: 'TEL-COB-01', name: 'Gerar fatura mensal do cliente',        process: 'Geração de Faturas',       macroprocess: 'Cobrança e Faturamento', category: 'Telecom Billing' },
+          { id: 'tel-cob-02', code: 'TEL-COB-02', name: 'Enviar fatura por e-mail / app',        process: 'Geração de Faturas',       macroprocess: 'Cobrança e Faturamento', category: 'Telecom Billing' },
+          { id: 'tel-cob-03', code: 'TEL-COB-03', name: 'Processar débito automático',           process: 'Geração de Faturas',       macroprocess: 'Cobrança e Faturamento', category: 'Telecom Billing' },
+        ],
+      },
+    ],
+  },
+];
+
+// ── Setor Público ─────────────────────────────────────────────────────────────
+
+const setorPublicoMacroprocesses: Macroprocess[] = [
+  {
+    id: 'gov-lic',
+    name: 'Licitações e Contratos',
+    icon: '🏛️',
+    processes: [
+      {
+        id: 'gov-lic-edi',
+        name: 'Processo Licitatório',
+        subprocesses: [
+          { id: 'gov-lic-01', code: 'GOV-LIC-01', name: 'Publicar edital de licitação',          process: 'Processo Licitatório',     macroprocess: 'Licitações e Contratos', category: 'Public Procurement' },
+          { id: 'gov-lic-02', code: 'GOV-LIC-02', name: 'Receber e analisar propostas',          process: 'Processo Licitatório',     macroprocess: 'Licitações e Contratos', category: 'Public Procurement' },
+          { id: 'gov-lic-03', code: 'GOV-LIC-03', name: 'Homologar e publicar resultado',        process: 'Processo Licitatório',     macroprocess: 'Licitações e Contratos', category: 'Public Procurement' },
+        ],
+      },
+      {
+        id: 'gov-lic-cont',
+        name: 'Gestão de Contratos Públicos',
+        subprocesses: [
+          { id: 'gov-lic-04', code: 'GOV-LIC-04', name: 'Formalizar contrato administrativo',    process: 'Gestão de Contratos Públicos', macroprocess: 'Licitações e Contratos', category: 'Public Procurement' },
+          { id: 'gov-lic-05', code: 'GOV-LIC-05', name: 'Monitorar execução contratual',         process: 'Gestão de Contratos Públicos', macroprocess: 'Licitações e Contratos', category: 'Public Procurement' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'gov-cid',
+    name: 'Atendimento ao Cidadão',
+    icon: '👥',
+    processes: [
+      {
+        id: 'gov-cid-sol',
+        name: 'Gestão de Solicitações',
+        subprocesses: [
+          { id: 'gov-cid-01', code: 'GOV-CID-01', name: 'Receber e protocolar solicitação',      process: 'Gestão de Solicitações',   macroprocess: 'Atendimento ao Cidadão', category: 'Citizen Services' },
+          { id: 'gov-cid-02', code: 'GOV-CID-02', name: 'Encaminhar para área competente',       process: 'Gestão de Solicitações',   macroprocess: 'Atendimento ao Cidadão', category: 'Citizen Services' },
+          { id: 'gov-cid-03', code: 'GOV-CID-03', name: 'Registrar resposta e encerrar',         process: 'Gestão de Solicitações',   macroprocess: 'Atendimento ao Cidadão', category: 'Citizen Services' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'gov-prot',
+    name: 'Gestão de Protocolos',
+    icon: '📁',
+    processes: [
+      {
+        id: 'gov-prot-rec',
+        name: 'Protocolo de Documentos',
+        subprocesses: [
+          { id: 'gov-prot-01', code: 'GOV-PRT-01', name: 'Protocolar documento ou processo',     process: 'Protocolo de Documentos',  macroprocess: 'Gestão de Protocolos',   category: 'Document Management' },
+          { id: 'gov-prot-02', code: 'GOV-PRT-02', name: 'Distribuir e despachar para área',     process: 'Protocolo de Documentos',  macroprocess: 'Gestão de Protocolos',   category: 'Document Management' },
+          { id: 'gov-prot-03', code: 'GOV-PRT-03', name: 'Arquivar processo concluído',          process: 'Protocolo de Documentos',  macroprocess: 'Gestão de Protocolos',   category: 'Document Management' },
+        ],
+      },
+    ],
+  },
+];
+
 // ── Industry definitions ───────────────────────────────────────────────────────
 
 export const INDUSTRIES: Industry[] = [
@@ -472,6 +845,36 @@ export const INDUSTRIES: Industry[] = [
     id: 'servicos-bpo',
     name: 'Serviços / BPO',
     macroprocesses: servicosBpoMacroprocesses,
+  },
+  {
+    id: 'saude',
+    name: 'Saúde',
+    macroprocesses: saudeMacroprocesses,
+  },
+  {
+    id: 'logistica',
+    name: 'Logística / Transporte',
+    macroprocesses: logisticaMacroprocesses,
+  },
+  {
+    id: 'seguros',
+    name: 'Seguros',
+    macroprocesses: segurosMacroprocesses,
+  },
+  {
+    id: 'tecnologia',
+    name: 'Tecnologia / SaaS',
+    macroprocesses: tecnologiaMacroprocesses,
+  },
+  {
+    id: 'telecom',
+    name: 'Telecom',
+    macroprocesses: telecomMacroprocesses,
+  },
+  {
+    id: 'setor-publico',
+    name: 'Setor Público',
+    macroprocesses: setorPublicoMacroprocesses,
   },
 ];
 

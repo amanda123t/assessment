@@ -1,6 +1,7 @@
 'use client';
 
-import { Activity, ClipboardList, BarChart3, TrendingUp, FileDown, Users } from 'lucide-react';
+import { ClipboardList, BarChart3, TrendingUp, FileDown, Users } from 'lucide-react';
+import { INDUSTRIES } from '@/data/industryLibrary';
 
 interface Props {
   onStart: () => void;
@@ -9,6 +10,9 @@ interface Props {
   onCompanyChange: (value: string) => void;
   email: string;
   onEmailChange: (value: string) => void;
+  /** Currently selected industry id, or null if none selected yet. */
+  industry: string | null;
+  onIndustryChange: (id: string) => void;
 }
 
 const features = [
@@ -27,7 +31,14 @@ const criteria = [
   'Integrações entre Sistemas',
 ];
 
-export default function StartScreen({ onStart, onStartGroup, company, onCompanyChange, email, onEmailChange }: Props) {
+export default function StartScreen({
+  onStart, onStartGroup,
+  company, onCompanyChange,
+  email, onEmailChange,
+  industry, onIndustryChange,
+}: Props) {
+  const canStart = !!industry;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex flex-col">
       {/* Header */}
@@ -55,9 +66,34 @@ export default function StartScreen({ onStart, onStartGroup, company, onCompanyC
             Avalie seus processos, descubra gargalos operacionais e priorize as iniciativas
             de automação com maior retorno.
           </p>
-          <p className="text-sm text-gray-400 mb-10">
+          <p className="text-sm text-gray-400 mb-8">
             Diagnóstico gratuito &bull; leva menos de 3 minutos &bull; relatório exportável
           </p>
+
+          {/* Industry selector */}
+          <div className="mb-8 max-w-2xl mx-auto">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Selecione sua indústria
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {INDUSTRIES.map((ind) => (
+                <button
+                  key={ind.id}
+                  onClick={() => onIndustryChange(ind.id)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all duration-150 ${
+                    industry === ind.id
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600 hover:shadow-sm'
+                  }`}
+                >
+                  {ind.name}
+                </button>
+              ))}
+            </div>
+            {!industry && (
+              <p className="text-xs text-gray-400 mt-2">Selecione uma indústria para iniciar o diagnóstico</p>
+            )}
+          </div>
 
           <div className="flex flex-col items-center gap-3 mb-2">
             <input
@@ -79,13 +115,17 @@ export default function StartScreen({ onStart, onStartGroup, company, onCompanyC
             <div className="flex gap-3 mt-1 w-72">
               <button
                 onClick={onStart}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-3 rounded-xl text-sm shadow-md hover:shadow-lg transition-all duration-200"
+                disabled={!canStart}
+                title={!canStart ? 'Selecione uma indústria para iniciar' : undefined}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400 text-white font-semibold px-4 py-3 rounded-xl text-sm shadow-md hover:shadow-lg transition-all duration-200"
               >
                 Responder individual
               </button>
               <button
                 onClick={onStartGroup}
-                className="flex-1 bg-white hover:bg-gray-50 text-gray-800 font-semibold px-4 py-3 rounded-xl text-sm shadow-md hover:shadow-lg border border-gray-200 transition-all duration-200 flex items-center justify-center gap-1.5"
+                disabled={!canStart}
+                title={!canStart ? 'Selecione uma indústria para iniciar' : undefined}
+                className="flex-1 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400 text-gray-800 font-semibold px-4 py-3 rounded-xl text-sm shadow-md hover:shadow-lg border border-gray-200 transition-all duration-200 flex items-center justify-center gap-1.5"
               >
                 <Users size={14} strokeWidth={2} />
                 Em grupo
