@@ -35,6 +35,8 @@ interface Props {
   initialCustomAreas?: CustomArea[];
   /** Called whenever the custom areas list changes so the parent can persist it. */
   onCustomAreasChange?: (areas: CustomArea[]) => void;
+  /** Industry id selected on the start screen — pre-selects the industry chip. */
+  initialIndustry?: string | null;
 }
 
 // ── Modal: create a custom subprocess for an existing library process ─────────
@@ -279,8 +281,9 @@ export default function SubprocessExplorer({
   lockedSubprocessIds = new Set(),
   initialCustomAreas,
   onCustomAreasChange,
+  initialIndustry,
 }: Props) {
-  const [industryId, setIndustryId]               = useState<string | null>(null);
+  const [industryId, setIndustryId]               = useState<string | null>(initialIndustry ?? null);
   const [expandedMacros, setExpandedMacros]       = useState<Set<string>>(new Set());
   const [expandedProcesses, setExpandedProcesses] = useState<Set<string>>(new Set());
   const [showFormFor, setShowFormFor]             = useState<{ macro: Macroprocess; proc: Process } | null>(null);

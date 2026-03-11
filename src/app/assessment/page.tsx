@@ -36,6 +36,7 @@ export default function AssessmentPage() {
   const [state, setState] = useState<AssessmentState>(INITIAL_STATE);
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
+  const [industry, setIndustry] = useState<string | null>(null);
 
   const [answeredSubprocessIds, setAnsweredSubprocessIds] = useState<string[]>([]);
   const [continueError, setContinueError] = useState<string | null>(null);
@@ -126,7 +127,7 @@ export default function AssessmentPage() {
       return;
     }
 
-    setState((s) => ({ ...s, step: 'explore' }));
+    setState((s) => ({ ...s, step: 'explore', industry }));
   }, [company]);
 
   const goToExploreGroup = useCallback(async () => {
@@ -147,12 +148,12 @@ export default function AssessmentPage() {
       setMode('group');
       setShareLink(link);
       setShowShareModal(true);
-      setState((s) => ({ ...s, step: 'explore' }));
+      setState((s) => ({ ...s, step: 'explore', industry }));
     } catch (err) {
       console.error('[Firestore] Failed to create group diagnostic:', err);
       alert('Erro ao criar diagnóstico em grupo. Tente novamente.');
     }
-  }, [company]);
+  }, [company, industry]);
 
   const goBackToStart = useCallback(() => {
     setState((s) => ({ ...s, step: 'start' }));
@@ -476,6 +477,8 @@ export default function AssessmentPage() {
           onCompanyChange={setCompany}
           email={email}
           onEmailChange={setEmail}
+          industry={industry}
+          onIndustryChange={setIndustry}
         />
 
       ) : (
@@ -634,6 +637,7 @@ export default function AssessmentPage() {
                 <SubprocessExplorer
                   selectedIds={selectedIds}
                   customSubprocesses={customSubprocesses}
+                  initialIndustry={state.industry ?? null}
                   onToggle={toggleSubprocess}
                   onToggleAll={toggleAllInProcess}
                   onAddCustom={addCustomSubprocess}

@@ -102,6 +102,8 @@ export interface AssessmentState {
   identification?: AssessmentIdentification;
   /** DD/MM/YYYY string set automatically when the diagnostic starts. */
   generatedAt?: string;
+  /** Selected industry id — used to pre-filter macroprocesses in SubprocessExplorer. */
+  industry?: string | null;
 }
 
 /**
