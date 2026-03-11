@@ -1,32 +1,65 @@
 /**
  * Impact Calculator
  *
- * Converts questionnaire scores (1–4) into operational impact estimates:
- * - Annual operational hours (volume × time × 12 months)
- * - Automation savings hours (based on automationScore thresholds)
- * - FTE currently required to run the process (fteCurrent)
- * - FTE equivalent of automatable hours (fteAutomatable)
- * - FTE remaining after automation (fteAfterAutomation)
- * - Operational capacity gain percentage
- * - Estimated financial impact (scenario, based on R$3,000/month salary profile)
+ * Converts questionnaire scores (1–4) into operational impact estimates using
+ * the midpoint of each answer range, so estimates reflect realistic averages
+ * rather than boundary values.
+ *
+ * Annual effort formula:
+ *   annualHours = (volumeEstimado × tempoPessoaEstimado × pessoasEstimadas × 12) / 60
+ *
+ * - volumeEstimado    → midpoint of operationalVolume range (executions/month)
+ * - tempoPessoaEstimado → midpoint of executionTime range (minutes per person per task)
+ * - pessoasEstimadas  → midpoint of peopleInvolved range
+ * - 12               → months per year
+ * - ÷ 60             → converts minutes to hours
  */
 
 import { CriteriaScores } from '@/types';
 
-/** Maps operationalVolume score (1–4) → monthly executions */
+/**
+ * Maps operationalVolume score (1–4) → estimated monthly executions.
+ * Uses the midpoint of each answer range shown in the questionnaire:
+ *   1 "Menos de 50"  → 25
+ *   2 "50 a 200"     → 125
+ *   3 "200 a 500"    → 350
+ *   4 "Mais de 500"  → 750
+ */
 const VOLUME_MAP: Record<number, number> = {
-  1: 50,
-  2: 150,
+  1: 25,
+  2: 125,
   3: 350,
-  4: 800,
+  4: 750,
 };
 
-/** Maps executionTime score (1–4) → minutes per task */
+/**
+ * Maps executionTime score (1–4) → estimated minutes per person per task.
+ * Uses the midpoint of each answer range shown in the questionnaire:
+ *   1 "Menos de 5 minutos"  → 3
+ *   2 "5 a 15 minutos"      → 10
+ *   3 "15 a 30 minutos"     → 22
+ *   4 "Mais de 30 minutos"  → 45
+ */
 const TIME_MAP: Record<number, number> = {
-  1: 5,
-  2: 15,
-  3: 30,
-  4: 60,
+  1: 3,
+  2: 10,
+  3: 22,
+  4: 45,
+};
+
+/**
+ * Maps peopleInvolved score (1–4) → estimated number of people.
+ * Uses the midpoint of each answer range shown in the questionnaire:
+ *   1 "1 pessoa"       → 1
+ *   2 "2–3 pessoas"    → 2.5
+ *   3 "4–6 pessoas"    → 5
+ *   4 "Mais de 6"      → 7
+ */
+const PEOPLE_MAP: Record<number, number> = {
+  1: 1,
+  2: 2.5,
+  3: 5,
+  4: 7,
 };
 
 /**
@@ -43,13 +76,16 @@ export const HOURLY_COST = 50;
 
 /**
  * Calculate annual operational effort in hours.
- * Formula: (volume_per_month × minutes_per_task × 12) / 60
- * Represents the process effort defined by volume × time, independent of headcount.
+ * Formula: (volumeEstimado × tempoPessoaEstimado × pessoasEstimadas × 12) / 60
+ *
+ * The executionTime field represents time per person per task, so the total
+ * team effort is volume × timePerPerson × numberOfPeople × 12 months.
  */
 export function calculateAnnualHours(scores: CriteriaScores): number {
-  const volume = VOLUME_MAP[scores.operationalVolume] ?? 0;
-  const minutes = TIME_MAP[scores.executionTime] ?? 0;
-  return Math.round((volume * minutes * 12) / 60);
+  const volume  = VOLUME_MAP[scores.operationalVolume]  ?? 0;
+  const minutes = TIME_MAP[scores.executionTime]        ?? 0;
+  const people  = PEOPLE_MAP[scores.peopleInvolved]     ?? 1;
+  return Math.round((volume * minutes * people * 12) / 60);
 }
 
 /**
