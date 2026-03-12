@@ -92,74 +92,76 @@ export const EMPTY_PHASE2_FORM: Phase2FormData = {
 
 // ── Inference ─────────────────────────────────────────────────────────────────
 
-export type AutomationType = 'RPA' | 'Integração de Sistemas' | 'IA / Extração de Dados' | 'Workflow / BPM' | 'Automação Simples';
-export type ComplexityLevel = 'Baixa' | 'Média' | 'Alta';
+export type AutomationPotential = 'ALTO' | 'MÉDIO' | 'BAIXO';
 
-export interface Phase2Inference {
-  automationType:  AutomationType;
-  complexity:      ComplexityLevel;
-  technology:      string;
-  justification:   string;
+export interface Phase2Analysis {
+  potential:   AutomationPotential;
+  description: string;
 }
 
-export function inferAutomation(data: Partial<Phase2FormData>): Phase2Inference | null {
-  if (!data.atividades?.length && !data.seguiRegras && !data.fontesDados?.length) return null;
+/**
+ * Scores the completed form and returns a potential level + description.
+ * Technology is intentionally omitted here — it's reserved for a later output.
+ */
+export function analyzeProcess(data: Partial<Phase2FormData>): Phase2Analysis | null {
+  if (!data.seguiRegras && !data.exigeAnalise) return null;
 
-  // Complexity: based on rule clarity + human analysis + change forecast
-  let complexityScore = 0;
-  if (data.seguiRegras === 'Sempre segue regras claras')             complexityScore += 0;
-  else if (data.seguiRegras === 'Na maioria das vezes segue regras claras') complexityScore += 1;
-  else if (data.seguiRegras === 'Raramente segue regras claras')     complexityScore += 2;
+  let score = 0;
 
-  if (data.exigeAnalise === 'Não exige análise humana')              complexityScore += 0;
-  else if (data.exigeAnalise === 'Exige análise humana em alguns casos') complexityScore += 1;
-  else if (data.exigeAnalise === 'Exige análise humana com frequência')  complexityScore += 2;
+  // Rules clarity
+  if (data.seguiRegras === 'Sempre segue regras claras')                  score += 2;
+  else if (data.seguiRegras === 'Na maioria das vezes segue regras claras') score += 1;
 
-  if (data.previsaoMudanca === 'Mudanças já estão planejadas')        complexityScore += 2;
-  else if (data.previsaoMudanca === 'Existe possibilidade de mudança') complexityScore += 1;
+  // Human analysis
+  if (data.exigeAnalise === 'Não exige análise humana')                   score += 2;
+  else if (data.exigeAnalise === 'Exige análise humana em alguns casos')  score += 1;
 
-  const complexity: ComplexityLevel =
-    complexityScore <= 1 ? 'Baixa' :
-    complexityScore <= 3 ? 'Média' : 'Alta';
+  // Structured activities
+  const structuredActivities = [
+    'Digitar ou cadastrar informações em sistemas',
+    'Copiar ou mover dados entre sistemas',
+    'Comparar dados entre sistemas ou planilhas',
+  ];
+  if ((data.atividades ?? []).some(a => structuredActivities.includes(a))) score += 1;
 
-  // Automation type based on activities + data sources
-  const atividades = data.atividades ?? [];
-  const fontes = data.fontesDados ?? [];
-  const chegam = data.comoChegam ?? [];
+  // Process stability
+  if (data.sempresMesmosPassos === 'Sempre segue os mesmos passos')        score += 1;
+  else if (data.sempresMesmosPassos === 'Na maioria das vezes segue os mesmos passos') score += 0.5;
 
-  const hasAI = chegam.includes('Imagens ou documentos digitalizados') || chegam.includes('Textos livres (e-mails ou mensagens)') ||
-    fontes.includes('Documento (PDF ou imagem)') || atividades.includes('Ler e interpretar documentos ou e-mails');
-  const hasIntegration = data.copiaManual === 'Sim, com frequência' || data.copiaManual === 'Sim, em alguns casos';
-  const hasWorkflow = data.exigeAnalise === 'Exige análise humana em alguns casos' || data.exigeAnalise === 'Exige análise humana com frequência';
-  const isRPA = atividades.includes('Digitar ou cadastrar informações em sistemas') || atividades.includes('Copiar ou mover dados entre sistemas') || atividades.includes('Comparar dados entre sistemas ou planilhas');
+  // Structured data sources
+  const structuredSources = ['Sistema interno', 'Planilha (Excel ou similar)', 'Formulário digital'];
+  if ((data.fontesDados ?? []).some(f => structuredSources.includes(f)))   score += 1;
 
-  let automationType: AutomationType;
-  let technology: string;
+  // Unstructured data penalises slightly
+  if ((data.comoChegam ?? []).some(c => c.includes('Imagens') || c.includes('Textos livres'))) score -= 0.5;
 
-  if (hasAI) {
-    automationType = 'IA / Extração de Dados';
-    technology = 'OCR / NLP / IA Generativa';
-  } else if (hasIntegration && !isRPA) {
-    automationType = 'Integração de Sistemas';
-    technology = 'API Integration / iPaaS';
-  } else if (hasWorkflow && complexity !== 'Baixa') {
-    automationType = 'Workflow / BPM';
-    technology = 'Plataforma de BPM / Low-code';
-  } else if (isRPA) {
-    automationType = 'RPA';
-    technology = 'RPA (UiPath / Power Automate / Automation Anywhere)';
+  const potential: AutomationPotential = score >= 5 ? 'ALTO' : score >= 3 ? 'MÉDIO' : 'BAIXO';
+
+  const atividadePrincipal = (data.atividades?.[0] ?? 'execução de atividades operacionais').toLowerCase();
+
+  let description: string;
+  if (potential === 'ALTO') {
+    description =
+      `O processo possui regras claras, baixa variabilidade e depende de atividades ` +
+      `estruturadas de ${atividadePrincipal}. ` +
+      `As condições são favoráveis para automação direta, com alto potencial de ganho operacional.`;
+  } else if (potential === 'MÉDIO') {
+    description =
+      `O processo apresenta alguma variabilidade e pode exigir análise humana em determinados casos. ` +
+      `O potencial de automação é moderado — recomenda-se identificar as etapas ` +
+      `mais estruturadas para uma implementação incremental.`;
   } else {
-    automationType = 'Automação Simples';
-    technology = 'Power Automate / Zapier / Macro Office';
+    description =
+      `O processo envolve análise humana frequente ou apresenta alta variabilidade, ` +
+      `o que reduz o potencial de automação imediata. ` +
+      `Pode se beneficiar de automação parcial ou ferramentas de apoio à decisão.`;
   }
 
-  const justification =
-    `Processo ${complexity === 'Baixa' ? 'com regras claras e baixa variabilidade' : complexity === 'Média' ? 'com alguma variabilidade e análise ocasional' : 'complexo, com análise humana frequente e possibilidade de mudanças'}. ` +
-    `Tipo de automação indicado: ${automationType}. ` +
-    (complexity === 'Alta' ? 'Recomenda-se mapeamento detalhado antes da implementação.' : 'Boa aderência a automação estruturada.');
-
-  return { automationType, complexity, technology, justification };
+  return { potential, description };
 }
+
+// ── Legacy alias (kept for backward compatibility) ───────────────────────────
+export const inferAutomation = analyzeProcess;
 
 // ── Firestore ─────────────────────────────────────────────────────────────────
 

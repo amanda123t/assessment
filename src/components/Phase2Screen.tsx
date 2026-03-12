@@ -1,17 +1,18 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Plus, ChevronDown, ChevronUp, Save, CheckCircle, Search, X, Tag, Sparkles } from 'lucide-react';
-import { SubprocessAssessment } from '@/types';
+import {
+  Plus, ChevronDown, ChevronUp, Save, CheckCircle,
+  Search, X, Tag, Sparkles, ArrowRight, ChevronLeft,
+} from 'lucide-react';
 import { getAllMacroprocesses } from '@/data/industryLibrary';
 import {
   Phase2FormData,
   EMPTY_PHASE2_FORM,
   savePhase2Response,
-  inferAutomation,
-  Phase2Inference,
+  analyzeProcess,
+  Phase2Analysis,
 } from '@/lib/phase2';
-import { VoteSummary } from '@/lib/votes';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,11 +27,22 @@ interface Phase2Entry {
 interface Props {
   diagnosticId: string;
   prioritized:  Phase2Entry[];
-  /** Pre-loaded saved forms (may be partial) */
   savedForms:   Map<string, Partial<Phase2FormData>>;
 }
 
-// ── Question option helpers ───────────────────────────────────────────────────
+type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 'done';
+
+const STEP_LABELS = [
+  'Identificação',
+  'Etapas do processo',
+  'Tipo de atividade',
+  'Lógica do processo',
+  'Dados e sistemas',
+  'Estabilidade',
+  'Gargalo',
+];
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
 
 function Radio({
   label, value, current, onChange,
@@ -76,8 +88,6 @@ function MultiCheck({
     </button>
   );
 }
-
-// ── Systems tag input ─────────────────────────────────────────────────────────
 
 function SystemsInput({
   value, onChange,
@@ -127,8 +137,6 @@ function SystemsInput({
   );
 }
 
-// ── "Outro" text addon ────────────────────────────────────────────────────────
-
 function OutroField({
   show, value, onChange, placeholder = 'Descreva...',
 }: { show: boolean; value: string; onChange: (v: string) => void; placeholder?: string }) {
@@ -144,55 +152,37 @@ function OutroField({
   );
 }
 
-// ── Inference badge ───────────────────────────────────────────────────────────
-
-function InferenceBadge({ inf }: { inf: Phase2Inference }) {
-  const complexityColor =
-    inf.complexity === 'Baixa'  ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
-    inf.complexity === 'Média'  ? 'bg-amber-50 border-amber-200 text-amber-800' :
-                                   'bg-red-50 border-red-200 text-red-800';
-  return (
-    <div className="mt-4 bg-violet-50 border border-violet-200 rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles size={14} className="text-violet-600" strokeWidth={1.75} />
-        <span className="text-xs font-bold text-violet-800">Análise automática de automação</span>
-      </div>
-      <div className="flex flex-wrap gap-2 mb-3">
-        <span className="inline-block bg-violet-100 border border-violet-200 text-violet-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-          {inf.automationType}
-        </span>
-        <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border ${complexityColor}`}>
-          Complexidade: {inf.complexity}
-        </span>
-        <span className="inline-block bg-gray-100 border border-gray-200 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-          {inf.technology}
-        </span>
-      </div>
-      <p className="text-xs text-violet-700 leading-relaxed">{inf.justification}</p>
-    </div>
-  );
-}
-
-// ── Per-subprocess form ───────────────────────────────────────────────────────
+// ── Per-subprocess wizard card ────────────────────────────────────────────────
 
 interface SubprocessCardProps {
-  entry:       Phase2Entry;
-  diagnosticId: string;
+  entry:          Phase2Entry;
+  diagnosticId:   string;
   respondentName: string;
-  initialData: Partial<Phase2FormData>;
+  initialData:    Partial<Phase2FormData>;
 }
 
 function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: SubprocessCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(!!initialData.departamento || !!initialData.comoComeca);
-  const [data, setData]         = useState<Partial<Phase2FormData>>({ ...EMPTY_PHASE2_FORM, ...initialData });
+  const [data, setData] = useState<Partial<Phase2FormData>>({ ...EMPTY_PHASE2_FORM, ...initialData });
+
+  const [step, setStep] = useState<WizardStep>(() => {
+    if (initialData.gargalo)               return 'done';
+    if (initialData.sempresMesmosPassos)   return 7;
+    if (initialData.fontesDados?.length)   return 6;
+    if (initialData.seguiRegras)           return 5;
+    if (initialData.atividades?.length)    return 4;
+    if (initialData.comoComeca)            return 3;
+    if (initialData.departamento)          return 2;
+    return 1;
+  });
 
   const set = useCallback(<K extends keyof Phase2FormData>(key: K, value: Phase2FormData[K]) => {
     setData(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  const handleSave = async () => {
+  const doSave = async (formData: Partial<Phase2FormData>) => {
     setSaving(true);
     try {
       await savePhase2Response(
@@ -201,7 +191,7 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
         entry.subprocessName,
         entry.processName,
         entry.isPrioritized,
-        { ...data, respondentName },
+        { ...formData, respondentName },
       );
       setSaved(true);
     } catch (err) {
@@ -211,10 +201,29 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
     }
   };
 
-  const inference = inferAutomation(data);
+  const handleContinue = async () => {
+    await doSave(data);
+    if (step === 7) {
+      setStep('done');
+    } else {
+      setStep(((step as number) + 1) as WizardStep);
+    }
+  };
+
+  const handleBack = () => {
+    if (step === 'done') {
+      setStep(7);
+    } else if ((step as number) > 1) {
+      setStep(((step as number) - 1) as WizardStep);
+    }
+  };
+
+  const analysis: Phase2Analysis | null = analyzeProcess(data);
+  const stepNum = step === 'done' ? null : (step as number);
 
   return (
     <div className={`rounded-2xl border shadow-sm overflow-hidden ${entry.isPrioritized ? 'border-violet-200' : 'border-gray-200'}`}>
+
       {/* Card header */}
       <button
         type="button"
@@ -233,11 +242,19 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
                   NÃO PRIORIZADO
                 </span>
               )}
-              {saved && (
+              {step === 'done' ? (
+                <span className="inline-flex items-center gap-1 bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  <CheckCircle size={9} strokeWidth={2} />
+                  Diagnóstico concluído
+                </span>
+              ) : saved && (
                 <span className="inline-flex items-center gap-1 text-emerald-600 text-[10px] font-bold">
                   <CheckCircle size={10} strokeWidth={2} />
                   Salvo
                 </span>
+              )}
+              {stepNum !== null && stepNum > 1 && (
+                <span className="text-[10px] text-gray-400">Etapa {stepNum} de 7</span>
               )}
             </div>
             <p className="text-xs text-gray-400 mt-0.5">{entry.processName}</p>
@@ -249,209 +266,295 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
               média votação {entry.voteAverage.toFixed(1)}
             </span>
           )}
-          {expanded ? <ChevronUp size={16} strokeWidth={2} className="text-gray-400" /> : <ChevronDown size={16} strokeWidth={2} className="text-gray-400" />}
+          {expanded
+            ? <ChevronUp size={16} strokeWidth={2} className="text-gray-400" />
+            : <ChevronDown size={16} strokeWidth={2} className="text-gray-400" />
+          }
         </div>
       </button>
 
-      {/* Form body */}
+      {/* Wizard body */}
       {expanded && (
-        <div className="px-5 py-6 space-y-8 bg-white">
+        <div className="bg-white">
 
-          {/* Block 1 */}
-          <div>
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Bloco 1 — Identificação do processo</h5>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Departamento responsável
-              </label>
-              <input
-                type="text"
-                value={data.departamento ?? ''}
-                onChange={e => set('departamento', e.target.value)}
-                placeholder="Ex: Financeiro, RH, Operações"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-          </div>
-
-          {/* Block 2 */}
-          <div>
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Bloco 2 — Entendendo o processo</h5>
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2">Como esse processo normalmente começa?</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {['Recebimento de e-mail','Solicitação de cliente','Registro em sistema interno','Recebimento de arquivo ou planilha','Recebimento de documento','Geração automática por sistema','Outro (descrever)'].map(opt => (
-                    <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => set('comoComeca', v)} />
+          {/* Step indicator */}
+          {step !== 'done' && (
+            <div className="px-5 pt-5 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">
+                  Etapa {stepNum} de 7 — {STEP_LABELS[(stepNum as number) - 1]}
+                </span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5, 6, 7].map(n => (
+                    <div
+                      key={n}
+                      className={`h-1.5 w-5 rounded-full transition-colors ${
+                        n < (stepNum as number) ? 'bg-blue-600' :
+                        n === stepNum           ? 'bg-blue-400' :
+                                                  'bg-gray-200'
+                      }`}
+                    />
                   ))}
                 </div>
-                <OutroField show={data.comoComeca === 'Outro (descrever)'} value={data.comoComecaOutro ?? ''} onChange={v => set('comoComecaOutro', v)} />
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-1">Quais etapas normalmente acontecem nesse processo?</p>
-                <p className="text-[10px] text-gray-400 mb-2">Selecione as etapas mais comuns.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {['Receber solicitação ou informação','Conferir dados ou documentos','Registrar informações em sistema','Comparar informações entre sistemas ou planilhas','Atualizar dados em sistema','Gerar relatório ou documento','Enviar confirmação ou retorno','Outro (descrever)'].map(opt => (
-                    <MultiCheck key={opt} label={opt} value={opt} current={data.etapas ?? []} onChange={v => set('etapas', v)} />
-                  ))}
-                </div>
-                <OutroField show={(data.etapas ?? []).includes('Outro (descrever)')} value={data.etapasOutro ?? ''} onChange={v => set('etapasOutro', v)} />
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2">Como esse processo normalmente termina?</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {['Informação registrada em sistema','Documento gerado ou enviado','Solicitação aprovada ou concluída','Cliente informado ou atendido','Relatório entregue','Outro (descrever)'].map(opt => (
-                    <Radio key={opt} label={opt} value={opt} current={data.comoTermina ?? ''} onChange={v => set('comoTermina', v)} />
-                  ))}
-                </div>
-                <OutroField show={data.comoTermina === 'Outro (descrever)'} value={data.comoTerminaOutro ?? ''} onChange={v => set('comoTerminaOutro', v)} />
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Block 3 */}
-          <div>
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Bloco 3 — Atividades realizadas</h5>
-            <p className="text-xs font-semibold text-gray-700 mb-1">O que as pessoas fazem principalmente neste processo?</p>
-            <p className="text-[10px] text-gray-400 mb-2">Selecione até duas atividades que mais ocorrem.</p>
-            <div className="space-y-1.5">
-              {[
-                { v: 'Digitar ou cadastrar informações em sistemas',   d: 'Ex.: digitar dados ou preencher campos em um sistema.' },
-                { v: 'Conferir ou validar informações',                 d: 'Ex.: revisar dados ou validar documentos antes de seguir.' },
-                { v: 'Comparar dados entre sistemas ou planilhas',       d: 'Ex.: verificar se informações de um sistema correspondem a outro.' },
-                { v: 'Gerar relatórios ou documentos',                   d: 'Ex.: criar relatórios, planilhas ou documentos a partir de dados.' },
-                { v: 'Copiar ou mover dados entre sistemas',             d: 'Ex.: copiar dados de um sistema para outro.' },
-                { v: 'Ler e interpretar documentos ou e-mails',          d: 'Ex.: analisar informações em PDFs, e-mails ou imagens.' },
-              ].map(({ v, d }) => (
-                <MultiCheck key={v} label={`${v} — ${d}`} value={v} current={data.atividades ?? []} onChange={val => set('atividades', val)} maxItems={2} />
-              ))}
-            </div>
-          </div>
+          <div className="px-5 pb-6 space-y-5">
 
-          {/* Block 4 */}
-          <div>
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Bloco 4 — Como o processo funciona</h5>
-            <div className="space-y-4">
+            {/* ── Step 1: Identificação ─────────────────────────────────── */}
+            {step === 1 && (
               <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2">O processo segue regras claras?</p>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Departamento responsável por este processo
+                </label>
+                <input
+                  type="text"
+                  value={data.departamento ?? ''}
+                  onChange={e => set('departamento', e.target.value)}
+                  placeholder="Ex: Financeiro, RH, Operações"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+            )}
+
+            {/* ── Step 2: Etapas do processo ───────────────────────────── */}
+            {step === 2 && (
+              <div className="space-y-5">
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-2">Como esse processo normalmente começa?</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {['Recebimento de e-mail', 'Solicitação de cliente', 'Registro em sistema interno', 'Recebimento de arquivo ou planilha', 'Recebimento de documento', 'Geração automática por sistema', 'Outro (descrever)'].map(opt => (
+                      <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => set('comoComeca', v)} />
+                    ))}
+                  </div>
+                  <OutroField show={data.comoComeca === 'Outro (descrever)'} value={data.comoComecaOutro ?? ''} onChange={v => set('comoComecaOutro', v)} />
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-1">Quais etapas normalmente acontecem nesse processo?</p>
+                  <p className="text-[10px] text-gray-400 mb-2">Selecione as etapas mais comuns.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {['Receber solicitação ou informação', 'Conferir dados ou documentos', 'Registrar informações em sistema', 'Comparar informações entre sistemas ou planilhas', 'Atualizar dados em sistema', 'Gerar relatório ou documento', 'Enviar confirmação ou retorno', 'Outro (descrever)'].map(opt => (
+                      <MultiCheck key={opt} label={opt} value={opt} current={data.etapas ?? []} onChange={v => set('etapas', v)} />
+                    ))}
+                  </div>
+                  <OutroField show={(data.etapas ?? []).includes('Outro (descrever)')} value={data.etapasOutro ?? ''} onChange={v => set('etapasOutro', v)} />
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-2">Como esse processo normalmente termina?</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {['Informação registrada em sistema', 'Documento gerado ou enviado', 'Solicitação aprovada ou concluída', 'Cliente informado ou atendido', 'Relatório entregue', 'Outro (descrever)'].map(opt => (
+                      <Radio key={opt} label={opt} value={opt} current={data.comoTermina ?? ''} onChange={v => set('comoTermina', v)} />
+                    ))}
+                  </div>
+                  <OutroField show={data.comoTermina === 'Outro (descrever)'} value={data.comoTerminaOutro ?? ''} onChange={v => set('comoTerminaOutro', v)} />
+                </div>
+              </div>
+            )}
+
+            {/* ── Step 3: Tipo de atividade ────────────────────────────── */}
+            {step === 3 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-700 mb-1">O que as pessoas fazem principalmente neste processo?</p>
+                <p className="text-[10px] text-gray-400 mb-3">Selecione até duas atividades que mais ocorrem.</p>
                 <div className="space-y-1.5">
-                  {['Sempre segue regras claras','Na maioria das vezes segue regras claras','Raramente segue regras claras'].map(opt => (
-                    <Radio key={opt} label={opt} value={opt} current={data.seguiRegras ?? ''} onChange={v => set('seguiRegras', v)} />
+                  {[
+                    { v: 'Digitar ou cadastrar informações em sistemas',   d: 'Ex.: digitar dados ou preencher campos em um sistema.' },
+                    { v: 'Conferir ou validar informações',                 d: 'Ex.: revisar dados ou validar documentos antes de seguir.' },
+                    { v: 'Comparar dados entre sistemas ou planilhas',       d: 'Ex.: verificar se informações de um sistema correspondem a outro.' },
+                    { v: 'Gerar relatórios ou documentos',                   d: 'Ex.: criar relatórios, planilhas ou documentos a partir de dados.' },
+                    { v: 'Copiar ou mover dados entre sistemas',             d: 'Ex.: copiar dados de um sistema para outro.' },
+                    { v: 'Ler e interpretar documentos ou e-mails',          d: 'Ex.: analisar informações em PDFs, e-mails ou imagens.' },
+                  ].map(({ v, d }) => (
+                    <MultiCheck key={v} label={`${v} — ${d}`} value={v} current={data.atividades ?? []} onChange={val => set('atividades', val)} maxItems={2} />
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* ── Step 4: Lógica do processo ───────────────────────────── */}
+            {step === 4 && (
+              <div className="space-y-5">
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-2">O processo segue regras claras?</p>
+                  <div className="space-y-1.5">
+                    {['Sempre segue regras claras', 'Na maioria das vezes segue regras claras', 'Raramente segue regras claras'].map(opt => (
+                      <Radio key={opt} label={opt} value={opt} current={data.seguiRegras ?? ''} onChange={v => set('seguiRegras', v)} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-2">Esse processo exige análise ou decisão humana?</p>
+                  <div className="space-y-1.5">
+                    {['Não exige análise humana', 'Exige análise humana em alguns casos', 'Exige análise humana com frequência'].map(opt => (
+                      <Radio key={opt} label={opt} value={opt} current={data.exigeAnalise ?? ''} onChange={v => set('exigeAnalise', v)} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Step 5: Dados e sistemas ─────────────────────────────── */}
+            {step === 5 && (
+              <div className="space-y-5">
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-1">De onde vêm as informações usadas neste processo?</p>
+                  <p className="text-[10px] text-gray-400 mb-2">Selecione as fontes mais comuns.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {['Sistema interno', 'Planilha (Excel ou similar)', 'E-mail', 'Formulário digital', 'Documento (PDF ou imagem)', 'Outro (descrever)'].map(opt => (
+                      <MultiCheck key={opt} label={opt} value={opt} current={data.fontesDados ?? []} onChange={v => set('fontesDados', v)} />
+                    ))}
+                  </div>
+                  <OutroField show={(data.fontesDados ?? []).includes('Outro (descrever)')} value={data.fontesDadosOutro ?? ''} onChange={v => set('fontesDadosOutro', v)} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-1">Como normalmente chegam essas informações?</p>
+                  <p className="text-[10px] text-gray-400 mb-2">Selecione todas as opções que se aplicam.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {['Dados organizados em sistemas ou planilhas', 'Documentos digitais (PDF)', 'Imagens ou documentos digitalizados', 'Textos livres (e-mails ou mensagens)', 'Outro (descrever)'].map(opt => (
+                      <MultiCheck key={opt} label={opt} value={opt} current={data.comoChegam ?? []} onChange={v => set('comoChegam', v)} />
+                    ))}
+                  </div>
+                  <OutroField show={(data.comoChegam ?? []).includes('Outro (descrever)')} value={data.comoChegamOutro ?? ''} onChange={v => set('comoChegamOutro', v)} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-2">Quais sistemas são utilizados neste processo?</p>
+                  <SystemsInput value={data.sistemas ?? []} onChange={v => set('sistemas', v)} />
+                </div>
+              </div>
+            )}
+
+            {/* ── Step 6: Estabilidade ─────────────────────────────────── */}
+            {step === 6 && (
+              <div className="space-y-5">
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-2">Este processo normalmente segue sempre os mesmos passos?</p>
+                  <div className="space-y-1.5">
+                    {['Sempre segue os mesmos passos', 'Na maioria das vezes segue os mesmos passos', 'Varia bastante dependendo do caso'].map(opt => (
+                      <Radio key={opt} label={opt} value={opt} current={data.sempresMesmosPassos ?? ''} onChange={v => set('sempresMesmosPassos', v)} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-2">Existe previsão de mudança nesse processo ou nos sistemas envolvidos?</p>
+                  <div className="space-y-1.5">
+                    {['Não há previsão de mudança', 'Existe possibilidade de mudança', 'Mudanças já estão planejadas', 'Não sei'].map(opt => (
+                      <Radio key={opt} label={opt} value={opt} current={data.previsaoMudanca ?? ''} onChange={v => set('previsaoMudanca', v)} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 mb-2">As informações precisam ser copiadas manualmente entre sistemas?</p>
+                  <div className="space-y-1.5">
+                    {['Não', 'Sim, em alguns casos', 'Sim, com frequência', 'Não sei'].map(opt => (
+                      <Radio key={opt} label={opt} value={opt} current={data.copiaManual ?? ''} onChange={v => set('copiaManual', v)} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Step 7: Gargalo ──────────────────────────────────────── */}
+            {step === 7 && (
               <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2">Esse processo exige análise ou decisão humana?</p>
+                <p className="text-xs font-semibold text-gray-700 mb-1">Qual é o principal gargalo ou dificuldade deste processo hoje?</p>
+                <p className="text-[10px] text-gray-400 mb-3">Selecione o que mais impacta o dia a dia da equipe.</p>
                 <div className="space-y-1.5">
-                  {['Não exige análise humana','Exige análise humana em alguns casos','Exige análise humana com frequência'].map(opt => (
-                    <Radio key={opt} label={opt} value={opt} current={data.exigeAnalise ?? ''} onChange={v => set('exigeAnalise', v)} />
+                  {['Excesso de tempo gasto na execução', 'Muito retrabalho ou erros manuais', 'Grande volume de tarefas operacionais', 'Dependência de pessoas específicas', 'Demora para cumprir prazos ou SLA', 'Falta de integração entre sistemas', 'Outro (descrever)'].map(opt => (
+                    <Radio key={opt} label={opt} value={opt} current={data.gargalo ?? ''} onChange={v => set('gargalo', v)} />
                   ))}
                 </div>
+                <OutroField show={data.gargalo === 'Outro (descrever)'} value={data.gargaloOutro ?? ''} onChange={v => set('gargaloOutro', v)} />
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Block 5 */}
-          <div>
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Bloco 5 — Como os dados chegam</h5>
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-1">De onde vêm as informações usadas neste processo?</p>
-                <p className="text-[10px] text-gray-400 mb-2">Selecione as fontes mais comuns.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {['Sistema interno','Planilha (Excel ou similar)','E-mail','Formulário digital','Documento (PDF ou imagem)','Outro (descrever)'].map(opt => (
-                    <MultiCheck key={opt} label={opt} value={opt} current={data.fontesDados ?? []} onChange={v => set('fontesDados', v)} />
-                  ))}
+            {/* ── Final: Analysis screen ───────────────────────────────── */}
+            {step === 'done' && analysis && (
+              <div className="space-y-4">
+                <div className={`rounded-xl border p-5 ${
+                  analysis.potential === 'ALTO'  ? 'bg-emerald-50 border-emerald-200' :
+                  analysis.potential === 'MÉDIO' ? 'bg-amber-50 border-amber-200' :
+                                                    'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sparkles size={15} className="text-violet-600" strokeWidth={1.75} />
+                    <span className="text-xs font-bold text-gray-800">Resultado do diagnóstico</span>
+                  </div>
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">Potencial de automação</p>
+                  <p className={`text-2xl font-black mb-3 ${
+                    analysis.potential === 'ALTO'  ? 'text-emerald-700' :
+                    analysis.potential === 'MÉDIO' ? 'text-amber-700' :
+                                                      'text-red-700'
+                  }`}>
+                    {analysis.potential}
+                  </p>
+                  <p className="text-xs text-gray-700 leading-relaxed">{analysis.description}</p>
                 </div>
-                <OutroField show={(data.fontesDados ?? []).includes('Outro (descrever)')} value={data.fontesDadosOutro ?? ''} onChange={v => set('fontesDadosOutro', v)} />
+                <button
+                  type="button"
+                  onClick={() => setStep(7)}
+                  className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <ChevronLeft size={12} strokeWidth={2} />
+                  Editar respostas
+                </button>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-1">Como normalmente chegam essas informações?</p>
-                <p className="text-[10px] text-gray-400 mb-2">Selecione todas as opções que se aplicam.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {['Dados organizados em sistemas ou planilhas','Documentos digitais (PDF)','Imagens ou documentos digitalizados','Textos livres (e-mails ou mensagens)','Outro (descrever)'].map(opt => (
-                    <MultiCheck key={opt} label={opt} value={opt} current={data.comoChegam ?? []} onChange={v => set('comoChegam', v)} />
-                  ))}
+            )}
+
+            {step === 'done' && !analysis && (
+              <div className="text-center py-6">
+                <p className="text-xs text-gray-400 mb-2">Preencha todas as etapas para ver a análise.</p>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                >
+                  Reiniciar diagnóstico
+                </button>
+              </div>
+            )}
+
+            {/* ── Navigation bar ───────────────────────────────────────── */}
+            {step !== 'done' && (
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-2">
+                  {(stepNum as number) > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleBack}
+                      className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors"
+                    >
+                      <ChevronLeft size={13} strokeWidth={2} />
+                      Voltar
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => doSave(data)}
+                    disabled={saving || !respondentName.trim()}
+                    className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-40 font-medium transition-colors border border-gray-200 px-3 py-1.5 rounded-lg"
+                  >
+                    <Save size={12} strokeWidth={1.75} />
+                    {saving ? 'Salvando…' : 'Salvar progresso'}
+                  </button>
                 </div>
-                <OutroField show={(data.comoChegam ?? []).includes('Outro (descrever)')} value={data.comoChegamOutro ?? ''} onChange={v => set('comoChegamOutro', v)} />
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  disabled={saving || !respondentName.trim()}
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-lg text-xs transition-colors"
+                >
+                  {step === 7 ? 'Finalizar diagnóstico' : (
+                    <>Continuar <ArrowRight size={13} strokeWidth={2} /></>
+                  )}
+                </button>
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Block 6 */}
-          <div>
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Bloco 6 — Sistemas utilizados</h5>
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2">Quais sistemas são utilizados neste processo?</p>
-                <SystemsInput value={data.sistemas ?? []} onChange={v => set('sistemas', v)} />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2">As informações precisam ser copiadas manualmente entre sistemas?</p>
-                <div className="space-y-1.5">
-                  {['Não','Sim, em alguns casos','Sim, com frequência','Não sei'].map(opt => (
-                    <Radio key={opt} label={opt} value={opt} current={data.copiaManual ?? ''} onChange={v => set('copiaManual', v)} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Block 7 */}
-          <div>
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Bloco 7 — Estabilidade do processo</h5>
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2">Este processo normalmente segue sempre os mesmos passos?</p>
-                <div className="space-y-1.5">
-                  {['Sempre segue os mesmos passos','Na maioria das vezes segue os mesmos passos','Varia bastante dependendo do caso'].map(opt => (
-                    <Radio key={opt} label={opt} value={opt} current={data.sempresMesmosPassos ?? ''} onChange={v => set('sempresMesmosPassos', v)} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2">Existe previsão de mudança nesse processo ou nos sistemas envolvidos?</p>
-                <div className="space-y-1.5">
-                  {['Não há previsão de mudança','Existe possibilidade de mudança','Mudanças já estão planejadas','Não sei'].map(opt => (
-                    <Radio key={opt} label={opt} value={opt} current={data.previsaoMudanca ?? ''} onChange={v => set('previsaoMudanca', v)} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Block 8 */}
-          <div>
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Bloco 8 — Gargalos do processo</h5>
-            <p className="text-xs font-semibold text-gray-700 mb-2">Qual é o principal gargalo ou dificuldade deste processo hoje?</p>
-            <p className="text-[10px] text-gray-400 mb-2">Selecione o que mais impacta o dia a dia da equipe.</p>
-            <div className="space-y-1.5">
-              {['Excesso de tempo gasto na execução','Muito retrabalho ou erros manuais','Grande volume de tarefas operacionais','Dependência de pessoas específicas','Demora para cumprir prazos ou SLA','Falta de integração entre sistemas','Outro (descrever)'].map(opt => (
-                <Radio key={opt} label={opt} value={opt} current={data.gargalo ?? ''} onChange={v => set('gargalo', v)} />
-              ))}
-            </div>
-            <OutroField show={data.gargalo === 'Outro (descrever)'} value={data.gargaloOutro ?? ''} onChange={v => set('gargaloOutro', v)} />
-          </div>
-
-          {/* Inference */}
-          {inference && <InferenceBadge inf={inference} />}
-
-          {/* Save */}
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || !respondentName.trim()}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed
-                         text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
-            >
-              <Save size={14} strokeWidth={1.75} />
-              {saving ? 'Salvando…' : 'Salvar progresso'}
-            </button>
-            {!respondentName.trim() && (
-              <p className="text-[10px] text-amber-600 mt-1.5">Informe seu nome no topo da página para salvar.</p>
+            {!respondentName.trim() && step !== 'done' && (
+              <p className="text-[10px] text-amber-600">Informe seu nome no topo da página para salvar.</p>
             )}
           </div>
         </div>
@@ -464,8 +567,8 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
 
 interface LibraryPickerProps {
   existing: Set<string>;
-  onAdd: (entry: Omit<Phase2Entry, 'isPrioritized'>) => void;
-  onClose: () => void;
+  onAdd:    (entry: Omit<Phase2Entry, 'isPrioritized'>) => void;
+  onClose:  () => void;
 }
 
 function LibraryPicker({ existing, onAdd, onClose }: LibraryPickerProps) {
@@ -526,10 +629,10 @@ function LibraryPicker({ existing, onAdd, onClose }: LibraryPickerProps) {
   );
 }
 
-// ── Manual add form ───────────────────────────────────────────────────────────
+// ── Manual add modal ──────────────────────────────────────────────────────────
 
 interface ManualAddProps {
-  onAdd: (entry: Phase2Entry) => void;
+  onAdd:   (entry: Phase2Entry) => void;
   onClose: () => void;
 }
 
@@ -577,11 +680,11 @@ function ManualAddModal({ onAdd, onClose }: ManualAddProps) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: Props) {
-  const [respondentName,    setRespondentName]    = useState('');
-  const [nameConfirmed,     setNameConfirmed]     = useState(false);
-  const [entries,           setEntries]           = useState<Phase2Entry[]>(prioritized);
-  const [showLibrary,       setShowLibrary]       = useState(false);
-  const [showManual,        setShowManual]        = useState(false);
+  const [respondentName, setRespondentName] = useState('');
+  const [nameConfirmed,  setNameConfirmed]  = useState(false);
+  const [entries,        setEntries]        = useState<Phase2Entry[]>(prioritized);
+  const [showLibrary,    setShowLibrary]    = useState(false);
+  const [showManual,     setShowManual]     = useState(false);
 
   const existingIds = new Set(entries.map(e => e.subprocessId));
 
@@ -617,7 +720,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: 
         )}
       </div>
 
-      {/* Subprocess cards */}
+      {/* Subprocess wizard cards */}
       <div className="space-y-3 mb-6">
         {entries.map(entry => (
           <SubprocessCard
