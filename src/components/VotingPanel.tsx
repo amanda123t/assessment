@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { Star, ChevronDown, ChevronUp, Users, BarChart2 } from 'lucide-react';
 import { SubprocessAssessment } from '@/types';
 import {
@@ -220,8 +220,8 @@ function ConsolidatedResults({ assessments, summaries }: ConsolidatedResultsProp
               const isOpen = expandedArea.has(a.subprocessId);
               const showConsensus = s.count >= 2;
               return (
-                <>
-                  <tr key={a.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                <Fragment key={a.subprocessId}>
+                  <tr className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
                     <td className="px-3 py-3 text-xs">
                       <div className="font-medium text-gray-800">{a.subprocessName}</div>
                       <div className="text-gray-400">{a.processName}</div>
@@ -254,13 +254,13 @@ function ConsolidatedResults({ assessments, summaries }: ConsolidatedResultsProp
                     </td>
                   </tr>
                   {isOpen && s.areaBreakdown.length > 0 && (
-                    <tr key={`${a.subprocessId}-area`} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                    <tr className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
                       <td colSpan={5} className="px-3 pb-3">
                         <AreaTable summary={s} />
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
