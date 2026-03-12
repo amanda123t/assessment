@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import { Star, ChevronDown, ChevronUp, Users, BarChart2 } from 'lucide-react';
 import { SubprocessAssessment } from '@/types';
+import Link from 'next/link';
 import {
   submitVote,
+  deleteAllVotesForAssessment,
   subscribeToVoteSummaries,
   VoteSummary,
   ConsensusLevel,
@@ -15,6 +17,8 @@ import {
 interface Props {
   assessmentId: string;
   assessments: SubprocessAssessment[];
+  /** diagnosticId used for Phase 2 navigation (equals assessmentId in practice) */
+  diagnosticId?: string;
 }
 
 const PRIORITY_LABELS: Record<number, string> = {
@@ -148,10 +152,14 @@ const CONSENSUS_CONFIG_BADGE: Record<ConsensusLevel, { label: string; className:
 interface ConsolidatedResultsProps {
   assessments: SubprocessAssessment[];
   summaries: Map<string, VoteSummary>;
+  assessmentId: string;
+  diagnosticId: string;
 }
 
-function ConsolidatedResults({ assessments, summaries }: ConsolidatedResultsProps) {
+function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticId }: ConsolidatedResultsProps) {
   const [expandedArea, setExpandedArea] = useState<Set<string>>(new Set());
+  const [finalized, setFinalized]       = useState(false);
+  const [resetting, setResetting]       = useState(false);
 
   const voted = assessments.filter(a => (summaries.get(a.subprocessId)?.count ?? 0) > 0);
   const totalVoters = (() => {
@@ -258,13 +266,84 @@ function ConsolidatedResults({ assessments, summaries }: ConsolidatedResultsProp
           </tbody>
         </table>
       </div>
+
+      {/* ── Voting control actions ── */}
+      <div className="mt-5 pt-5 border-t border-gray-100 flex flex-wrap items-center gap-3">
+        {!finalized ? (
+          <>
+            <button
+              onClick={async () => {
+                if (!confirm('Tem certeza? Isso apagará todos os votos registrados e todos deverão votar novamente.')) return;
+                setResetting(true);
+                try {
+                  await deleteAllVotesForAssessment(assessmentId);
+                  window.location.reload();
+                } finally {
+                  setResetting(false);
+                }
+              }}
+              disabled={resetting}
+              className="text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600
+                         hover:bg-gray-50 disabled:opacity-40 transition-colors"
+            >
+              {resetting ? 'Zerando votos…' : 'Votar novamente'}
+            </button>
+            <button
+              onClick={() => setFinalized(true)}
+              className="text-xs font-semibold px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
+            >
+              Encerrar votação
+            </button>
+          </>
+        ) : (
+          <div className="w-full">
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-5 mb-4">
+              <h4 className="text-sm font-bold text-violet-900 mb-1">Subprocessos candidatos ao mapeamento detalhado</h4>
+              <p className="text-xs text-violet-600 mb-4">
+                Os subprocessos abaixo foram priorizados pela votação. Deseja prosseguir com a Fase 2 — mapeamento detalhado de processos?
+              </p>
+              <ul className="space-y-1.5 mb-5">
+                {[...assessments]
+                  .filter(a => (summaries.get(a.subprocessId)?.count ?? 0) > 0)
+                  .sort((a, b) => (summaries.get(b.subprocessId)?.average ?? 0) - (summaries.get(a.subprocessId)?.average ?? 0))
+                  .map(a => {
+                    const s = summaries.get(a.subprocessId)!;
+                    return (
+                      <li key={a.subprocessId} className="flex items-center justify-between gap-3 bg-white rounded-lg px-3 py-2 border border-violet-100 text-xs">
+                        <div>
+                          <span className="font-medium text-gray-800">{a.subprocessName}</span>
+                          <span className="text-gray-400 ml-2">{a.processName}</span>
+                        </div>
+                        <span className="font-bold text-violet-700 shrink-0">média {s.average.toFixed(1)}</span>
+                      </li>
+                    );
+                  })}
+              </ul>
+              <div className="flex items-center gap-3">
+                <Link
+                  href={`/diagnostic/${diagnosticId}/phase2`}
+                  className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors"
+                >
+                  Sim, prosseguir com o mapeamento
+                </Link>
+                <button
+                  onClick={() => setFinalized(false)}
+                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function VotingPanel({ assessmentId, assessments }: Props) {
+export default function VotingPanel({ assessmentId, assessments, diagnosticId }: Props) {
   const [voterToken]                      = useState(() => crypto.randomUUID());
   const [voterName, setVoterName]         = useState('');
   const [voterArea, setVoterArea]         = useState('');
@@ -465,7 +544,12 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
     </div>
 
     {/* Consolidated results — below the voting form */}
-    <ConsolidatedResults assessments={assessments} summaries={summaries} />
+    <ConsolidatedResults
+      assessments={assessments}
+      summaries={summaries}
+      assessmentId={assessmentId}
+      diagnosticId={diagnosticId ?? assessmentId}
+    />
     </div>
   );
 }
