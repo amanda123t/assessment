@@ -28,6 +28,9 @@ export interface Phase2SubprocessData {
   // Block 1 — Identificação
   departamento: string;
 
+  // Block 1b — Descrição do processo
+  descricaoProcesso: string;
+
   // Block 2 — Entendendo o processo
   comoComeca:       string;
   comoComecaOutro:  string;
@@ -69,6 +72,7 @@ export type Phase2FormData = Omit<Phase2SubprocessData, 'diagnosticId' | 'subpro
 export const EMPTY_PHASE2_FORM: Phase2FormData = {
   respondentName:      '',
   departamento:        '',
+  descricaoProcesso:   '',
   comoComeca:          '',
   comoComecaOutro:     '',
   etapas:              [],

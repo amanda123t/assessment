@@ -30,10 +30,11 @@ interface Props {
   savedForms:   Map<string, Partial<Phase2FormData>>;
 }
 
-type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 'done';
+type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 'done';
 
 const STEP_LABELS = [
   'Identificação',
+  'Descrição do processo',
   'Etapas do processo',
   'Tipo de atividade',
   'Lógica do processo',
@@ -169,11 +170,12 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
 
   const [step, setStep] = useState<WizardStep>(() => {
     if (initialData.gargalo)               return 'done';
-    if (initialData.sempresMesmosPassos)   return 7;
-    if (initialData.fontesDados?.length)   return 6;
-    if (initialData.seguiRegras)           return 5;
-    if (initialData.atividades?.length)    return 4;
-    if (initialData.comoComeca)            return 3;
+    if (initialData.sempresMesmosPassos)   return 8;
+    if (initialData.fontesDados?.length)   return 7;
+    if (initialData.seguiRegras)           return 6;
+    if (initialData.atividades?.length)    return 5;
+    if (initialData.comoComeca)            return 4;
+    if (initialData.descricaoProcesso)     return 3;
     if (initialData.departamento)          return 2;
     return 1;
   });
@@ -203,7 +205,7 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
 
   const handleContinue = async () => {
     await doSave(data);
-    if (step === 7) {
+    if (step === 8) {
       setStep('done');
     } else {
       setStep(((step as number) + 1) as WizardStep);
@@ -254,7 +256,7 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
                 </span>
               )}
               {stepNum !== null && stepNum > 1 && (
-                <span className="text-[10px] text-gray-400">Etapa {stepNum} de 7</span>
+                <span className="text-[10px] text-gray-400">Etapa {stepNum} de 8</span>
               )}
             </div>
             <p className="text-xs text-gray-400 mt-0.5">{entry.processName}</p>
@@ -282,13 +284,13 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
             <div className="px-5 pt-5 pb-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">
-                  Etapa {stepNum} de 7 — {STEP_LABELS[(stepNum as number) - 1]}
+                  Etapa {stepNum} de 8 — {STEP_LABELS[(stepNum as number) - 1]}
                 </span>
                 <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5, 6, 7].map(n => (
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
                     <div
                       key={n}
-                      className={`h-1.5 w-5 rounded-full transition-colors ${
+                      className={`h-1.5 w-4 rounded-full transition-colors ${
                         n < (stepNum as number) ? 'bg-blue-600' :
                         n === stepNum           ? 'bg-blue-400' :
                                                   'bg-gray-200'
@@ -318,8 +320,27 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
               </div>
             )}
 
-            {/* ── Step 2: Etapas do processo ───────────────────────────── */}
+            {/* ── Step 2: Descrição do processo ───────────────────────── */}
             {step === 2 && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Descreva brevemente como este processo funciona
+                </label>
+                <p className="text-[10px] text-gray-400 mb-2">
+                  Inclua o objetivo do processo e as principais atividades realizadas pela equipe.
+                </p>
+                <textarea
+                  value={data.descricaoProcesso ?? ''}
+                  onChange={e => set('descricaoProcesso', e.target.value)}
+                  placeholder="Ex: O processo começa quando o cliente envia uma solicitação por e-mail. A equipe confere os dados, registra no sistema e envia a confirmação."
+                  rows={5}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                />
+              </div>
+            )}
+
+            {/* ── Step 3: Etapas do processo ───────────────────────────── */}
+            {step === 3 && (
               <div className="space-y-5">
                 <div>
                   <p className="text-xs font-semibold text-gray-700 mb-2">Como esse processo normalmente começa?</p>
@@ -354,8 +375,8 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
               </div>
             )}
 
-            {/* ── Step 3: Tipo de atividade ────────────────────────────── */}
-            {step === 3 && (
+            {/* ── Step 4: Tipo de atividade ────────────────────────────── */}
+            {step === 4 && (
               <div>
                 <p className="text-xs font-semibold text-gray-700 mb-1">O que as pessoas fazem principalmente neste processo?</p>
                 <p className="text-[10px] text-gray-400 mb-3">Selecione até duas atividades que mais ocorrem.</p>
@@ -374,8 +395,8 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
               </div>
             )}
 
-            {/* ── Step 4: Lógica do processo ───────────────────────────── */}
-            {step === 4 && (
+            {/* ── Step 5: Lógica do processo ───────────────────────────── */}
+            {step === 5 && (
               <div className="space-y-5">
                 <div>
                   <p className="text-xs font-semibold text-gray-700 mb-2">O processo segue regras claras?</p>
@@ -396,8 +417,8 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
               </div>
             )}
 
-            {/* ── Step 5: Dados e sistemas ─────────────────────────────── */}
-            {step === 5 && (
+            {/* ── Step 6: Dados e sistemas ─────────────────────────────── */}
+            {step === 6 && (
               <div className="space-y-5">
                 <div>
                   <p className="text-xs font-semibold text-gray-700 mb-1">De onde vêm as informações usadas neste processo?</p>
@@ -426,8 +447,8 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
               </div>
             )}
 
-            {/* ── Step 6: Estabilidade ─────────────────────────────────── */}
-            {step === 6 && (
+            {/* ── Step 7: Estabilidade ─────────────────────────────────── */}
+            {step === 7 && (
               <div className="space-y-5">
                 <div>
                   <p className="text-xs font-semibold text-gray-700 mb-2">Este processo normalmente segue sempre os mesmos passos?</p>
@@ -456,8 +477,8 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
               </div>
             )}
 
-            {/* ── Step 7: Gargalo ──────────────────────────────────────── */}
-            {step === 7 && (
+            {/* ── Step 8: Gargalo ──────────────────────────────────────── */}
+            {step === 8 && (
               <div>
                 <p className="text-xs font-semibold text-gray-700 mb-1">Qual é o principal gargalo ou dificuldade deste processo hoje?</p>
                 <p className="text-[10px] text-gray-400 mb-3">Selecione o que mais impacta o dia a dia da equipe.</p>
@@ -546,7 +567,7 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
                   disabled={saving || !respondentName.trim()}
                   className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-lg text-xs transition-colors"
                 >
-                  {step === 7 ? 'Finalizar diagnóstico' : (
+                  {step === 8 ? 'Finalizar diagnóstico' : (
                     <>Continuar <ArrowRight size={13} strokeWidth={2} /></>
                   )}
                 </button>
@@ -689,7 +710,17 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: 
   const existingIds = new Set(entries.map(e => e.subprocessId));
 
   const addEntry = (entry: Phase2Entry) => {
-    setEntries(prev => [...prev, { ...entry, isPrioritized: false }]);
+    const newEntry = { ...entry, isPrioritized: false };
+    setEntries(prev => [...prev, newEntry]);
+    // Persist immediately so the entry survives page reload
+    savePhase2Response(
+      diagnosticId,
+      newEntry.subprocessId,
+      newEntry.subprocessName,
+      newEntry.processName,
+      newEntry.isPrioritized,
+      { respondentName },
+    ).catch(err => console.error('[Phase2] Failed to persist new entry:', err));
   };
 
   return (
