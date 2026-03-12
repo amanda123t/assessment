@@ -132,10 +132,24 @@ export default function Phase2Page() {
         }));
       }
 
-      setPrioritized(entries);
-
       // Load any existing Phase 2 partial saves
       const existing = await loadPhase2Responses(id);
+
+      // Include subprocesses manually added via Phase 2 that aren't in the prioritized list
+      const entryIds = new Set(entries.map(e => e.subprocessId));
+      existing.forEach((data) => {
+        if (!entryIds.has(data.subprocessId)) {
+          entries.push({
+            subprocessId:   data.subprocessId,
+            subprocessName: data.subprocessName,
+            processName:    data.processName,
+            isPrioritized:  data.isPrioritized,
+          });
+        }
+      });
+
+      setPrioritized(entries);
+
       const formsMap = new Map<string, Partial<Phase2FormData>>();
       existing.forEach((v, k) => formsMap.set(k, v as Partial<Phase2FormData>));
       setSavedForms(formsMap);

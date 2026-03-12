@@ -689,7 +689,17 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: 
   const existingIds = new Set(entries.map(e => e.subprocessId));
 
   const addEntry = (entry: Phase2Entry) => {
-    setEntries(prev => [...prev, { ...entry, isPrioritized: false }]);
+    const newEntry = { ...entry, isPrioritized: false };
+    setEntries(prev => [...prev, newEntry]);
+    // Persist immediately so the entry survives page reload
+    savePhase2Response(
+      diagnosticId,
+      newEntry.subprocessId,
+      newEntry.subprocessName,
+      newEntry.processName,
+      newEntry.isPrioritized,
+      { respondentName },
+    ).catch(err => console.error('[Phase2] Failed to persist new entry:', err));
   };
 
   return (
