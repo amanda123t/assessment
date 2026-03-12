@@ -13,158 +13,264 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// ── Data model ─────────────────────────────────────────────────────────────────
 
 export interface Phase2SubprocessData {
-  diagnosticId:  string;
-  subprocessId:  string;
+  diagnosticId:   string;
+  subprocessId:   string;
   subprocessName: string;
-  processName:   string;
-  isPrioritized: boolean;
+  processName:    string;
+  isPrioritized:  boolean;
 
   // Respondent
   respondentName: string;
 
-  // Block 1 — Identificação
+  // Identificação
   departamento: string;
 
-  // Block 1b — Descrição do processo
-  descricaoProcesso: string;
+  // Block 1 — Como começa
+  comoComeca: string;
 
-  // Block 2 — Entendendo o processo
-  comoComeca:       string;
-  comoComecaOutro:  string;
-  etapas:           string[];
-  etapasOutro:      string;
-  comoTermina:      string;
-  comoTerminaOutro: string;
+  // Block 2 — Etapas principais
+  etapasPrincipais: string[];
 
-  // Block 3 — Atividades realizadas
-  atividades: string[]; // up to 2
+  // Block 3 — Sequência do processo (ordered builder)
+  sequenciaEtapas: string[];
 
-  // Block 4 — Como o processo funciona
-  seguiRegras:   string;
-  exigeAnalise:  string;
+  // Block 4 — Decisões
+  temDecisao:  string;
+  tipoDecisao: string;
+  falhaDecisao: string;
 
-  // Block 5 — Como os dados chegam
-  fontesDados:      string[];
-  fontesDadosOutro: string;
-  comoChegam:       string[];
-  comoChegamOutro:  string;
+  // Block 5 — Como funciona
+  seguiRegras:  string;
+  exigeAnalise: string;
 
-  // Block 6 — Sistemas utilizados
+  // Block 6 — Origem dos dados
+  fontesDados: string[];
+  comoChegam:  string[];
+
+  // Block 7 — Sistemas
   sistemas:    string[];
   copiaManual: string;
 
-  // Block 7 — Estabilidade do processo
+  // Block 8 — Estabilidade
   sempresMesmosPassos: string;
   previsaoMudanca:     string;
 
-  // Block 8 — Gargalos
-  gargalo:      string;
-  gargaloOutro: string;
+  // Block 9 — Gargalos
+  gargalo: string;
 
   updatedAt?: unknown;
 }
 
-export type Phase2FormData = Omit<Phase2SubprocessData, 'diagnosticId' | 'subprocessId' | 'subprocessName' | 'processName' | 'isPrioritized' | 'updatedAt'>;
+export type Phase2FormData = Omit<
+  Phase2SubprocessData,
+  'diagnosticId' | 'subprocessId' | 'subprocessName' | 'processName' | 'isPrioritized' | 'updatedAt'
+>;
 
 export const EMPTY_PHASE2_FORM: Phase2FormData = {
   respondentName:      '',
   departamento:        '',
-  descricaoProcesso:   '',
   comoComeca:          '',
-  comoComecaOutro:     '',
-  etapas:              [],
-  etapasOutro:         '',
-  comoTermina:         '',
-  comoTerminaOutro:    '',
-  atividades:          [],
+  etapasPrincipais:    [],
+  sequenciaEtapas:     [],
+  temDecisao:          '',
+  tipoDecisao:         '',
+  falhaDecisao:        '',
   seguiRegras:         '',
   exigeAnalise:        '',
   fontesDados:         [],
-  fontesDadosOutro:    '',
   comoChegam:          [],
-  comoChegamOutro:     '',
   sistemas:            [],
   copiaManual:         '',
   sempresMesmosPassos: '',
   previsaoMudanca:     '',
   gargalo:             '',
-  gargaloOutro:        '',
 };
 
-// ── Inference ─────────────────────────────────────────────────────────────────
+// ── Analysis types ─────────────────────────────────────────────────────────────
 
+export type AutomationType     = 'RPA' | 'OCR / IA Extração' | 'IA Assistiva' | 'Integração API';
+export type ComplexityLevel    = 'Baixa' | 'Média' | 'Alta';
 export type AutomationPotential = 'ALTO' | 'MÉDIO' | 'BAIXO';
 
-export interface Phase2Analysis {
-  potential:   AutomationPotential;
-  description: string;
+export interface BPMNNode {
+  type:      'start' | 'activity' | 'gateway' | 'end';
+  label:     string;
+  branches?: { condition: string }[];
 }
 
-/**
- * Scores the completed form and returns a potential level + description.
- * Technology is intentionally omitted here — it's reserved for a later output.
- */
-export function analyzeProcess(data: Partial<Phase2FormData>): Phase2Analysis | null {
-  if (!data.seguiRegras && !data.exigeAnalise) return null;
+export interface Phase2Analysis {
+  potential:      AutomationPotential;
+  tiposAutomacao: AutomationType[];
+  complexidade:   ComplexityLevel;
+  fluxoBPMN:      BPMNNode[];
+  justificativa:  string;
+}
 
-  let score = 0;
+// ── Classification helpers ─────────────────────────────────────────────────────
 
-  // Rules clarity
-  if (data.seguiRegras === 'Sempre segue regras claras')                  score += 2;
-  else if (data.seguiRegras === 'Na maioria das vezes segue regras claras') score += 1;
+function classifyAutomationTypes(data: Partial<Phase2FormData>): AutomationType[] {
+  const types: AutomationType[] = [];
 
-  // Human analysis
-  if (data.exigeAnalise === 'Não exige análise humana')                   score += 2;
-  else if (data.exigeAnalise === 'Exige análise humana em alguns casos')  score += 1;
+  // OCR / IA Extração — documents or images involved
+  const hasDoc =
+    (data.fontesDados ?? []).some(f => f.includes('PDF') || f.includes('Imagem')) ||
+    (data.comoChegam  ?? []).some(c => c.includes('PDF') || c.includes('Imagens') || c.includes('digitaliz'));
+  if (hasDoc) types.push('OCR / IA Extração');
 
-  // Structured activities
-  const structuredActivities = [
-    'Digitar ou cadastrar informações em sistemas',
-    'Copiar ou mover dados entre sistemas',
-    'Comparar dados entre sistemas ou planilhas',
-  ];
-  if ((data.atividades ?? []).some(a => structuredActivities.includes(a))) score += 1;
+  // RPA — cross-system copy or manual copy detected
+  const hasRPA =
+    (data.sequenciaEtapas  ?? []).some(s => s.toLowerCase().includes('copiar')) ||
+    (data.etapasPrincipais ?? []).some(e => e.toLowerCase().includes('copiar') || e.toLowerCase().includes('mover')) ||
+    data.copiaManual === 'Sim, em alguns casos' ||
+    data.copiaManual === 'Sim, com frequência';
+  if (hasRPA) types.push('RPA');
 
-  // Process stability
-  if (data.sempresMesmosPassos === 'Sempre segue os mesmos passos')        score += 1;
-  else if (data.sempresMesmosPassos === 'Na maioria das vezes segue os mesmos passos') score += 0.5;
+  // IA Assistiva — human analysis needed in some cases, or decisions exist
+  const hasIA =
+    data.exigeAnalise === 'Exige análise humana em alguns casos' ||
+    data.temDecisao === 'Sim';
+  if (hasIA) types.push('IA Assistiva');
 
-  // Structured data sources
-  const structuredSources = ['Sistema interno', 'Planilha (Excel ou similar)', 'Formulário digital'];
-  if ((data.fontesDados ?? []).some(f => structuredSources.includes(f)))   score += 1;
+  // Integração API — structured data + multiple systems + clear rules
+  const hasAPI =
+    (data.comoChegam ?? []).some(c => c.includes('estruturad')) &&
+    (data.sistemas   ?? []).length >= 2 &&
+    (data.seguiRegras ?? '').startsWith('Sempre');
+  if (hasAPI) types.push('Integração API');
 
-  // Unstructured data penalises slightly
-  if ((data.comoChegam ?? []).some(c => c.includes('Imagens') || c.includes('Textos livres'))) score -= 0.5;
+  if (types.length === 0) types.push('RPA');
 
-  const potential: AutomationPotential = score >= 5 ? 'ALTO' : score >= 3 ? 'MÉDIO' : 'BAIXO';
+  return types;
+}
 
-  const atividadePrincipal = (data.atividades?.[0] ?? 'execução de atividades operacionais').toLowerCase();
+function classifyComplexity(data: Partial<Phase2FormData>): ComplexityLevel {
+  const unstable      = (data.sempresMesmosPassos ?? '').includes('Varia');
+  const frequentHuman =
+    (data.exigeAnalise ?? '').includes('frequência') ||
+    (data.exigeAnalise ?? '').includes('frequente') ||
+    data.exigeAnalise === 'Exige análise humana com frequência';
 
-  let description: string;
-  if (potential === 'ALTO') {
-    description =
-      `O processo possui regras claras, baixa variabilidade e depende de atividades ` +
-      `estruturadas de ${atividadePrincipal}. ` +
-      `As condições são favoráveis para automação direta, com alto potencial de ganho operacional.`;
-  } else if (potential === 'MÉDIO') {
-    description =
-      `O processo apresenta alguma variabilidade e pode exigir análise humana em determinados casos. ` +
-      `O potencial de automação é moderado — recomenda-se identificar as etapas ` +
-      `mais estruturadas para uma implementação incremental.`;
-  } else {
-    description =
-      `O processo envolve análise humana frequente ou apresenta alta variabilidade, ` +
-      `o que reduz o potencial de automação imediata. ` +
-      `Pode se beneficiar de automação parcial ou ferramentas de apoio à decisão.`;
+  if (unstable || frequentHuman) return 'Alta';
+
+  const rulesAlways  = (data.seguiRegras ?? '').startsWith('Sempre');
+  const stableAlways = (data.sempresMesmosPassos ?? '').startsWith('Sempre');
+  const noDecision   = data.temDecisao !== 'Sim';
+  const fewSystems   = (data.sistemas   ?? []).length <= 1;
+  const noHuman      = data.exigeAnalise === 'Não exige análise humana';
+
+  if (rulesAlways && stableAlways && noDecision && fewSystems && noHuman) return 'Baixa';
+  return 'Média';
+}
+
+function classifyPotential(data: Partial<Phase2FormData>): AutomationPotential {
+  const rulesRarely   = (data.seguiRegras ?? '').startsWith('Raramente');
+  const unstable      = (data.sempresMesmosPassos ?? '').includes('Varia');
+  const frequentHuman =
+    data.exigeAnalise === 'Exige análise humana com frequência';
+
+  if (rulesRarely || unstable || frequentHuman) return 'BAIXO';
+
+  const rulesOk    = (data.seguiRegras         ?? '').startsWith('Sempre') || (data.seguiRegras ?? '').startsWith('Na maioria');
+  const stableOk   = (data.sempresMesmosPassos ?? '').startsWith('Sempre') || (data.sempresMesmosPassos ?? '').startsWith('Na maioria');
+  const structured =
+    (data.comoChegam  ?? []).some(c => c.includes('estruturad')) ||
+    (data.fontesDados ?? []).some(f => f.includes('Sistema') || f.includes('Planilha') || f.includes('Formulário'));
+
+  if (rulesOk && stableOk && structured) return 'ALTO';
+  return 'MÉDIO';
+}
+
+function generateBPMN(data: Partial<Phase2FormData>): BPMNNode[] {
+  const nodes: BPMNNode[] = [{ type: 'start', label: 'Início' }];
+
+  if (data.comoComeca) {
+    nodes.push({ type: 'activity', label: data.comoComeca });
   }
 
-  return { potential, description };
+  const seq = data.sequenciaEtapas ?? [];
+  if (seq.length > 0) {
+    for (const s of seq) nodes.push({ type: 'activity', label: s });
+  } else {
+    for (const e of (data.etapasPrincipais ?? []).slice(0, 5)) {
+      nodes.push({ type: 'activity', label: e });
+    }
+  }
+
+  if (data.temDecisao === 'Sim' && data.tipoDecisao) {
+    nodes.push({
+      type:     'gateway',
+      label:    data.tipoDecisao,
+      branches: [
+        { condition: 'Válido / OK' },
+        { condition: data.falhaDecisao || 'Falha' },
+      ],
+    });
+  }
+
+  nodes.push({ type: 'end', label: 'Fim' });
+  return nodes;
 }
 
-// ── Legacy alias (kept for backward compatibility) ───────────────────────────
+function buildJustificativa(
+  data:       Partial<Phase2FormData>,
+  potential:  AutomationPotential,
+  types:      AutomationType[],
+  complexity: ComplexityLevel,
+): string {
+  const parts: string[] = [];
+
+  if (potential === 'ALTO')        parts.push('O processo apresenta alto potencial de automação');
+  else if (potential === 'MÉDIO')  parts.push('O processo apresenta potencial moderado de automação');
+  else                             parts.push('O processo apresenta baixo potencial de automação imediata');
+
+  if (data.seguiRegras) {
+    const r = data.seguiRegras.toLowerCase();
+    if (r.startsWith('sempre'))        parts.push('as regras de execução são claras e previsíveis');
+    else if (r.startsWith('na maioria')) parts.push('as regras são relativamente claras com algumas exceções');
+    else                               parts.push('as regras de execução são pouco padronizadas');
+  }
+
+  if (data.sempresMesmosPassos) {
+    if (data.sempresMesmosPassos.startsWith('Sempre'))
+      parts.push('o fluxo é estável e repetitivo');
+    else if (data.sempresMesmosPassos.includes('Varia'))
+      parts.push('o fluxo varia bastante dependendo do caso');
+  }
+
+  if (data.exigeAnalise === 'Não exige análise humana')
+    parts.push('não há necessidade de julgamento humano');
+  else if (data.exigeAnalise?.includes('alguns casos'))
+    parts.push('há intervenção humana em casos específicos');
+  else if (data.exigeAnalise?.includes('frequência') || data.exigeAnalise?.includes('frequente'))
+    parts.push('o processo depende fortemente de decisões humanas');
+
+  if (complexity !== 'Baixa')
+    parts.push(`a complexidade de implementação é ${complexity.toLowerCase()}`);
+
+  if (types.length > 0)
+    parts.push(`a tecnologia indicada é ${types.join(' + ')}`);
+
+  return parts.join(', ') + '.';
+}
+
+// ── Main analysis ──────────────────────────────────────────────────────────────
+
+export function analyzeProcess(data: Partial<Phase2FormData>): Phase2Analysis | null {
+  if (!data.seguiRegras && !data.exigeAnalise && !data.sempresMesmosPassos) return null;
+
+  const tiposAutomacao = classifyAutomationTypes(data);
+  const complexidade   = classifyComplexity(data);
+  const potential      = classifyPotential(data);
+  const fluxoBPMN      = generateBPMN(data);
+  const justificativa  = buildJustificativa(data, potential, tiposAutomacao, complexidade);
+
+  return { potential, tiposAutomacao, complexidade, fluxoBPMN, justificativa };
+}
+
+// Legacy alias
 export const inferAutomation = analyzeProcess;
 
 // ── Firestore ─────────────────────────────────────────────────────────────────
@@ -174,12 +280,12 @@ function phase2DocId(diagnosticId: string, subprocessId: string): string {
 }
 
 export async function savePhase2Response(
-  diagnosticId: string,
-  subprocessId: string,
+  diagnosticId:   string,
+  subprocessId:   string,
   subprocessName: string,
-  processName: string,
-  isPrioritized: boolean,
-  formData: Partial<Phase2FormData>,
+  processName:    string,
+  isPrioritized:  boolean,
+  formData:       Partial<Phase2FormData>,
 ): Promise<void> {
   const docRef = doc(db, 'phase2_responses', phase2DocId(diagnosticId, subprocessId));
   await setDoc(
