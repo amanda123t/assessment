@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Star, ChevronDown, ChevronUp, Users, BarChart2 } from 'lucide-react';
 import { SubprocessAssessment } from '@/types';
 import {
-  getOrCreateVoterToken,
   getStoredVoterIdentity,
   saveVoterIdentity,
   submitVote,
@@ -38,11 +37,13 @@ const CONSENSUS_CONFIG: Record<ConsensusLevel, { label: string; className: strin
 
 interface IdentityFormProps {
   onConfirm: (name: string, area: string) => void;
+  initialName?: string;
+  initialArea?: string;
 }
 
-function IdentityForm({ onConfirm }: IdentityFormProps) {
-  const [name, setName] = useState('');
-  const [area, setArea] = useState('');
+function IdentityForm({ onConfirm, initialName = '', initialArea = '' }: IdentityFormProps) {
+  const [name, setName] = useState(initialName);
+  const [area, setArea] = useState(initialArea);
   const valid = name.trim().length > 0 && area.trim().length > 0;
 
   return (
@@ -291,12 +292,11 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
   useEffect(() => {
     // Pre-fill name/area from localStorage for convenience (identity only,
     // not previous votes — the session token is always fresh).
+    // Pre-fill fields for convenience, but never auto-confirm.
+    // Each visit requires the voter to actively confirm name + area.
     const identity = getStoredVoterIdentity();
     setVoterName(identity.name);
     setVoterArea(identity.area);
-    if (identity.name && identity.area) {
-      setIdentityReady(true);
-    }
 
     // Real-time listener for aggregated results (all voters).
     // We pass the fresh session token so userVote starts as null for this session.
@@ -370,9 +370,9 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
         )}
       </p>
 
-      {/* Identity capture — shown once when name/area are not yet set */}
+      {/* Identity capture — always shown on first visit; fields pre-filled for convenience */}
       {!identityReady && (
-        <IdentityForm onConfirm={handleIdentityConfirm} />
+        <IdentityForm onConfirm={handleIdentityConfirm} initialName={voterName} initialArea={voterArea} />
       )}
 
       {/* Subprocess list */}
