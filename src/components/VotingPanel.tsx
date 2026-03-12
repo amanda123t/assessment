@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback, Fragment } from 'react';
 import { Star, ChevronDown, ChevronUp, Users, BarChart2 } from 'lucide-react';
 import { SubprocessAssessment } from '@/types';
 import {
-  getStoredVoterIdentity,
-  saveVoterIdentity,
   submitVote,
   subscribeToVoteSummaries,
   VoteSummary,
@@ -290,14 +288,6 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
   // ── Initialise identity + subscribe to live vote updates ─────────────────
 
   useEffect(() => {
-    // Pre-fill name/area from localStorage for convenience (identity only,
-    // not previous votes — the session token is always fresh).
-    // Pre-fill fields for convenience, but never auto-confirm.
-    // Each visit requires the voter to actively confirm name + area.
-    const identity = getStoredVoterIdentity();
-    setVoterName(identity.name);
-    setVoterArea(identity.area);
-
     // Real-time listener for aggregated results (all voters).
     // We pass the fresh session token so userVote starts as null for this session.
     const unsubscribe = subscribeToVoteSummaries(assessmentId, voterToken, (data) => {
@@ -311,7 +301,6 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleIdentityConfirm = useCallback((name: string, area: string) => {
-    saveVoterIdentity(name, area);
     setVoterName(name);
     setVoterArea(area);
     setIdentityReady(true);
@@ -372,7 +361,7 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
 
       {/* Identity capture — always shown on first visit; fields pre-filled for convenience */}
       {!identityReady && (
-        <IdentityForm onConfirm={handleIdentityConfirm} initialName={voterName} initialArea={voterArea} />
+        <IdentityForm onConfirm={handleIdentityConfirm} />
       )}
 
       {/* Subprocess list */}
