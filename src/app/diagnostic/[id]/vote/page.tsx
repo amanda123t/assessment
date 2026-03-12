@@ -1,30 +1,27 @@
 'use client';
 
 /**
- * Public shared report page — /diagnostic/[id]/report
+ * Voting page — /diagnostic/[id]/vote
  *
- * Loads the assessment data from Firestore using the diagnostic ID embedded
- * in the URL, reconstructs SubprocessAssessment objects with the same
- * formulas as the main assessment flow, and renders:
- *   1. The full RankingScreen (read-only — onRestart is a no-op)
- *   2. The VotingPanel so collaborators can vote on subprocess priorities
- *
+ * Dedicated page where collaborators vote on subprocess priorities.
+ * Loads the assessment data from Firestore and renders VotingPanel.
  * No authentication required — the link is the access control.
  */
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { collection, query, getDocs, where, doc, getDoc } from 'firebase/firestore';
+import { ArrowLeft } from 'lucide-react';
 
 import { db } from '@/lib/firebase';
 import { lookupSubprocessById } from '@/data/industryLibrary';
 import { CriteriaScores, SubprocessAssessment } from '@/types';
 import { createAssessment } from '@/lib/assessmentEngine';
 
-import RankingScreen from '@/components/RankingScreen';
+import VotingPanel from '@/components/VotingPanel';
 
-// ── Helpers (mirrors diagnostic/[id]/page.tsx) ────────────────────────────────
-
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const EMPTY_SCORES: CriteriaScores = {
   operationalVolume: 0, peopleInvolved: 0, executionTime: 0,
@@ -32,25 +29,26 @@ const EMPTY_SCORES: CriteriaScores = {
 };
 
 function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessment {
-  const subprocessId  = data.subprocess_id as string;
-  const looked        = lookupSubprocessById(subprocessId);
-  const found         = looked ? { macro: looked.macroprocess, process: looked.process, subprocess: looked.subprocess } : null;
-  const storedScores  = data.scores as CriteriaScores | undefined;
+  const subprocessId = data.subprocess_id as string;
+  const looked       = lookupSubprocessById(subprocessId);
+  const found        = looked
+    ? { macro: looked.macroprocess, process: looked.process, subprocess: looked.subprocess }
+    : null;
+  const storedScores = data.scores as CriteriaScores | undefined;
 
   if (found && storedScores) {
     return createAssessment(found.macro, found.process, found.subprocess, storedScores);
   }
 
-  // Legacy fallback for responses saved before criteria scores were persisted
   return {
     subprocessId,
-    subprocessName:   found?.subprocess.name ?? subprocessId,
-    processId:        found?.process.id      ?? '',
-    processName:      found?.process.name    ?? (data.process as string ?? ''),
-    macroprocessId:   found?.macro.id        ?? '',
-    macroprocessName: found?.macro.name      ?? '',
-    scores:           EMPTY_SCORES,
-    totalScore:       (data.score as number) ?? 0,
+    subprocessName:         found?.subprocess.name ?? subprocessId,
+    processId:              found?.process.id      ?? '',
+    processName:            found?.process.name    ?? (data.process as string ?? ''),
+    macroprocessId:         found?.macro.id        ?? '',
+    macroprocessName:       found?.macro.name      ?? '',
+    scores:                 EMPTY_SCORES,
+    totalScore:             (data.score as number) ?? 0,
     automationScore:        0,
     annualHours:            0,
     automationSavingsHours: 0,
@@ -65,7 +63,7 @@ function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessm
 
 type PageStatus = 'loading' | 'not-found' | 'ready';
 
-export default function SharedReportPage() {
+export default function VotePage() {
   const { id } = useParams<{ id: string }>();
 
   const [status, setStatus]           = useState<PageStatus>('loading');
@@ -93,17 +91,17 @@ export default function SharedReportPage() {
     }
 
     load().catch((err) => {
-      console.error('[ReportPage] Failed to load diagnostic:', err);
+      console.error('[VotePage] Failed to load diagnostic:', err);
       setStatus('not-found');
     });
   }, [id]);
 
-  // ── Loading / not-found ────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
 
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-sm text-gray-500">Carregando relatório...</p>
+        <p className="text-sm text-gray-500">Carregando...</p>
       </div>
     );
   }
@@ -112,44 +110,48 @@ export default function SharedReportPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-10 max-w-md w-full text-center">
-          <p className="text-gray-700 font-medium mb-1">Relatório não encontrado.</p>
+          <p className="text-gray-700 font-medium mb-1">Diagnóstico não encontrado.</p>
           <p className="text-sm text-gray-400">Verifique o link compartilhado.</p>
         </div>
       </div>
     );
   }
 
-  // ── Shared report view ─────────────────────────────────────────────────────
+  // ── Vote view ──────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* Minimal header — identifies this as a shared report */}
       <header className="bg-white border-b border-gray-100 px-6 py-3 shadow-sm">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
-            <p className="text-xs text-gray-400">Relatório Compartilhado</p>
+            <p className="text-xs text-gray-400">Votação de Prioridades</p>
           </div>
-          {company && (
-            <span className="text-xs text-gray-500 font-medium">{company}</span>
-          )}
+          <div className="flex items-center gap-4">
+            {company && (
+              <span className="text-xs text-gray-500 font-medium">{company}</span>
+            )}
+            <Link
+              href={`/diagnostic/${id}/report`}
+              className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+            >
+              <ArrowLeft size={13} strokeWidth={2} />
+              Ver relatório
+            </Link>
+          </div>
         </div>
       </header>
 
-      {assessments.length === 0 ? (
-        <div className="max-w-5xl mx-auto px-6 py-16 text-center">
-          <p className="text-sm text-gray-400">
-            Este diagnóstico ainda não possui respostas registradas.
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-8">
+        {assessments.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-16">
+            Este diagnóstico ainda não possui subprocessos avaliados.
           </p>
-        </div>
-      ) : (
-          <RankingScreen
-            assessments={assessments}
-            onRestart={() => {}}
-            diagnosticId={id}
-          />
-      )}
+        ) : (
+          <VotingPanel assessmentId={id} assessments={assessments} />
+        )}
+      </div>
 
     </div>
   );
