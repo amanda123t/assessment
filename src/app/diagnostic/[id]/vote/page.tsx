@@ -15,49 +15,10 @@ import { collection, query, getDocs, where, doc, getDoc } from 'firebase/firesto
 import { ArrowLeft } from 'lucide-react';
 
 import { db } from '@/lib/firebase';
-import { lookupSubprocessById } from '@/data/industryLibrary';
-import { CriteriaScores, SubprocessAssessment } from '@/types';
-import { createAssessment } from '@/lib/assessmentEngine';
+import { SubprocessAssessment } from '@/types';
+import { reconstructAssessment } from '@/lib/reconstructAssessment';
 
 import VotingPanel from '@/components/VotingPanel';
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const EMPTY_SCORES: CriteriaScores = {
-  operationalVolume: 0, peopleInvolved: 0, executionTime: 0,
-  reworkOrErrors: 0, systemsOrSpreadsheets: 0, systemIntegrations: 0,
-};
-
-function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessment {
-  const subprocessId = data.subprocess_id as string;
-  const looked       = lookupSubprocessById(subprocessId);
-  const found        = looked
-    ? { macro: looked.macroprocess, process: looked.process, subprocess: looked.subprocess }
-    : null;
-  const storedScores = data.scores as CriteriaScores | undefined;
-
-  if (found && storedScores) {
-    return createAssessment(found.macro, found.process, found.subprocess, storedScores);
-  }
-
-  return {
-    subprocessId,
-    subprocessName:         found?.subprocess.name ?? subprocessId,
-    processId:              found?.process.id      ?? '',
-    processName:            found?.process.name    ?? (data.process as string ?? ''),
-    macroprocessId:         found?.macro.id        ?? '',
-    macroprocessName:       found?.macro.name      ?? '',
-    scores:                 EMPTY_SCORES,
-    totalScore:             (data.score as number) ?? 0,
-    automationScore:        0,
-    annualHours:            0,
-    automationSavingsHours: 0,
-    financialImpact:        0,
-    fteCurrent:             0,
-    fteAutomatable:         0,
-    fteAfterAutomation:     0,
-  };
-}
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
