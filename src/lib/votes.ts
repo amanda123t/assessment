@@ -22,7 +22,7 @@
  */
 
 import {
-  collection, doc, setDoc, query, where,
+  collection, doc, setDoc, deleteDoc, query, where,
   getDocs, onSnapshot,
   serverTimestamp,
   QuerySnapshot, DocumentData,
@@ -210,6 +210,17 @@ function aggregateSnapshot(
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Deletes every vote document for the given assessment.
+ * Used by the "Votar novamente" action to reset all votes.
+ */
+export async function deleteAllVotesForAssessment(assessmentId: string): Promise<void> {
+  const snapshot = await getDocs(
+    query(collection(db, 'votes'), where('assessmentId', '==', assessmentId)),
+  );
+  await Promise.all(snapshot.docs.map((d) => deleteDoc(d.ref)));
+}
 
 /**
  * One-shot load — kept for compatibility.

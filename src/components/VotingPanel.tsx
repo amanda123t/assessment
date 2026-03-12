@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import { Star, ChevronDown, ChevronUp, Users, BarChart2 } from 'lucide-react';
 import { SubprocessAssessment } from '@/types';
+import Link from 'next/link';
 import {
   submitVote,
+  deleteAllVotesForAssessment,
   subscribeToVoteSummaries,
   VoteSummary,
   ConsensusLevel,
@@ -15,6 +17,8 @@ import {
 interface Props {
   assessmentId: string;
   assessments: SubprocessAssessment[];
+  /** diagnosticId used for Phase 2 navigation (equals assessmentId in practice) */
+  diagnosticId?: string;
 }
 
 const PRIORITY_LABELS: Record<number, string> = {
@@ -35,21 +39,18 @@ const CONSENSUS_CONFIG: Record<ConsensusLevel, { label: string; className: strin
 
 interface IdentityFormProps {
   onConfirm: (name: string, area: string) => void;
-  initialName?: string;
-  initialArea?: string;
 }
 
-function IdentityForm({ onConfirm, initialName = '', initialArea = '' }: IdentityFormProps) {
-  const [name, setName] = useState(initialName);
-  const [area, setArea] = useState(initialArea);
+function IdentityForm({ onConfirm }: IdentityFormProps) {
+  const [name, setName] = useState('');
+  const [area, setArea] = useState('');
   const valid = name.trim().length > 0 && area.trim().length > 0;
 
   return (
     <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-6">
       <h4 className="text-sm font-semibold text-blue-800 mb-1">Identificação do votante</h4>
       <p className="text-xs text-blue-600 mb-4">
-        Informe seu nome e área para registrar seus votos. Esses dados são salvos localmente e
-        reutilizados em todos os subprocessos.
+        Informe seu nome e área para registrar seus votos.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -151,15 +152,17 @@ const CONSENSUS_CONFIG_BADGE: Record<ConsensusLevel, { label: string; className:
 interface ConsolidatedResultsProps {
   assessments: SubprocessAssessment[];
   summaries: Map<string, VoteSummary>;
+  assessmentId: string;
+  diagnosticId: string;
 }
 
-function ConsolidatedResults({ assessments, summaries }: ConsolidatedResultsProps) {
+function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticId }: ConsolidatedResultsProps) {
   const [expandedArea, setExpandedArea] = useState<Set<string>>(new Set());
+  const [finalized, setFinalized]       = useState(false);
+  const [resetting, setResetting]       = useState(false);
 
   const voted = assessments.filter(a => (summaries.get(a.subprocessId)?.count ?? 0) > 0);
   const totalVoters = (() => {
-    const tokens = new Set<string>();
-    // we can't access individual tokens here, but we can approximate by max count
     let max = 0;
     summaries.forEach(s => { if (s.count > max) max = s.count; });
     return max;
@@ -177,7 +180,6 @@ function ConsolidatedResults({ assessments, summaries }: ConsolidatedResultsProp
     );
   }
 
-  // Sort by average descending
   const sorted = [...voted].sort((a, b) => {
     const sa = summaries.get(a.subprocessId)?.average ?? 0;
     const sb = summaries.get(b.subprocessId)?.average ?? 0;
@@ -264,16 +266,84 @@ function ConsolidatedResults({ assessments, summaries }: ConsolidatedResultsProp
           </tbody>
         </table>
       </div>
+
+      {/* ── Voting control actions ── */}
+      <div className="mt-5 pt-5 border-t border-gray-100 flex flex-wrap items-center gap-3">
+        {!finalized ? (
+          <>
+            <button
+              onClick={async () => {
+                if (!confirm('Tem certeza? Isso apagará todos os votos registrados e todos deverão votar novamente.')) return;
+                setResetting(true);
+                try {
+                  await deleteAllVotesForAssessment(assessmentId);
+                  window.location.reload();
+                } finally {
+                  setResetting(false);
+                }
+              }}
+              disabled={resetting}
+              className="text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-600
+                         hover:bg-gray-50 disabled:opacity-40 transition-colors"
+            >
+              {resetting ? 'Zerando votos…' : 'Votar novamente'}
+            </button>
+            <button
+              onClick={() => setFinalized(true)}
+              className="text-xs font-semibold px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
+            >
+              Encerrar votação
+            </button>
+          </>
+        ) : (
+          <div className="w-full">
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-5 mb-4">
+              <h4 className="text-sm font-bold text-violet-900 mb-1">Subprocessos candidatos ao mapeamento detalhado</h4>
+              <p className="text-xs text-violet-600 mb-4">
+                Os subprocessos abaixo foram priorizados pela votação. Deseja prosseguir com a Fase 2 — mapeamento detalhado de processos?
+              </p>
+              <ul className="space-y-1.5 mb-5">
+                {[...assessments]
+                  .filter(a => (summaries.get(a.subprocessId)?.count ?? 0) > 0)
+                  .sort((a, b) => (summaries.get(b.subprocessId)?.average ?? 0) - (summaries.get(a.subprocessId)?.average ?? 0))
+                  .map(a => {
+                    const s = summaries.get(a.subprocessId)!;
+                    return (
+                      <li key={a.subprocessId} className="flex items-center justify-between gap-3 bg-white rounded-lg px-3 py-2 border border-violet-100 text-xs">
+                        <div>
+                          <span className="font-medium text-gray-800">{a.subprocessName}</span>
+                          <span className="text-gray-400 ml-2">{a.processName}</span>
+                        </div>
+                        <span className="font-bold text-violet-700 shrink-0">média {s.average.toFixed(1)}</span>
+                      </li>
+                    );
+                  })}
+              </ul>
+              <div className="flex items-center gap-3">
+                <Link
+                  href={`/diagnostic/${diagnosticId}/phase2`}
+                  className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors"
+                >
+                  Sim, prosseguir com o mapeamento
+                </Link>
+                <button
+                  onClick={() => setFinalized(false)}
+                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function VotingPanel({ assessmentId, assessments }: Props) {
-  // A fresh session token is generated on every mount so that each visitor's
-  // votes are stored as a new independent document — never overwriting a
-  // previous voter's choices, even when the same browser is reused.
+export default function VotingPanel({ assessmentId, assessments, diagnosticId }: Props) {
   const [voterToken]                      = useState(() => crypto.randomUUID());
   const [voterName, setVoterName]         = useState('');
   const [voterArea, setVoterArea]         = useState('');
@@ -281,24 +351,16 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
 
   const [selections, setSelections] = useState<Map<string, number>>(new Map());
   const [summaries, setSummaries]   = useState<Map<string, VoteSummary>>(new Map());
-  const [saving, setSaving]         = useState<Set<string>>(new Set());
-  const [saved, setSaved]           = useState<Set<string>>(new Set());
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted]   = useState(false);
   const [expanded, setExpanded]     = useState<Set<string>>(new Set());
 
-  // ── Initialise identity + subscribe to live vote updates ─────────────────
-
   useEffect(() => {
-    // Real-time listener for aggregated results (all voters).
-    // We pass the fresh session token so userVote starts as null for this session.
     const unsubscribe = subscribeToVoteSummaries(assessmentId, voterToken, (data) => {
       setSummaries(data);
-      // No pre-fill: each visit is a new vote session.
     });
-
     return unsubscribe;
   }, [assessmentId, voterToken]);
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleIdentityConfirm = useCallback((name: string, area: string) => {
     setVoterName(name);
@@ -310,25 +372,22 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
     setSelections(prev => new Map(prev).set(spId, value));
   }, []);
 
-  const handleSave = useCallback(async (spId: string) => {
-    const vote = selections.get(spId);
-    if (vote === undefined || !voterToken) return;
-
-    setSaving(prev => new Set(prev).add(spId));
+  const handleSaveAll = useCallback(async () => {
+    if (selections.size === 0 || submitting) return;
+    setSubmitting(true);
     try {
-      await submitVote(assessmentId, spId, voterToken, voterName, voterArea, vote);
-      // No manual re-fetch needed: the onSnapshot subscription fires
-      // automatically when the write is committed and updates summaries.
-      setSaved(prev => new Set(prev).add(spId));
-      setTimeout(() => {
-        setSaved(prev => { const n = new Set(prev); n.delete(spId); return n; });
-      }, 2000);
+      await Promise.all(
+        Array.from(selections.entries()).map(([spId, vote]) =>
+          submitVote(assessmentId, spId, voterToken, voterName, voterArea, vote)
+        )
+      );
+      setSubmitted(true);
     } catch (err) {
-      console.error('[VotingPanel] Failed to submit vote:', err);
+      console.error('[VotingPanel] Failed to submit votes:', err);
     } finally {
-      setSaving(prev => { const n = new Set(prev); n.delete(spId); return n; });
+      setSubmitting(false);
     }
-  }, [assessmentId, voterToken, voterName, voterArea, selections]);
+  }, [assessmentId, voterToken, voterName, voterArea, selections, submitting]);
 
   const toggleExpanded = useCallback((spId: string) => {
     setExpanded(prev => {
@@ -337,6 +396,9 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
       return n;
     });
   }, []);
+
+  const totalCount    = assessments.length;
+  const selectedCount = selections.size;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -359,7 +421,7 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
         )}
       </p>
 
-      {/* Identity capture — always shown on first visit; fields pre-filled for convenience */}
+      {/* Identity capture */}
       {!identityReady && (
         <IdentityForm onConfirm={handleIdentityConfirm} />
       )}
@@ -369,9 +431,6 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
         {assessments.map((a) => {
           const summary     = summaries.get(a.subprocessId);
           const selected    = selections.get(a.subprocessId);
-          const isSaving    = saving.has(a.subprocessId);
-          const isSaved     = saved.has(a.subprocessId);
-          const hasVoted    = summary?.userVote != null;
           const isExpanded  = expanded.has(a.subprocessId);
           const hasBreakdown = (summary?.areaBreakdown?.length ?? 0) > 0;
           const consensus   = summary && summary.count >= 2 ? CONSENSUS_CONFIG[summary.consensusLevel] : null;
@@ -394,17 +453,18 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
               {identityReady && (
                 <>
                   <p className="text-xs font-semibold text-gray-500 mb-2">Qual a prioridade de automação?</p>
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     {([1, 2, 3, 4, 5] as const).map((v) => (
                       <button
                         key={v}
                         onClick={() => handleSelect(a.subprocessId, v)}
                         title={PRIORITY_LABELS[v]}
+                        disabled={submitted}
                         className={`w-9 h-9 rounded-full border-2 text-sm font-bold transition-all ${
                           selected === v
                             ? 'bg-blue-600 border-blue-600 text-white scale-110 shadow-sm'
                             : 'bg-white border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600'
-                        }`}
+                        } disabled:opacity-60 disabled:cursor-not-allowed`}
                       >
                         {v}
                       </button>
@@ -413,26 +473,12 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
                       <span className="text-xs text-gray-500 ml-1">{PRIORITY_LABELS[selected]}</span>
                     )}
                   </div>
-
-                  {/* Save button */}
-                  <div className="mb-3">
-                    <button
-                      onClick={() => handleSave(a.subprocessId)}
-                      disabled={selected === undefined || isSaving}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white
-                                 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {isSaving ? 'Salvando…' : isSaved ? '✓ Salvo!' : hasVoted ? 'Atualizar voto' : 'Salvar voto'}
-                    </button>
-                  </div>
                 </>
               )}
 
               {/* Aggregated results — visible even before identity is set */}
               {summary && summary.count > 0 && (
-                <div className="space-y-2">
-
-                  {/* Average + vote count + consensus badge */}
+                <div className="space-y-2 mt-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-xs text-gray-500">
                       <span className="font-semibold text-gray-700">
@@ -441,7 +487,6 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
                       {' · '}
                       {summary.count} voto{summary.count !== 1 ? 's' : ''} registrado{summary.count !== 1 ? 's' : ''}
                     </p>
-
                     {consensus && (
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${consensus.className}`}>
                         {consensus.label}
@@ -449,7 +494,6 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
                     )}
                   </div>
 
-                  {/* Area breakdown toggle */}
                   {hasBreakdown && (
                     <button
                       onClick={() => toggleExpanded(a.subprocessId)}
@@ -463,7 +507,6 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
                     </button>
                   )}
 
-                  {/* Area breakdown table */}
                   {isExpanded && <AreaTable summary={summary} />}
                 </div>
               )}
@@ -472,10 +515,41 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
           );
         })}
       </div>
+
+      {/* ── Single save button at the bottom ── */}
+      {identityReady && (
+        <div className="mt-6 flex items-center gap-4">
+          {submitted ? (
+            <p className="text-sm font-semibold text-emerald-600">
+              ✓ Votos registrados com sucesso!
+            </p>
+          ) : (
+            <>
+              <button
+                onClick={handleSaveAll}
+                disabled={selectedCount === 0 || submitting}
+                className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white
+                           disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting ? 'Salvando…' : `Salvar votos`}
+              </button>
+              <span className="text-xs text-gray-400">
+                {selectedCount} de {totalCount} subprocesso{totalCount !== 1 ? 's' : ''} respondido{selectedCount !== 1 ? 's' : ''}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
     </div>
 
     {/* Consolidated results — below the voting form */}
-    <ConsolidatedResults assessments={assessments} summaries={summaries} />
+    <ConsolidatedResults
+      assessments={assessments}
+      summaries={summaries}
+      assessmentId={assessmentId}
+      diagnosticId={diagnosticId ?? assessmentId}
+    />
     </div>
   );
 }
