@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Star, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { Star, ChevronDown, ChevronUp, Users, BarChart2 } from 'lucide-react';
 import { SubprocessAssessment } from '@/types';
 import {
   getOrCreateVoterToken,
@@ -31,7 +31,7 @@ const PRIORITY_LABELS: Record<number, string> = {
 const CONSENSUS_CONFIG: Record<ConsensusLevel, { label: string; className: string }> = {
   'alto':             { label: 'Consenso: alto',              className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   'médio':            { label: 'Consenso: médio',             className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  'alta divergência': { label: '⚠ Divergência alta entre áreas', className: 'bg-red-50 text-red-700 border-red-200' },
+  'alta divergência': { label: '⚠ Alta divergência',          className: 'bg-red-50 text-red-700 border-red-200' },
 };
 
 // ── Identity form ─────────────────────────────────────────────────────────────
@@ -90,27 +90,43 @@ function IdentityForm({ onConfirm }: IdentityFormProps) {
   );
 }
 
+// ── Priority bar (visual scale 1–5) ──────────────────────────────────────────
+
+function PriorityBar({ value }: { value: number }) {
+  const pct = ((value - 1) / 4) * 100;
+  const color =
+    value >= 4.5 ? 'bg-red-500' :
+    value >= 3.5 ? 'bg-orange-400' :
+    value >= 2.5 ? 'bg-amber-400' :
+    value >= 1.5 ? 'bg-blue-400' : 'bg-gray-300';
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs font-bold text-gray-700 w-6 text-right">{value.toFixed(1)}</span>
+    </div>
+  );
+}
+
 // ── Area breakdown table ──────────────────────────────────────────────────────
 
 function AreaTable({ summary }: { summary: VoteSummary }) {
   if (summary.areaBreakdown.length === 0) return null;
 
   return (
-    <div className="mt-3 rounded-lg border border-gray-100 overflow-hidden">
+    <div className="mt-2 rounded-lg border border-gray-100 overflow-hidden">
       <table className="w-full text-xs">
         <thead>
           <tr className="bg-gray-50 border-b border-gray-100">
             <th className="text-left px-3 py-2 font-semibold text-gray-500">Área</th>
-            <th className="text-center px-3 py-2 font-semibold text-gray-500">Voto médio</th>
+            <th className="text-center px-3 py-2 font-semibold text-gray-500">Média</th>
             <th className="text-center px-3 py-2 font-semibold text-gray-500">Votos</th>
           </tr>
         </thead>
         <tbody>
           {summary.areaBreakdown.map((row, i) => (
-            <tr
-              key={row.area}
-              className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}
-            >
+            <tr key={row.area} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}>
               <td className="px-3 py-2 text-gray-700 font-medium">{row.area}</td>
               <td className="px-3 py-2 text-center">
                 <span className="font-bold text-gray-800">{row.average.toFixed(1)}</span>
@@ -121,6 +137,134 @@ function AreaTable({ summary }: { summary: VoteSummary }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ── Consolidated results card ─────────────────────────────────────────────────
+
+const CONSENSUS_CONFIG_BADGE: Record<ConsensusLevel, { label: string; className: string }> = {
+  'alto':             { label: 'Consenso alto',      className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'médio':            { label: 'Consenso médio',     className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  'alta divergência': { label: '⚠ Alta divergência', className: 'bg-red-50 text-red-700 border-red-200' },
+};
+
+interface ConsolidatedResultsProps {
+  assessments: SubprocessAssessment[];
+  summaries: Map<string, VoteSummary>;
+}
+
+function ConsolidatedResults({ assessments, summaries }: ConsolidatedResultsProps) {
+  const [expandedArea, setExpandedArea] = useState<Set<string>>(new Set());
+
+  const voted = assessments.filter(a => (summaries.get(a.subprocessId)?.count ?? 0) > 0);
+  const totalVoters = (() => {
+    const tokens = new Set<string>();
+    // we can't access individual tokens here, but we can approximate by max count
+    let max = 0;
+    summaries.forEach(s => { if (s.count > max) max = s.count; });
+    return max;
+  })();
+
+  if (voted.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mt-6">
+        <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+          <BarChart2 size={16} className="text-violet-500" strokeWidth={1.75} />
+          Votação Consolidada
+        </h3>
+        <p className="text-xs text-gray-400 mt-2">Nenhum voto registrado ainda.</p>
+      </div>
+    );
+  }
+
+  // Sort by average descending
+  const sorted = [...voted].sort((a, b) => {
+    const sa = summaries.get(a.subprocessId)?.average ?? 0;
+    const sb = summaries.get(b.subprocessId)?.average ?? 0;
+    return sb - sa;
+  });
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mt-6">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+          <BarChart2 size={16} className="text-violet-500" strokeWidth={1.75} />
+          Votação Consolidada
+        </h3>
+        <span className="text-xs text-gray-400 flex items-center gap-1">
+          <Users size={12} strokeWidth={1.75} />
+          {totalVoters} votante{totalVoters !== 1 ? 's' : ''}
+        </span>
+      </div>
+      <p className="text-xs text-gray-400 mb-5">
+        Resultado agregado de todos os votos registrados, ordenado por prioridade média.
+      </p>
+
+      <div className="overflow-x-auto rounded-xl border border-gray-200">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500">Subprocesso</th>
+              <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-32">Prioridade média</th>
+              <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-20">Votos</th>
+              <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-36">Consenso</th>
+              <th className="px-3 py-3 w-10" />
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((a, i) => {
+              const s = summaries.get(a.subprocessId)!;
+              const badge = CONSENSUS_CONFIG_BADGE[s.consensusLevel];
+              const isOpen = expandedArea.has(a.subprocessId);
+              const showConsensus = s.count >= 2;
+              return (
+                <>
+                  <tr key={a.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                    <td className="px-3 py-3 text-xs">
+                      <div className="font-medium text-gray-800">{a.subprocessName}</div>
+                      <div className="text-gray-400">{a.processName}</div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <PriorityBar value={s.average} />
+                    </td>
+                    <td className="px-3 py-3 text-center text-xs font-semibold text-gray-700">{s.count}</td>
+                    <td className="px-3 py-3 text-center">
+                      {showConsensus && (
+                        <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {s.areaBreakdown.length > 0 && (
+                        <button
+                          onClick={() => setExpandedArea(prev => {
+                            const n = new Set(prev);
+                            n.has(a.subprocessId) ? n.delete(a.subprocessId) : n.add(a.subprocessId);
+                            return n;
+                          })}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                          title="Ver por área"
+                        >
+                          {isOpen ? <ChevronUp size={14} strokeWidth={2} /> : <ChevronDown size={14} strokeWidth={2} />}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                  {isOpen && s.areaBreakdown.length > 0 && (
+                    <tr key={`${a.subprocessId}-area`} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+                      <td colSpan={5} className="px-3 pb-3">
+                        <AreaTable summary={s} />
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -216,15 +360,16 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
+    <div>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
 
       {/* Section header */}
       <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
         <Star size={16} className="text-amber-500" strokeWidth={1.75} />
-        Priorizar Subprocessos
+        Votar Prioridades
       </h3>
       <p className="text-xs text-gray-400 mb-5">
-        Vote na prioridade de automação de cada subprocesso. O voto pode ser atualizado a qualquer momento.
+        Cada participante vota de forma independente. Os resultados são agregados em tempo real.
         {identityReady && voterName && (
           <span className="ml-2 font-medium text-gray-500">
             Votando como <span className="text-gray-700">{voterName}</span>
@@ -346,6 +491,10 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
           );
         })}
       </div>
+    </div>
+
+    {/* Consolidated results — below the voting form */}
+    <ConsolidatedResults assessments={assessments} summaries={summaries} />
     </div>
   );
 }
