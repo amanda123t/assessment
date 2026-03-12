@@ -272,7 +272,10 @@ function ConsolidatedResults({ assessments, summaries }: ConsolidatedResultsProp
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function VotingPanel({ assessmentId, assessments }: Props) {
-  const [voterToken, setVoterToken]       = useState('');
+  // A fresh session token is generated on every mount so that each visitor's
+  // votes are stored as a new independent document — never overwriting a
+  // previous voter's choices, even when the same browser is reused.
+  const [voterToken]                      = useState(() => crypto.randomUUID());
   const [voterName, setVoterName]         = useState('');
   const [voterArea, setVoterArea]         = useState('');
   const [identityReady, setIdentityReady] = useState(false);
@@ -286,35 +289,24 @@ export default function VotingPanel({ assessmentId, assessments }: Props) {
   // ── Initialise identity + subscribe to live vote updates ─────────────────
 
   useEffect(() => {
-    const token    = getOrCreateVoterToken();
+    // Pre-fill name/area from localStorage for convenience (identity only,
+    // not previous votes — the session token is always fresh).
     const identity = getStoredVoterIdentity();
-
-    setVoterToken(token);
     setVoterName(identity.name);
     setVoterArea(identity.area);
-
     if (identity.name && identity.area) {
       setIdentityReady(true);
     }
 
-    // Real-time listener: fires immediately with current data, then again
-    // whenever ANY vote for this assessment changes (own or other users').
-    const unsubscribe = subscribeToVoteSummaries(assessmentId, token, (data) => {
+    // Real-time listener for aggregated results (all voters).
+    // We pass the fresh session token so userVote starts as null for this session.
+    const unsubscribe = subscribeToVoteSummaries(assessmentId, voterToken, (data) => {
       setSummaries(data);
-
-      // Pre-fill the user's saved vote ONLY if they haven't yet made a
-      // selection in this session.  This prevents the listener from
-      // overwriting a value the user picked but hasn't saved yet.
-      setSelections(prev => {
-        if (prev.size > 0) return prev;
-        const pre = new Map<string, number>();
-        data.forEach((s, spId) => { if (s.userVote !== null) pre.set(spId, s.userVote); });
-        return pre;
-      });
+      // No pre-fill: each visit is a new vote session.
     });
 
     return unsubscribe;
-  }, [assessmentId]);
+  }, [assessmentId, voterToken]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
