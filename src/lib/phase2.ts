@@ -13,6 +13,35 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 
+// ── Form-value constants ───────────────────────────────────────────────────────
+// Single source of truth for the option strings compared in the analysis engine.
+// Keep in sync with the option arrays in Phase2Screen.tsx.
+
+export const PHASE2_VALUES = {
+  copiaManual: {
+    SIM_ALGUNS:    'Sim, em alguns casos',
+    SIM_FREQUENTE: 'Sim, com frequência',
+  },
+  exigeAnalise: {
+    NAO_EXIGE:      'Não exige análise humana',
+    ALGUNS_CASOS:   'Exige análise humana em alguns casos',
+    COM_FREQUENCIA: 'Exige análise humana com frequência',
+  },
+  temDecisao: {
+    SIM: 'Sim',
+  },
+  seguiRegras: {
+    SEMPRE_PREFIX:     'Sempre',
+    NA_MAIORIA_PREFIX: 'Na maioria',
+    RARAMENTE_PREFIX:  'Raramente',
+  },
+  sempresMesmosPassos: {
+    SEMPRE_PREFIX:     'Sempre',
+    NA_MAIORIA_PREFIX: 'Na maioria',
+    VARIA_KEYWORD:     'Varia',
+  },
+} as const;
+
 // ── Data model ─────────────────────────────────────────────────────────────────
 
 export interface Phase2SubprocessData {
@@ -112,6 +141,7 @@ export interface Phase2Analysis {
 // ── Classification helpers ─────────────────────────────────────────────────────
 
 function classifyAutomationTypes(data: Partial<Phase2FormData>): AutomationType[] {
+  const V = PHASE2_VALUES;
   const types: AutomationType[] = [];
 
   // OCR / IA Extração — documents or images involved
@@ -124,21 +154,21 @@ function classifyAutomationTypes(data: Partial<Phase2FormData>): AutomationType[
   const hasRPA =
     (data.sequenciaEtapas  ?? []).some(s => s.toLowerCase().includes('copiar')) ||
     (data.etapasPrincipais ?? []).some(e => e.toLowerCase().includes('copiar') || e.toLowerCase().includes('mover')) ||
-    data.copiaManual === 'Sim, em alguns casos' ||
-    data.copiaManual === 'Sim, com frequência';
+    data.copiaManual === V.copiaManual.SIM_ALGUNS ||
+    data.copiaManual === V.copiaManual.SIM_FREQUENTE;
   if (hasRPA) types.push('RPA');
 
   // IA Assistiva — human analysis needed in some cases, or decisions exist
   const hasIA =
-    data.exigeAnalise === 'Exige análise humana em alguns casos' ||
-    data.temDecisao === 'Sim';
+    data.exigeAnalise === V.exigeAnalise.ALGUNS_CASOS ||
+    data.temDecisao   === V.temDecisao.SIM;
   if (hasIA) types.push('IA Assistiva');
 
   // Integração API — structured data + multiple systems + clear rules
   const hasAPI =
     (data.comoChegam ?? []).some(c => c.includes('estruturad')) &&
     (data.sistemas   ?? []).length >= 2 &&
-    (data.seguiRegras ?? '').startsWith('Sempre');
+    (data.seguiRegras ?? '').startsWith(V.seguiRegras.SEMPRE_PREFIX);
   if (hasAPI) types.push('Integração API');
 
   if (types.length === 0) types.push('RPA');
@@ -147,34 +177,38 @@ function classifyAutomationTypes(data: Partial<Phase2FormData>): AutomationType[
 }
 
 function classifyComplexity(data: Partial<Phase2FormData>): ComplexityLevel {
-  const unstable      = (data.sempresMesmosPassos ?? '').includes('Varia');
-  const frequentHuman =
-    (data.exigeAnalise ?? '').includes('frequência') ||
-    (data.exigeAnalise ?? '').includes('frequente') ||
-    data.exigeAnalise === 'Exige análise humana com frequência';
+  const V = PHASE2_VALUES;
+
+  const unstable      = (data.sempresMesmosPassos ?? '').includes(V.sempresMesmosPassos.VARIA_KEYWORD);
+  const frequentHuman = data.exigeAnalise === V.exigeAnalise.COM_FREQUENCIA;
 
   if (unstable || frequentHuman) return 'Alta';
 
-  const rulesAlways  = (data.seguiRegras ?? '').startsWith('Sempre');
-  const stableAlways = (data.sempresMesmosPassos ?? '').startsWith('Sempre');
-  const noDecision   = data.temDecisao !== 'Sim';
-  const fewSystems   = (data.sistemas   ?? []).length <= 1;
-  const noHuman      = data.exigeAnalise === 'Não exige análise humana';
+  const rulesAlways  = (data.seguiRegras          ?? '').startsWith(V.seguiRegras.SEMPRE_PREFIX);
+  const stableAlways = (data.sempresMesmosPassos  ?? '').startsWith(V.sempresMesmosPassos.SEMPRE_PREFIX);
+  const noDecision   = data.temDecisao !== V.temDecisao.SIM;
+  const fewSystems   = (data.sistemas             ?? []).length <= 1;
+  const noHuman      = data.exigeAnalise === V.exigeAnalise.NAO_EXIGE;
 
   if (rulesAlways && stableAlways && noDecision && fewSystems && noHuman) return 'Baixa';
   return 'Média';
 }
 
 function classifyPotential(data: Partial<Phase2FormData>): AutomationPotential {
-  const rulesRarely   = (data.seguiRegras ?? '').startsWith('Raramente');
-  const unstable      = (data.sempresMesmosPassos ?? '').includes('Varia');
-  const frequentHuman =
-    data.exigeAnalise === 'Exige análise humana com frequência';
+  const V = PHASE2_VALUES;
+
+  const rulesRarely   = (data.seguiRegras         ?? '').startsWith(V.seguiRegras.RARAMENTE_PREFIX);
+  const unstable      = (data.sempresMesmosPassos  ?? '').includes(V.sempresMesmosPassos.VARIA_KEYWORD);
+  const frequentHuman = data.exigeAnalise === V.exigeAnalise.COM_FREQUENCIA;
 
   if (rulesRarely || unstable || frequentHuman) return 'BAIXO';
 
-  const rulesOk    = (data.seguiRegras         ?? '').startsWith('Sempre') || (data.seguiRegras ?? '').startsWith('Na maioria');
-  const stableOk   = (data.sempresMesmosPassos ?? '').startsWith('Sempre') || (data.sempresMesmosPassos ?? '').startsWith('Na maioria');
+  const rulesOk  =
+    (data.seguiRegras         ?? '').startsWith(V.seguiRegras.SEMPRE_PREFIX) ||
+    (data.seguiRegras         ?? '').startsWith(V.seguiRegras.NA_MAIORIA_PREFIX);
+  const stableOk =
+    (data.sempresMesmosPassos ?? '').startsWith(V.sempresMesmosPassos.SEMPRE_PREFIX) ||
+    (data.sempresMesmosPassos ?? '').startsWith(V.sempresMesmosPassos.NA_MAIORIA_PREFIX);
   const structured =
     (data.comoChegam  ?? []).some(c => c.includes('estruturad')) ||
     (data.fontesDados ?? []).some(f => f.includes('Sistema') || f.includes('Planilha') || f.includes('Formulário'));
@@ -220,6 +254,7 @@ function buildJustificativa(
   types:      AutomationType[],
   complexity: ComplexityLevel,
 ): string {
+  const V = PHASE2_VALUES;
   const parts: string[] = [];
 
   if (potential === 'ALTO')        parts.push('O processo apresenta alto potencial de automação');
@@ -227,24 +262,26 @@ function buildJustificativa(
   else                             parts.push('O processo apresenta baixo potencial de automação imediata');
 
   if (data.seguiRegras) {
-    const r = data.seguiRegras.toLowerCase();
-    if (r.startsWith('sempre'))        parts.push('as regras de execução são claras e previsíveis');
-    else if (r.startsWith('na maioria')) parts.push('as regras são relativamente claras com algumas exceções');
-    else                               parts.push('as regras de execução são pouco padronizadas');
+    if (data.seguiRegras.startsWith(V.seguiRegras.SEMPRE_PREFIX))
+      parts.push('as regras de execução são claras e previsíveis');
+    else if (data.seguiRegras.startsWith(V.seguiRegras.NA_MAIORIA_PREFIX))
+      parts.push('as regras são relativamente claras com algumas exceções');
+    else
+      parts.push('as regras de execução são pouco padronizadas');
   }
 
   if (data.sempresMesmosPassos) {
-    if (data.sempresMesmosPassos.startsWith('Sempre'))
+    if (data.sempresMesmosPassos.startsWith(V.sempresMesmosPassos.SEMPRE_PREFIX))
       parts.push('o fluxo é estável e repetitivo');
-    else if (data.sempresMesmosPassos.includes('Varia'))
+    else if (data.sempresMesmosPassos.includes(V.sempresMesmosPassos.VARIA_KEYWORD))
       parts.push('o fluxo varia bastante dependendo do caso');
   }
 
-  if (data.exigeAnalise === 'Não exige análise humana')
+  if (data.exigeAnalise === V.exigeAnalise.NAO_EXIGE)
     parts.push('não há necessidade de julgamento humano');
-  else if (data.exigeAnalise?.includes('alguns casos'))
+  else if (data.exigeAnalise === V.exigeAnalise.ALGUNS_CASOS)
     parts.push('há intervenção humana em casos específicos');
-  else if (data.exigeAnalise?.includes('frequência') || data.exigeAnalise?.includes('frequente'))
+  else if (data.exigeAnalise === V.exigeAnalise.COM_FREQUENCIA)
     parts.push('o processo depende fortemente de decisões humanas');
 
   if (complexity !== 'Baixa')
