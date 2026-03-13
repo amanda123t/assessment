@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
 import {
   Plus, ChevronDown, ChevronUp, Save, CheckCircle,
-  Search, X, Tag, Sparkles, ArrowRight, ChevronLeft,
+  Search, X, Tag, Sparkles, ArrowRight, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { getAllMacroprocesses } from '@/data/industryLibrary';
 import {
@@ -14,6 +14,7 @@ import {
   analyzeProcess,
   Phase2Analysis,
   BPMNNode,
+  loadPhase2Responses,
 } from '@/lib/phase2';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -31,6 +32,8 @@ interface Props {
   prioritized:  Phase2Entry[];
   savedForms:   Map<string, Partial<Phase2FormData>>;
 }
+
+type Phase2View = 'selection' | 'wizard' | 'report';
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 'done';
 
@@ -133,14 +136,15 @@ const GARGALO_OPTIONS = [
 // ── UI helpers ────────────────────────────────────────────────────────────────
 
 function Radio({
-  label, value, current, onChange,
-}: { label: string; value: string; current: string; onChange: (v: string) => void }) {
+  label, value, current, onChange, size = 'sm',
+}: { label: string; value: string; current: string; onChange: (v: string) => void; size?: 'sm' | 'base' }) {
   const selected = current === value;
+  const sz = size === 'base' ? 'text-sm py-3 px-4 rounded-xl' : 'text-xs py-2.5 px-3 rounded-lg';
   return (
     <button
       type="button"
       onClick={() => onChange(value)}
-      className={`text-left w-full px-3 py-2.5 rounded-lg border text-xs transition-all ${
+      className={`text-left w-full border transition-all ${sz} ${
         selected
           ? 'bg-blue-600 border-blue-600 text-white font-semibold'
           : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
@@ -152,9 +156,10 @@ function Radio({
 }
 
 function MultiCheck({
-  label, value, current, onChange,
-}: { label: string; value: string; current: string[]; onChange: (v: string[]) => void }) {
+  label, value, current, onChange, size = 'sm',
+}: { label: string; value: string; current: string[]; onChange: (v: string[]) => void; size?: 'sm' | 'base' }) {
   const selected = current.includes(value);
+  const sz = size === 'base' ? 'text-sm py-3 px-4 rounded-xl' : 'text-xs py-2.5 px-3 rounded-lg';
   return (
     <button
       type="button"
@@ -162,7 +167,7 @@ function MultiCheck({
         if (selected) onChange(current.filter(v => v !== value));
         else onChange([...current, value]);
       }}
-      className={`text-left w-full px-3 py-2.5 rounded-lg border text-xs transition-all ${
+      className={`text-left w-full border transition-all ${sz} ${
         selected
           ? 'bg-blue-600 border-blue-600 text-white font-semibold'
           : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
@@ -976,14 +981,569 @@ function ManualAddModal({ onAdd, onClose }: ManualAddProps) {
   );
 }
 
+// ── Selection view helpers ────────────────────────────────────────────────────
+
+function getEntryStatus(
+  entry: Phase2Entry,
+  savedForms: Map<string, Partial<Phase2FormData>>,
+): 'done' | 'in-progress' | 'pending' {
+  const data = savedForms.get(entry.subprocessId);
+  if (!data) return 'pending';
+  if (data.gargalo) return 'done';
+  if (data.departamento || data.comoComeca) return 'in-progress';
+  return 'pending';
+}
+
+// ── Selection view ────────────────────────────────────────────────────────────
+
+interface SelectionViewProps {
+  entries:        Phase2Entry[];
+  savedForms:     Map<string, Partial<Phase2FormData>>;
+  respondentName: string;
+  nameConfirmed:  boolean;
+  onRespondentChange: (name: string) => void;
+  onNameConfirm:  () => void;
+  onSelectEntry:  (index: number) => void;
+  onViewReport:   () => void;
+  onShowLibrary:  () => void;
+  onShowManual:   () => void;
+}
+
+function SelectionView({
+  entries, savedForms, respondentName, nameConfirmed,
+  onRespondentChange, onNameConfirm, onSelectEntry, onViewReport,
+  onShowLibrary, onShowManual,
+}: SelectionViewProps) {
+  const doneCount  = entries.filter(e => getEntryStatus(e, savedForms) === 'done').length;
+  const total      = entries.length;
+  const progressPct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+  return (
+    <div>
+      {/* Respondent identification */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-3">Identificação do respondente</h3>
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={respondentName}
+            onChange={e => onRespondentChange(e.target.value)}
+            placeholder="Digite seu nome"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <button
+            type="button"
+            disabled={!respondentName.trim()}
+            onClick={onNameConfirm}
+            className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold transition-colors"
+          >
+            Confirmar
+          </button>
+        </div>
+        {nameConfirmed && respondentName.trim() && (
+          <p className="text-xs text-emerald-600 mt-2 font-medium">✓ Respondendo como {respondentName.trim()}</p>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      {total > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-gray-500">
+              <span className="font-semibold text-gray-800">{doneCount}</span> de {total} subprocessos mapeados
+            </span>
+            <span className="text-xs text-gray-400">{progressPct}%</span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
+            <div
+              className="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Subprocess list */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+        {entries.length === 0 ? (
+          <div className="text-center py-10 text-sm text-gray-400">
+            Nenhum subprocesso ainda. Adicione da biblioteca ou crie manualmente.
+          </div>
+        ) : entries.map((entry, index) => {
+          const status = getEntryStatus(entry, savedForms);
+          return (
+            <button
+              key={entry.subprocessId}
+              type="button"
+              onClick={() => onSelectEntry(index)}
+              className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors text-left"
+            >
+              {/* Left: status icon + names */}
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="shrink-0">
+                  {status === 'done' ? (
+                    <CheckCircle size={16} className="text-emerald-500" strokeWidth={2} />
+                  ) : status === 'in-progress' ? (
+                    <div className="w-4 h-4 rounded-full border-2 border-blue-400 flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-blue-400" />
+                    </div>
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-sm font-semibold text-gray-800 truncate">
+                    {entry.subprocessName}
+                  </span>
+                  <span className="block text-xs text-gray-400 mt-0.5 truncate">
+                    {entry.processName}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right: vote badge + status badge + chevron */}
+              <div className="flex items-center gap-2 shrink-0 ml-3">
+                {entry.voteAverage !== undefined && (
+                  <span className="text-[10px] font-semibold text-violet-600 whitespace-nowrap">
+                    ★ {entry.voteAverage.toFixed(1)}
+                  </span>
+                )}
+                {status === 'done' ? (
+                  <span className="inline-flex items-center bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                    Concluído
+                  </span>
+                ) : status === 'in-progress' ? (
+                  <span className="inline-flex items-center bg-yellow-100 border border-yellow-200 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                    Em progresso
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center bg-gray-100 border border-gray-200 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                    Pendente
+                  </span>
+                )}
+                <ChevronRight size={14} className="text-gray-300" strokeWidth={2} />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onShowLibrary}
+          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+        >
+          <Plus size={14} strokeWidth={2} />
+          Adicionar da biblioteca
+        </button>
+        <button
+          type="button"
+          onClick={onShowManual}
+          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+        >
+          <Plus size={14} strokeWidth={2} />
+          Criar manualmente
+        </button>
+        <button
+          type="button"
+          disabled={doneCount === 0}
+          onClick={onViewReport}
+          className="inline-flex items-center gap-2 border border-blue-600 rounded-lg px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ml-auto"
+        >
+          <Sparkles size={14} strokeWidth={2} />
+          Ver Relatório
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Wizard view ───────────────────────────────────────────────────────────────
+
+interface WizardViewProps {
+  entry:          Phase2Entry;
+  diagnosticId:   string;
+  respondentName: string;
+  initialData:    Partial<Phase2FormData>;
+  totalEntries:   number;
+  entryIndex:     number;
+  onComplete:     () => void;
+  onBack:         () => void;
+  onError:        (msg: string) => void;
+}
+
+function WizardView({
+  entry, diagnosticId, respondentName, initialData,
+  totalEntries, entryIndex, onComplete, onBack, onError,
+}: WizardViewProps) {
+  const [saving, setSaving] = useState(false);
+  const [data, setData] = useState<Partial<Phase2FormData>>({ ...EMPTY_PHASE2_FORM, ...initialData });
+
+  const [step, setStep] = useState<WizardStep>(() => {
+    if (initialData.gargalo)                  return 'done';
+    if (initialData.sempresMesmosPassos)       return 10;
+    if (initialData.copiaManual)              return 9;
+    if (initialData.fontesDados?.length)      return 8;
+    if (initialData.seguiRegras)              return 7;
+    if (initialData.temDecisao)               return 6;
+    if (initialData.sequenciaEtapas?.length)  return 5;
+    if (initialData.etapasPrincipais?.length) return 4;
+    if (initialData.comoComeca)               return 3;
+    if (initialData.departamento)             return 2;
+    return 1;
+  });
+
+  const set = useCallback(<K extends keyof Phase2FormData>(key: K, value: Phase2FormData[K]) => {
+    setData(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const doSave = async (formData: Partial<Phase2FormData>) => {
+    setSaving(true);
+    try {
+      await savePhase2Response(
+        diagnosticId,
+        entry.subprocessId,
+        entry.subprocessName,
+        entry.processName,
+        entry.isPrioritized,
+        { ...formData, respondentName },
+      );
+    } catch (err) {
+      console.error('[Phase2] Wizard save failed:', err);
+      onError('Erro ao salvar. Verifique sua conexão e tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleContinue = async () => {
+    await doSave(data);
+    if (step === TOTAL_STEPS) {
+      onComplete();
+    } else {
+      setStep(((step as number) + 1) as WizardStep);
+    }
+  };
+
+  const handleSaveAndBack = async () => {
+    await doSave(data);
+    onBack();
+  };
+
+  const handleBack = () => {
+    if (step === 1 || step === 'done') {
+      onBack();
+    } else {
+      setStep(((step as number) - 1) as WizardStep);
+    }
+  };
+
+  const stepNum = step === 'done' ? TOTAL_STEPS : (step as number);
+
+  return (
+    <div>
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <div className="mb-8">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium mb-5 transition-colors"
+        >
+          <ChevronLeft size={16} strokeWidth={2} />
+          Voltar à lista
+        </button>
+
+        {/* Global progress across subprocesses */}
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
+            Subprocesso {entryIndex + 1} de {totalEntries}
+          </span>
+          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+            <div
+              className="bg-violet-500 h-1.5 rounded-full transition-all duration-500"
+              style={{ width: `${((entryIndex + 1) / Math.max(totalEntries, 1)) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Subprocess title */}
+        <h2 className="text-xl font-bold text-gray-900">{entry.subprocessName}</h2>
+        <p className="text-sm text-gray-400 mt-0.5">{entry.processName}</p>
+
+        {/* Per-step indicator */}
+        <div className="flex items-center gap-3 mt-5">
+          <span className="text-xs font-semibold text-blue-600 whitespace-nowrap">
+            Etapa {stepNum} de {TOTAL_STEPS} — {STEP_LABELS[stepNum - 1]}
+          </span>
+          <div className="flex gap-1.5">
+            {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(n => (
+              <div
+                key={n}
+                className={`h-2 w-2 rounded-full transition-colors ${
+                  n < stepNum  ? 'bg-blue-600' :
+                  n === stepNum ? 'bg-blue-400' :
+                                  'bg-gray-200'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Question body ──────────────────────────────────────────── */}
+      <div className="max-w-3xl mx-auto space-y-6 mb-12">
+
+        {/* Step 1: Identificação */}
+        {step === 1 && (
+          <div>
+            <label className="block text-base font-semibold text-gray-700 mb-2">
+              Departamento responsável por este processo
+            </label>
+            <input
+              type="text"
+              value={data.departamento ?? ''}
+              onChange={e => set('departamento', e.target.value)}
+              placeholder="Ex: Financeiro, RH, Operações"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+        )}
+
+        {/* Step 2: Como começa */}
+        {step === 2 && (
+          <div>
+            <p className="text-base font-semibold text-gray-700 mb-1">Como esse processo normalmente começa?</p>
+            <p className="text-sm text-gray-500 mb-4">Selecione a opção que melhor descreve o gatilho do processo.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {COMO_COMECA_OPTIONS.map(opt => (
+                <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => set('comoComeca', v)} size="base" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Etapas principais */}
+        {step === 3 && (
+          <div>
+            <p className="text-base font-semibold text-gray-700 mb-1">Quais etapas normalmente acontecem nesse processo?</p>
+            <p className="text-sm text-gray-500 mb-4">Selecione todas as que se aplicam.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {ETAPAS_PRINCIPAIS_OPTIONS.map(opt => (
+                <MultiCheck key={opt} label={opt} value={opt} current={data.etapasPrincipais ?? []} onChange={v => set('etapasPrincipais', v)} size="base" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Sequência */}
+        {step === 4 && (
+          <div>
+            <p className="text-base font-semibold text-gray-700 mb-1">Qual é a sequência do processo?</p>
+            <p className="text-sm text-gray-500 mb-4">
+              Adicione as etapas na ordem em que acontecem. Use as setas para reordenar.
+              Esta sequência será usada para gerar o fluxo BPMN.
+            </p>
+            <SequenceBuilder value={data.sequenciaEtapas ?? []} onChange={v => set('sequenciaEtapas', v)} />
+          </div>
+        )}
+
+        {/* Step 5: Decisões */}
+        {step === 5 && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-3">Existe alguma decisão ou validação nesse processo?</p>
+              <div className="flex gap-3">
+                {['Não', 'Sim'].map(opt => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => set('temDecisao', opt)}
+                    className={`flex-1 py-3 rounded-xl border text-sm font-semibold transition-all ${
+                      data.temDecisao === opt
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {data.temDecisao === 'Sim' && (
+              <>
+                <div>
+                  <p className="text-base font-semibold text-gray-700 mb-2">Qual decisão normalmente acontece?</p>
+                  <div className="space-y-2">
+                    {TIPO_DECISAO_OPTIONS.map(opt => (
+                      <Radio key={opt} label={opt} value={opt} current={data.tipoDecisao ?? ''} onChange={v => set('tipoDecisao', v)} size="base" />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-gray-700 mb-2">Se a validação falhar, o que acontece?</p>
+                  <div className="space-y-2">
+                    {FALHA_DECISAO_OPTIONS.map(opt => (
+                      <Radio key={opt} label={opt} value={opt} current={data.falhaDecisao ?? ''} onChange={v => set('falhaDecisao', v)} size="base" />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Step 6: Como funciona */}
+        {step === 6 && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">O processo segue regras claras?</p>
+              <div className="space-y-2">
+                {['Sempre segue regras claras', 'Na maioria das vezes segue regras claras', 'Raramente segue regras claras'].map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.seguiRegras ?? ''} onChange={v => set('seguiRegras', v)} size="base" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">Esse processo exige análise ou decisão humana?</p>
+              <div className="space-y-2">
+                {['Não exige análise humana', 'Exige análise humana em alguns casos', 'Exige análise humana com frequência'].map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.exigeAnalise ?? ''} onChange={v => set('exigeAnalise', v)} size="base" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 7: Origem dos dados */}
+        {step === 7 && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-1">De onde vêm as informações usadas nesse processo?</p>
+              <p className="text-sm text-gray-500 mb-4">Selecione as fontes mais comuns.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {FONTES_DADOS_OPTIONS.map(opt => (
+                  <MultiCheck key={opt} label={opt} value={opt} current={data.fontesDados ?? []} onChange={v => set('fontesDados', v)} size="base" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">Como normalmente chegam essas informações?</p>
+              <div className="space-y-2">
+                {COMO_CHEGAM_OPTIONS.map(opt => (
+                  <MultiCheck key={opt} label={opt} value={opt} current={data.comoChegam ?? []} onChange={v => set('comoChegam', v)} size="base" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 8: Sistemas */}
+        {step === 8 && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">Quais sistemas são utilizados nesse processo?</p>
+              <SystemsInput value={data.sistemas ?? []} onChange={v => set('sistemas', v)} />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">As informações precisam ser copiadas manualmente entre sistemas?</p>
+              <div className="space-y-2">
+                {['Não', 'Sim, em alguns casos', 'Sim, com frequência', 'Não sei'].map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.copiaManual ?? ''} onChange={v => set('copiaManual', v)} size="base" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 9: Estabilidade */}
+        {step === 9 && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">Este processo normalmente segue sempre os mesmos passos?</p>
+              <div className="space-y-2">
+                {['Sempre segue os mesmos passos', 'Na maioria das vezes segue os mesmos passos', 'Varia bastante dependendo do caso'].map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.sempresMesmosPassos ?? ''} onChange={v => set('sempresMesmosPassos', v)} size="base" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">Existe previsão de mudança nesse processo ou nos sistemas envolvidos?</p>
+              <div className="space-y-2">
+                {['Não há previsão de mudança', 'Existe possibilidade de mudança', 'Mudanças já estão planejadas', 'Não sei'].map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.previsaoMudanca ?? ''} onChange={v => set('previsaoMudanca', v)} size="base" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 10: Gargalos */}
+        {step === 10 && (
+          <div>
+            <p className="text-base font-semibold text-gray-700 mb-1">Qual é o principal problema desse processo hoje?</p>
+            <p className="text-sm text-gray-500 mb-4">Selecione o que mais impacta o dia a dia da equipe.</p>
+            <div className="space-y-2">
+              {GARGALO_OPTIONS.map(opt => (
+                <Radio key={opt} label={opt} value={opt} current={data.gargalo ?? ''} onChange={v => set('gargalo', v)} size="base" />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Footer navigation ──────────────────────────────────────── */}
+      <div className="border-t border-gray-100 pt-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
+          >
+            <ChevronLeft size={15} strokeWidth={2} />
+            Voltar
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveAndBack}
+            disabled={saving || !respondentName.trim()}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-40 font-medium transition-colors border border-gray-200 px-3 py-2 rounded-lg"
+          >
+            <Save size={13} strokeWidth={1.75} />
+            {saving ? 'Salvando…' : 'Salvar progresso'}
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={handleContinue}
+          disabled={saving || !respondentName.trim()}
+          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
+        >
+          {step === TOTAL_STEPS ? 'Finalizar mapeamento' : (
+            <>Continuar <ArrowRight size={15} strokeWidth={2} /></>
+          )}
+        </button>
+      </div>
+
+      {!respondentName.trim() && (
+        <p className="text-xs text-amber-600 mt-3">Informe seu nome no topo da página para salvar.</p>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: Props) {
-  const [respondentName, setRespondentName] = useState('');
-  const [nameConfirmed,  setNameConfirmed]  = useState(false);
-  const [entries,        setEntries]        = useState<Phase2Entry[]>(prioritized);
-  const [showLibrary,    setShowLibrary]    = useState(false);
-  const [showManual,     setShowManual]     = useState(false);
+export default function Phase2Screen({ diagnosticId, prioritized, savedForms: initialSavedForms }: Props) {
+  const [respondentName,   setRespondentName]   = useState('');
+  const [nameConfirmed,    setNameConfirmed]    = useState(false);
+  const [entries,          setEntries]          = useState<Phase2Entry[]>(prioritized);
+  const [savedForms,       setSavedForms]       = useState<Map<string, Partial<Phase2FormData>>>(initialSavedForms);
+  const [showLibrary,      setShowLibrary]      = useState(false);
+  const [showManual,       setShowManual]       = useState(false);
+  const [view,             setView]             = useState<Phase2View>('selection');
+  const [activeEntryIndex, setActiveEntryIndex] = useState<number | null>(null);
 
   const { toasts, showToast, dismissToast } = useToast();
 
@@ -1005,76 +1565,60 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: 
     });
   };
 
+  const handleWizardComplete = () => {
+    loadPhase2Responses(diagnosticId).then(existing => {
+      const formsMap = new Map<string, Partial<Phase2FormData>>();
+      existing.forEach((v, k) => formsMap.set(k, v as Partial<Phase2FormData>));
+      setSavedForms(formsMap);
+    }).catch(err => console.error('[Phase2] Failed to reload responses:', err));
+    setView('selection');
+    setActiveEntryIndex(null);
+  };
+
+  const handleWizardBack = () => {
+    setView('selection');
+    setActiveEntryIndex(null);
+  };
+
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-8">
+    <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-      {/* Respondent name */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
-        <h3 className="text-sm font-bold text-gray-800 mb-3">Identificação do respondente</h3>
-        <div className="flex gap-3">
-          <input
-            type="text"
-            value={respondentName}
-            onChange={e => { setRespondentName(e.target.value); setNameConfirmed(false); }}
-            placeholder="Digite seu nome"
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <button
-            type="button"
-            disabled={!respondentName.trim()}
-            onClick={() => setNameConfirmed(true)}
-            className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold transition-colors"
-          >
-            Confirmar
-          </button>
-        </div>
-        {nameConfirmed && respondentName.trim() && (
-          <p className="text-xs text-emerald-600 mt-2 font-medium">✓ Respondendo como {respondentName.trim()}</p>
-        )}
-      </div>
+      {view === 'selection' && (
+        <SelectionView
+          entries={entries}
+          savedForms={savedForms}
+          respondentName={respondentName}
+          nameConfirmed={nameConfirmed}
+          onRespondentChange={name => { setRespondentName(name); setNameConfirmed(false); }}
+          onNameConfirm={() => setNameConfirmed(true)}
+          onSelectEntry={index => { setActiveEntryIndex(index); setView('wizard'); }}
+          onViewReport={() => setView('report')}
+          onShowLibrary={() => setShowLibrary(true)}
+          onShowManual={() => setShowManual(true)}
+        />
+      )}
 
-      {/* Subprocess wizard cards */}
-      <div className="space-y-3 mb-6">
-        {entries.map(entry => (
-          <SubprocessCard
-            key={entry.subprocessId}
-            entry={entry}
-            diagnosticId={diagnosticId}
-            respondentName={respondentName}
-            initialData={savedForms.get(entry.subprocessId) ?? {}}
-            onError={showToast}
-          />
-        ))}
-        {entries.length === 0 && (
-          <div className="text-center py-10 text-sm text-gray-400">
-            Nenhum subprocesso ainda. Adicione da biblioteca ou crie manualmente.
-          </div>
-        )}
-      </div>
+      {view === 'wizard' && activeEntryIndex !== null && (
+        <WizardView
+          entry={entries[activeEntryIndex]}
+          diagnosticId={diagnosticId}
+          respondentName={respondentName}
+          initialData={savedForms.get(entries[activeEntryIndex].subprocessId) ?? {}}
+          totalEntries={entries.length}
+          entryIndex={activeEntryIndex}
+          onComplete={handleWizardComplete}
+          onBack={handleWizardBack}
+          onError={showToast}
+        />
+      )}
 
-      {/* Add actions */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        <button
-          type="button"
-          onClick={() => setShowLibrary(true)}
-          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-        >
-          <Plus size={14} strokeWidth={2} />
-          Adicionar da biblioteca
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowManual(true)}
-          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-        >
-          <Plus size={14} strokeWidth={2} />
-          Criar processo manualmente
-        </button>
-      </div>
+      {view === 'report' && (
+        <div>Relatório (próximo prompt)</div>
+      )}
 
-      {/* Modals */}
+      {/* Modals — available from all views */}
       {showLibrary && (
         <LibraryPicker
           existing={existingIds}
