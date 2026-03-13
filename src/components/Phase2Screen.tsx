@@ -48,13 +48,13 @@ type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 'done';
 const STEP_LABELS = [
   'Identificação',
   'Como começa',
-  'Etapas do processo',
-  'Sequência',
+  'Etapas e sequência',
   'Decisões',
   'Como funciona',
   'Origem dos dados',
   'Sistemas',
   'Estabilidade',
+  'Entrega e cliente',
   'Gargalos',
 ];
 
@@ -139,6 +139,55 @@ const GARGALO_OPTIONS = [
   'Demora para cumprir prazos ou SLA',
   'Falta de integração entre sistemas',
   'Outro',
+];
+
+const OUTPUT_OPTIONS = [
+  'Relatório ou documento gerado',
+  'Dados atualizados em sistema',
+  'Aprovação ou validação concluída',
+  'Notificação ou comunicação enviada',
+  'Pagamento ou transação processada',
+  'Cadastro ou registro criado/atualizado',
+  'Outro',
+];
+
+const CUSTOMER_OPTIONS = [
+  'Outro departamento interno',
+  'Cliente externo',
+  'Gestão ou diretoria',
+  'Órgão regulador ou auditoria',
+  'Fornecedor ou parceiro',
+  'O próprio departamento (uso interno)',
+  'Outro',
+];
+
+const HANDOFF_AREAS_OPTIONS = [
+  'Financeiro',
+  'TI / Tecnologia',
+  'Jurídico / Compliance',
+  'Comercial / Vendas',
+  'Operações / Logística',
+  'RH / Pessoas',
+  'Diretoria / Gestão',
+  'Fornecedor externo',
+  'Cliente externo',
+  'Nenhuma outra área',
+];
+
+const WAIT_TIME_OPTIONS = [
+  'Não há esperas significativas',
+  'Sim, esperando aprovação de alguém',
+  'Sim, esperando informação de outra área',
+  'Sim, esperando sistema ou processamento batch',
+  'Sim, esperando resposta de cliente ou fornecedor externo',
+];
+
+const SLA_OPTIONS = [
+  'Menos de 1 hora',
+  'Algumas horas (mesmo dia)',
+  '1 a 3 dias',
+  'Mais de 3 dias',
+  'Não tem prazo definido',
 ];
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
@@ -239,10 +288,16 @@ function SystemsInput({
 function SequenceBuilder({
   value, onChange,
 }: { value: string[]; onChange: (v: string[]) => void }) {
-  const [selected, setSelected] = useState('');
+  const [selected,   setSelected]   = useState('');
+  const [customStep, setCustomStep] = useState('');
 
   const addStep = () => {
     if (selected) { onChange([...value, selected]); setSelected(''); }
+  };
+
+  const addCustom = () => {
+    const trimmed = customStep.trim();
+    if (trimmed) { onChange([...value, trimmed]); setCustomStep(''); }
   };
 
   const removeStep = (i: number) => onChange(value.filter((_, idx) => idx !== i));
@@ -302,8 +357,26 @@ function SequenceBuilder({
           Adicionar
         </button>
       </div>
+      <div className="flex gap-2 mt-2">
+        <input
+          type="text"
+          value={customStep}
+          onChange={e => setCustomStep(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
+          placeholder="Ou digite uma etapa personalizada..."
+          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <button
+          type="button"
+          onClick={addCustom}
+          disabled={!customStep.trim()}
+          className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-600 text-xs font-medium transition-colors whitespace-nowrap"
+        >
+          Adicionar
+        </button>
+      </div>
       {value.length === 0 && (
-        <p className="text-[10px] text-gray-400">Adicione as etapas na ordem em que acontecem no processo.</p>
+        <p className="text-[10px] text-gray-400 mt-1">Adicione as etapas na ordem em que acontecem no processo.</p>
       )}
     </div>
   );
@@ -455,7 +528,7 @@ function getEntryStatus(
 ): 'done' | 'in-progress' | 'pending' {
   const data = savedForms.get(entry.subprocessId);
   if (!data) return 'pending';
-  if (data.gargalo) return 'done';
+  if ((data.gargalos ?? []).length > 0) return 'done';
   if (data.departamento || data.comoComeca) return 'in-progress';
   return 'pending';
 }
@@ -475,7 +548,7 @@ function getEntryBadgeStatus(
 ): EntryBadgeStatus {
   const data = savedForms.get(entry.subprocessId);
   if (!data) return 'pending';
-  if (!data.gargalo) {
+  if ((data.gargalos ?? []).length === 0) {
     return (data.departamento || data.comoComeca) ? 'in-progress' : 'pending';
   }
   // Wizard complete — derive from BPMN status
@@ -742,16 +815,16 @@ function WizardView({
   const [data, setData] = useState<Partial<Phase2FormData>>({ ...EMPTY_PHASE2_FORM, ...initialData });
 
   const [step, setStep] = useState<WizardStep>(() => {
-    if (initialData.gargalo)                  return 'done';
-    if (initialData.sempresMesmosPassos)       return 10;
-    if (initialData.copiaManual)              return 9;
-    if (initialData.fontesDados?.length)      return 8;
-    if (initialData.seguiRegras)              return 7;
-    if (initialData.temDecisao)               return 6;
-    if (initialData.sequenciaEtapas?.length)  return 5;
-    if (initialData.etapasPrincipais?.length) return 4;
-    if (initialData.comoComeca)               return 3;
-    if (initialData.departamento)             return 2;
+    if ((initialData.gargalos ?? []).length > 0)                          return 'done';
+    if (initialData.outputPrincipal || initialData.customerPrincipal)    return 10;
+    if (initialData.sempresMesmosPassos)                                  return 9;
+    if (initialData.copiaManual)                                          return 8;
+    if (initialData.fontesDados?.length)                                  return 7;
+    if (initialData.seguiRegras)                                          return 6;
+    if (initialData.temDecisao)                                           return 5;
+    if (initialData.sequenciaEtapas?.length)                              return 4;
+    if (initialData.comoComeca)                                           return 3;
+    if (initialData.departamento)                                         return 2;
     return 1;
   });
 
@@ -877,17 +950,32 @@ function WizardView({
 
         {/* Step 1: Identificação */}
         {step === 1 && (
-          <div>
-            <label className="block text-base font-semibold text-gray-700 mb-2">
-              Departamento responsável por este processo
-            </label>
-            <input
-              type="text"
-              value={data.departamento ?? ''}
-              onChange={e => set('departamento', e.target.value)}
-              placeholder="Ex: Financeiro, RH, Operações"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
+          <div className="space-y-6">
+            <div>
+              <label className="block text-base font-semibold text-gray-700 mb-2">
+                Departamento responsável por este processo
+              </label>
+              <input
+                type="text"
+                value={data.departamento ?? ''}
+                onChange={e => set('departamento', e.target.value)}
+                placeholder="Ex: Financeiro, RH, Operações"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-1">
+                Além do departamento principal, quais outras áreas participam deste processo?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Selecione todas as áreas que recebem ou enviam informações durante a execução.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {HANDOFF_AREAS_OPTIONS.map(opt => (
+                  <MultiCheck key={opt} label={opt} value={opt} current={data.areasEnvolvidas ?? []} onChange={v => set('areasEnvolvidas', v)} size="base" />
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -904,33 +992,21 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 3: Etapas principais */}
+        {/* Step 3: Etapas e sequência (unified) */}
         {step === 3 && (
           <div>
-            <p className="text-base font-semibold text-gray-700 mb-1">Quais etapas normalmente acontecem nesse processo?</p>
-            <p className="text-sm text-gray-500 mb-4">Selecione todas as que se aplicam.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {ETAPAS_PRINCIPAIS_OPTIONS.map(opt => (
-                <MultiCheck key={opt} label={opt} value={opt} current={data.etapasPrincipais ?? []} onChange={v => set('etapasPrincipais', v)} size="base" />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Sequência */}
-        {step === 4 && (
-          <div>
-            <p className="text-base font-semibold text-gray-700 mb-1">Qual é a sequência do processo?</p>
+            <p className="text-base font-semibold text-gray-700 mb-1">
+              Quais são as etapas deste processo e em qual ordem acontecem?
+            </p>
             <p className="text-sm text-gray-500 mb-4">
-              Adicione as etapas na ordem em que acontecem. Use as setas para reordenar.
-              Esta sequência será usada para gerar o fluxo BPMN.
+              Adicione cada etapa na ordem em que acontece. Você pode selecionar da lista ou digitar etapas personalizadas. Use as setas para reordenar. Esta sequência será usada para gerar o fluxo BPMN.
             </p>
             <SequenceBuilder value={data.sequenciaEtapas ?? []} onChange={v => set('sequenciaEtapas', v)} />
           </div>
         )}
 
-        {/* Step 5: Decisões */}
-        {step === 5 && (
+        {/* Step 4: Decisões */}
+        {step === 4 && (
           <div className="space-y-6">
             <div>
               <p className="text-base font-semibold text-gray-700 mb-3">Existe alguma decisão ou validação nesse processo?</p>
@@ -974,8 +1050,8 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 6: Como funciona */}
-        {step === 6 && (
+        {/* Step 5: Como funciona */}
+        {step === 5 && (
           <div className="space-y-6">
             <div>
               <p className="text-base font-semibold text-gray-700 mb-2">O processo segue regras claras?</p>
@@ -996,8 +1072,8 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 7: Origem dos dados */}
-        {step === 7 && (
+        {/* Step 6: Origem dos dados */}
+        {step === 6 && (
           <div className="space-y-6">
             <div>
               <p className="text-base font-semibold text-gray-700 mb-1">De onde vêm as informações usadas nesse processo?</p>
@@ -1019,8 +1095,8 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 8: Sistemas */}
-        {step === 8 && (
+        {/* Step 7: Sistemas */}
+        {step === 7 && (
           <div className="space-y-6">
             <div>
               <p className="text-base font-semibold text-gray-700 mb-2">Quais sistemas são utilizados nesse processo?</p>
@@ -1037,8 +1113,8 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 9: Estabilidade */}
-        {step === 9 && (
+        {/* Step 8: Estabilidade */}
+        {step === 8 && (
           <div className="space-y-6">
             <div>
               <p className="text-base font-semibold text-gray-700 mb-2">Este processo normalmente segue sempre os mesmos passos?</p>
@@ -1059,15 +1135,71 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 10: Gargalos */}
+        {/* Step 9: Output + Customer */}
+        {step === 9 && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-1">
+                Qual é a principal entrega deste processo?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                O que o processo produz quando é concluído com sucesso?
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {OUTPUT_OPTIONS.map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.outputPrincipal ?? ''} onChange={v => set('outputPrincipal', v)} size="base" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">
+                Quem recebe essa entrega?
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {CUSTOMER_OPTIONS.map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.customerPrincipal ?? ''} onChange={v => set('customerPrincipal', v)} size="base" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 10: Gargalos + espera + SLA */}
         {step === 10 && (
-          <div>
-            <p className="text-base font-semibold text-gray-700 mb-1">Qual é o principal problema desse processo hoje?</p>
-            <p className="text-sm text-gray-500 mb-4">Selecione o que mais impacta o dia a dia da equipe.</p>
-            <div className="space-y-2">
-              {GARGALO_OPTIONS.map(opt => (
-                <Radio key={opt} label={opt} value={opt} current={data.gargalo ?? ''} onChange={v => set('gargalo', v)} size="base" />
-              ))}
+          <div className="space-y-6">
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-1">
+                Quais são os principais problemas deste processo?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">Selecione todos os que se aplicam.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {GARGALO_OPTIONS.map(opt => (
+                  <MultiCheck key={opt} label={opt} value={opt} current={data.gargalos ?? []} onChange={v => set('gargalos', v)} size="base" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">
+                Existe tempo de espera significativo entre as etapas?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Esperas por aprovação, informação de outra área, ou processamento de sistema.
+              </p>
+              <div className="space-y-2">
+                {WAIT_TIME_OPTIONS.map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.tempoEspera ?? ''} onChange={v => set('tempoEspera', v)} size="base" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">
+                Qual é o prazo esperado (SLA) para conclusão deste processo, do início ao fim?
+              </p>
+              <div className="space-y-2">
+                {SLA_OPTIONS.map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.slaEsperado ?? ''} onChange={v => set('slaEsperado', v)} size="base" />
+                ))}
+              </div>
             </div>
           </div>
         )}

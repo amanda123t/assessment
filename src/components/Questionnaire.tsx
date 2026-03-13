@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ClipboardCheck } from 'lucide-react';
 import { Macroprocess, Process, Subprocess, CriteriaScores, RealValues, CRITERIA } from '@/types';
-import { getEmptyScores, calculateWeightedScore } from '@/lib/scoring';
+import { getEmptyScores, calculateWeightedScore, normalizeScore } from '@/lib/scoring';
 
 interface Props {
   macroprocess: Macroprocess;
@@ -169,6 +169,9 @@ export default function Questionnaire({
               <div className="mb-4">
                 <h3 className="font-semibold text-gray-800 text-sm">{criterion.label}</h3>
                 <p className="text-xs text-gray-500 mt-0.5">{criterion.description}</p>
+                {criterion.example && (
+                  <p className="text-xs text-blue-500 mt-1 italic">{criterion.example}</p>
+                )}
               </div>
 
               {/* Range buttons */}
@@ -217,7 +220,7 @@ export default function Questionnaire({
       <div className="mt-8 flex items-center justify-between">
         <span className="text-sm text-gray-500">
           {allAnswered
-            ? <span className="text-blue-600 font-semibold">Score total: <span className="text-lg">{totalScore}</span></span>
+            ? <span className="text-blue-600 font-semibold">Score total: <span className="text-lg">{normalizeScore(totalScore)}</span>/100</span>
             : <>{criteriaAnsweredCount} de {CRITERIA.length} respondidos</>
           }
         </span>

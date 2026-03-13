@@ -1,6 +1,7 @@
 'use client';
 
 import { RankedAssessment } from '@/lib/ranking';
+import { normalizeScore } from '@/lib/scoring';
 
 interface Props {
   ranked: RankedAssessment[];
@@ -53,8 +54,8 @@ export default function ProcessRanking({ ranked }: Props) {
                 </td>
                 <td className="px-4 py-3 text-gray-700">{item.subprocessName}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className="font-extrabold text-gray-900">{item.totalScore}</span>
-                  <span className="text-xs text-gray-400">/24</span>
+                  <span className="font-extrabold text-gray-900">{normalizeScore(item.totalScore)}</span>
+                  <span className="text-xs text-gray-400">/100</span>
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${className}`}>

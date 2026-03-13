@@ -87,8 +87,17 @@ export interface Phase2SubprocessData {
   sempresMesmosPassos: string;
   previsaoMudanca:     string;
 
-  // Block 9 — Gargalos
-  gargalo: string;
+  // Block 1 extension — Handoffs
+  areasEnvolvidas?: string[];
+
+  // Block 9 — Output + Customer
+  outputPrincipal?:   string;
+  customerPrincipal?: string;
+
+  // Block 10 — Gargalos + espera + SLA
+  gargalos:     string[];
+  tempoEspera?: string;
+  slaEsperado?: string;
 
   updatedAt?: unknown;
 }
@@ -115,7 +124,12 @@ export const EMPTY_PHASE2_FORM: Phase2FormData = {
   copiaManual:         '',
   sempresMesmosPassos: '',
   previsaoMudanca:     '',
-  gargalo:             '',
+  outputPrincipal:     '',
+  customerPrincipal:   '',
+  areasEnvolvidas:     [],
+  gargalos:            [],
+  tempoEspera:         '',
+  slaEsperado:         '',
 };
 
 // ── Analysis types ─────────────────────────────────────────────────────────────

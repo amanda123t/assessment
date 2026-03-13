@@ -41,31 +41,44 @@ export function calculateWeightedScore(scores: CriteriaScores): number {
  * Answers: "given the technical nature of this process, how much of it can be automated?"
  *
  * Criteria increasing automatability (higher raw score = better candidate):
- *   digitization      30 — manual/spreadsheet work is the prime automation target
- *   reworkRate        15 — repetitive errors indicate automatable patterns
+ *   digitization         25 — manual/spreadsheet work is the prime automation target
+ *   reworkRate           15 — repetitive errors indicate automatable patterns
+ *   operationalVolume    10 — high volume amplifies ROI of automation
  *
  * Criteria decreasing automatability (INVERTED — score 1 = most automatable):
- *   standardization   35 — most important: score 1="always follows rules", score 4="each exec differs"
- *   processStability  20 — unstable processes should not be automated
+ *   standardization      30 — most important: score 1="always follows rules", score 4="each exec differs"
+ *   processStability     20 — unstable processes should not be automated
  *
- * Max raw = 4 × (35 + 20 + 30 + 15) = 4 × 100 = 400
+ * Max raw = 4 × (30 + 20 + 25 + 15 + 10) = 4 × 100 = 400
  * Normalised to 0–100 by dividing by 4.
  */
 export function calculateAutomationScore(scores: CriteriaScores): number {
-  // Invert the criteria where score 1 = best for automation
-  const standardizationInv = 5 - scores.standardization; // 1→4, 2→3, 3→2, 4→1
-  const stabilityInv        = 5 - scores.processStability; // 1→4, 2→3, 3→2, 4→1
-
+  const standardizationInv = 5 - scores.standardization;
+  const stabilityInv       = 5 - scores.processStability;
   const raw =
-    standardizationInv       * 35 +  // clear rules = more automatable
-    stabilityInv             * 20 +  // stable = more automatable
-    scores.digitization      * 30 +  // more manual = more opportunity
-    scores.reworkRate        * 15;   // more errors = more opportunity
-
+    standardizationInv        * 30 +  // regras claras
+    stabilityInv              * 20 +  // estabilidade
+    scores.digitization       * 25 +  // digitalização
+    scores.reworkRate         * 15 +  // retrabalho
+    scores.operationalVolume  * 10;   // volume (NOVO)
+  // Max raw = 4 × (30+20+25+15+10) = 4 × 100 = 400
   return Math.round(raw / 4);
 }
 
-const MAX_SCORE = 24;
+export const MAX_SCORE = 24;
+
+/**
+ * Converts a raw weighted score (0–24) to a 0–100 display scale.
+ */
+export function normalizeScore(weightedScore: number): number {
+  return Math.round((weightedScore / MAX_SCORE) * 100);
+}
+
+export function getScoreColorFromPercent(pct: number): string {
+  if (pct >= 75) return 'text-red-600';
+  if (pct >= 50) return 'text-orange-500';
+  return 'text-green-600';
+}
 
 export function getScoreColor(score: number): string {
   const pct = score / MAX_SCORE;

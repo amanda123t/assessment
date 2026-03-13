@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
+import { normalizeScore } from '@/lib/scoring';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
 import { FTE_HOURS_YEAR, DEFAULT_HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, getAutomationRate, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
 import Link from 'next/link';
@@ -621,7 +622,9 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                       </td>
 
                       {/* Pontuação */}
-                      <td className="px-3 py-2.5 text-center font-semibold text-gray-800 text-xs">{item.totalScore}</td>
+                      <td className="px-3 py-2.5 text-center font-semibold text-gray-800 text-xs">
+                        {normalizeScore(item.totalScore)}<span className="text-gray-400 font-normal">/100</span>
+                      </td>
 
                       {/* Potencial */}
                       <td className="px-3 py-2.5 text-center">
