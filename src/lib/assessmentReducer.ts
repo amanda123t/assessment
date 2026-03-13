@@ -7,12 +7,12 @@
  */
 
 import {
-  SubprocessAssessment, CriteriaScores,
-  Macroprocess, Process, Subprocess,
+  SubprocessAssessment,
   SelectedSubprocessItem, CustomArea,
+  Macroprocess, Process, Subprocess,
 } from '@/types';
 import {
-  createAssessment, addAssessment, advanceIndex, isAssessmentComplete,
+  addAssessment, advanceIndex, isAssessmentComplete,
 } from '@/lib/assessmentEngine';
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -85,8 +85,7 @@ export type AssessmentAction =
   | { type: 'REMOVE_CUSTOM_SUBPROCESS'; payload: string }
 
   | { type: 'START_EVALUATION' }
-  | { type: 'COMPLETE_QUESTIONNAIRE';
-      payload: { scores: CriteriaScores; subprocess: Subprocess; macroprocess: Macroprocess; process: Process } }
+  | { type: 'COMPLETE_QUESTIONNAIRE'; payload: SubprocessAssessment }
   | { type: 'GO_BACK_IN_QUESTIONNAIRE' }
 
   | { type: 'SET_MODE';           payload: 'individual' | 'group' }
@@ -193,10 +192,7 @@ export function assessmentReducer(
       return { ...state, currentSubprocessIndex: 0, step: 'questionnaire' };
 
     case 'COMPLETE_QUESTIONNAIRE': {
-      const { scores, subprocess, macroprocess, process } = action.payload;
-      const { isCustom } = state.globalSelectedSubprocesses[state.currentSubprocessIndex];
-      const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
-      const updatedAssessments = addAssessment(state.assessments, assessment);
+      const updatedAssessments = addAssessment(state.assessments, action.payload);
       const done = isAssessmentComplete(
         state.globalSelectedSubprocesses.map(i => i.subprocess),
         state.currentSubprocessIndex,

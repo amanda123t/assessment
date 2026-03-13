@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useEffect, useRef, useReducer } from 'react';
+import { useToast, ToastContainer } from '@/components/Toast';
 import {
   Macroprocess, Process, Subprocess, CriteriaScores,
   SelectedSubprocessItem, CustomArea,
@@ -27,6 +28,7 @@ import RankingScreen from '@/components/RankingScreen';
 export default function AssessmentPage() {
 
   const [state, dispatch] = useReducer(assessmentReducer, INITIAL_FULL_STATE);
+  const { toasts, showToast, dismissToast } = useToast();
 
   // Stable refs — not managed by the reducer (no render implications)
   const diagnosticId      = useRef(crypto.randomUUID());
@@ -54,9 +56,10 @@ export default function AssessmentPage() {
         scores:        a.scores,
         answered_by:   state.email,
         created_at:    createdAt,
-      }).catch((err) =>
-        console.error('[Firestore] Failed to save response:', err)
-      );
+      }).catch((err) => {
+        console.error('[Firestore] Failed to save response:', err);
+        showToast('Erro ao salvar resposta. Verifique sua conexão.');
+      });
     });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,9 +79,10 @@ export default function AssessmentPage() {
     getDocs(q).then((snapshot) => {
       const ids = snapshot.docs.map((d) => d.data().subprocess_id as string);
       dispatch({ type: 'SET_ANSWERED_IDS', payload: ids });
-    }).catch((err) =>
-      console.error('[Firestore] Failed to load responses:', err)
-    );
+    }).catch((err) => {
+      console.error('[Firestore] Failed to load responses:', err);
+      showToast('Erro ao carregar respostas anteriores.');
+    });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.step]);
@@ -111,7 +115,7 @@ export default function AssessmentPage() {
       dispatch({ type: 'GROUP_DIAGNOSTIC_CREATED', payload: { link } });
     } catch (err) {
       console.error('[Firestore] Failed to create group diagnostic:', err);
-      alert('Erro ao criar diagnóstico em grupo. Tente novamente.');
+      showToast('Erro ao criar diagnóstico em grupo. Tente novamente.');
     }
   }, [state.company]);
 
@@ -201,7 +205,10 @@ export default function AssessmentPage() {
         custom_areas:             state.customAreas,
       }).then((docRef) => {
         diagnosticId.current = docRef.id;
-      }).catch((err) => console.error('[Firestore] Failed to create diagnostic:', err));
+      }).catch((err) => {
+        console.error('[Firestore] Failed to create diagnostic:', err);
+        showToast('Erro ao iniciar diagnóstico. Verifique sua conexão.');
+      });
     }
     // Group: diagnostic already created in goToExploreGroup; diagnosticId.current is set.
 
@@ -212,33 +219,37 @@ export default function AssessmentPage() {
   // ── Questionnaire ──────────────────────────────────────────────────────────
 
   const completeQuestionnaire = useCallback((
-    scores:      CriteriaScores,
-    subprocess:  Subprocess,
+    scores:       CriteriaScores,
+    subprocess:   Subprocess,
     macroprocess: Macroprocess,
-    process:     Process,
+    process:      Process,
   ) => {
 
-    // Compute assessment outside dispatch to get totalScore for Firestore save.
-    const assessmentForSave = createAssessment(macroprocess, process, subprocess, scores);
+    // Compute once — isCustom comes from the current item in state.
+    const { isCustom } = state.globalSelectedSubprocesses[state.currentSubprocessIndex];
+    const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
 
     // Incremental save — persists progress immediately so resuming works even
     // if the user closes the tab before reaching the ranking screen.
-    if (!savedAssessmentIds.current.has(assessmentForSave.subprocessId)) {
-      savedAssessmentIds.current.add(assessmentForSave.subprocessId);
+    if (!savedAssessmentIds.current.has(assessment.subprocessId)) {
+      savedAssessmentIds.current.add(assessment.subprocessId);
       addDoc(collection(db, 'responses'), {
         diagnostic_id: diagnosticId.current,
-        subprocess_id: assessmentForSave.subprocessId,
-        process:       assessmentForSave.processName,
-        score:         assessmentForSave.totalScore,
-        scores:        assessmentForSave.scores,
+        subprocess_id: assessment.subprocessId,
+        process:       assessment.processName,
+        score:         assessment.totalScore,
+        scores:        assessment.scores,
         answered_by:   state.email,
         created_at:    new Date().toISOString(),
-      }).catch((err) => console.error('[Firestore] Failed to save response:', err));
+      }).catch((err) => {
+        console.error('[Firestore] Failed to save response:', err);
+        showToast('Erro ao salvar resposta. Verifique sua conexão.');
+      });
     }
 
-    dispatch({ type: 'COMPLETE_QUESTIONNAIRE', payload: { scores, subprocess, macroprocess, process } });
+    dispatch({ type: 'COMPLETE_QUESTIONNAIRE', payload: assessment });
 
-  }, [state.email]);
+  }, [state.email, state.globalSelectedSubprocesses, state.currentSubprocessIndex]);
 
   const goBackInQuestionnaire = useCallback(() => {
     dispatch({ type: 'GO_BACK_IN_QUESTIONNAIRE' });
@@ -295,6 +306,8 @@ export default function AssessmentPage() {
   return (
 
     <div className="min-h-screen bg-gray-50">
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       {state.step === 'start' ? (
 

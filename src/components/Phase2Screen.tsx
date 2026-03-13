@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useToast, ToastContainer } from '@/components/Toast';
 import {
   Plus, ChevronDown, ChevronUp, Save, CheckCircle,
   Search, X, Tag, Sparkles, ArrowRight, ChevronLeft,
@@ -376,9 +377,10 @@ interface SubprocessCardProps {
   diagnosticId:   string;
   respondentName: string;
   initialData:    Partial<Phase2FormData>;
+  onError:        (message: string) => void;
 }
 
-function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: SubprocessCardProps) {
+function SubprocessCard({ entry, diagnosticId, respondentName, initialData, onError }: SubprocessCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(!!initialData.departamento || !!initialData.comoComeca);
@@ -416,6 +418,7 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData }: Su
       setSaved(true);
     } catch (err) {
       console.error('[Phase2] Save failed:', err);
+      onError('Erro ao salvar. Verifique sua conexão e tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -982,6 +985,8 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: 
   const [showLibrary,    setShowLibrary]    = useState(false);
   const [showManual,     setShowManual]     = useState(false);
 
+  const { toasts, showToast, dismissToast } = useToast();
+
   const existingIds = new Set(entries.map(e => e.subprocessId));
 
   const addEntry = (entry: Phase2Entry) => {
@@ -994,11 +999,16 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: 
       newEntry.processName,
       newEntry.isPrioritized,
       { respondentName },
-    ).catch(err => console.error('[Phase2] Failed to persist new entry:', err));
+    ).catch(err => {
+      console.error('[Phase2] Failed to persist new entry:', err);
+      showToast('Erro ao adicionar subprocesso. Verifique sua conexão.');
+    });
   };
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-8">
+
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       {/* Respondent name */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
@@ -1034,6 +1044,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: 
             diagnosticId={diagnosticId}
             respondentName={respondentName}
             initialData={savedForms.get(entry.subprocessId) ?? {}}
+            onError={showToast}
           />
         ))}
         {entries.length === 0 && (
