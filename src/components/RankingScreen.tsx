@@ -13,6 +13,7 @@ import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap
 import { FTE_HOURS_YEAR, DEFAULT_HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, getAutomationRate, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
 import Link from 'next/link';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
+import Tooltip from '@/components/Tooltip';
 import { fetchVoteSummaries } from '@/lib/votes';
 
 interface Props {
@@ -124,7 +125,7 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
 // ─── Roadmap label maps ──────────────────────────────────────────────────────
 
 const ROADMAP_LABELS: Record<RoadmapCategory, string> = {
-  'quick-wins':     'Quick Win',
+  'quick-wins':     'Vitória Rápida',
   'strategic':      'Iniciativa Estratégica',
   'transformation': 'Transformação Operacional',
   'low-priority':   'Baixa Prioridade',
@@ -466,14 +467,14 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
           className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FileDown size={14} strokeWidth={1.75} />
-          {generatingPdf ? 'Gerando PDF...' : 'Baixar relatório em PDF'}
+          {generatingPdf ? 'Gerando PDF...' : 'Exportar diagnóstico em PDF'}
         </button>
         <button
           onClick={onRestart}
           className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
         >
           <RotateCcw size={14} strokeWidth={1.75} />
-          Nova Avaliação
+          Iniciar novo diagnóstico
         </button>
       </div>
 
@@ -536,9 +537,9 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
               <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
                 <Activity size={15} className="text-emerald-600" strokeWidth={1.75} />
               </div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Redução Potencial de FTE</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Redução Potencial de <Tooltip content="Full-Time Equivalent — unidade que representa o trabalho de uma pessoa em tempo integral (1.760 horas/ano)">FTE</Tooltip></p>
             </div>
-            <p className="text-3xl font-extrabold text-emerald-600">≈ {fmtD(dispFteEquivalent)} FTE</p>
+            <p className="text-3xl font-extrabold text-emerald-600">≈ {fmtD(dispFteEquivalent)} <Tooltip content="Full-Time Equivalent — unidade que representa o trabalho de uma pessoa em tempo integral (1.760 horas/ano)">FTE</Tooltip></p>
             <p className="text-xs text-gray-500 mt-0.5 mb-3">liberáveis com automação</p>
             <p className="text-xs text-gray-500 leading-relaxed">
               Equivalente estimado considerando 1 FTE = 1.760 horas/ano. Representa o esforço operacional que pode ser eliminado ou realocado — não necessariamente redução de headcount.
@@ -652,7 +653,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                           <div className="flex flex-wrap gap-x-2 text-gray-500">
                             <span>≈ {fmtD(spHorasMes)} h/mês</span>
                             <span>· ≈ {fmt(spAnnual)} h/ano</span>
-                            <span>· ≈ {fmtD(spFte)} FTE</span>
+                            <span>· ≈ {fmtD(spFte)} <Tooltip content="Full-Time Equivalent — unidade que representa o trabalho de uma pessoa em tempo integral (1.760 horas/ano)">FTE</Tooltip></span>
                           </div>
                           <div className="text-[10px] text-indigo-500 font-medium">
                             Automação estimada: {automationPct}%
@@ -882,7 +883,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
               bg: 'bg-red-50', border: 'border-red-200', title: 'text-red-700', badge: 'bg-red-100 text-red-700 border-red-200',
             },
             {
-              label: 'Quick Wins',
+              label: 'Vitórias Rápidas',
               desc: 'Alto potencial de automação + menor volume de horas',
               filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore < medianImpact,
               bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700', badge: 'bg-orange-100 text-orange-700 border-orange-200',

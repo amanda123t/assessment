@@ -252,7 +252,7 @@ export default function Questionnaire({
       <div className="mt-8 flex items-center justify-between">
         <span className="text-sm text-gray-500">
           {allAnswered
-            ? <span className="text-blue-600 font-semibold">Score total: <span className="text-lg">{normalizeScore(totalScore)}</span>/100</span>
+            ? <span className="text-blue-600 font-semibold">Pontuação total: <span className="text-lg">{normalizeScore(totalScore)}</span>/100</span>
             : <>{criteriaAnsweredCount} de {CRITERIA.length} respondidos</>
           }
         </span>
@@ -261,7 +261,7 @@ export default function Questionnaire({
           disabled={!allAnswered}
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white disabled:text-gray-400 font-semibold px-6 py-2.5 rounded-lg transition-colors text-sm"
         >
-          {isLast ? 'Ver Resultados' : 'Próximo Subprocesso'}
+          {isLast ? 'Ver ranking de oportunidades' : 'Avaliar próximo subprocesso'}
         </button>
       </div>
     </div>

@@ -21,8 +21,8 @@ import {
   PersistedBPMN,
   BPMNNode,
 } from '@/lib/phase2';
-import BPMNDiagram from '@/components/BPMNDiagram';
 import BPMNEditor from '@/components/BPMNEditor';
+import Tooltip from '@/components/Tooltip';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -655,7 +655,7 @@ function SelectionView({
           className="inline-flex items-center gap-2 border border-blue-600 rounded-lg px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 transition-colors"
         >
           <Sparkles size={14} strokeWidth={2} />
-          Ver Relatório
+          Ver relatório de {doneCount} processo{doneCount !== 1 ? 's' : ''} mapeados
         </button>
       </div>
     );
@@ -786,7 +786,7 @@ function SelectionView({
           className="inline-flex items-center gap-2 border border-blue-600 rounded-lg px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ml-auto"
         >
           <Sparkles size={14} strokeWidth={2} />
-          Ver Relatório
+          Ver relatório de {doneCount} processo{doneCount !== 1 ? 's' : ''} mapeados
         </button>
       </div>
     </div>
@@ -1004,7 +1004,8 @@ function WizardView({
               Quais são as etapas deste processo e em qual ordem acontecem?
             </p>
             <p className="text-sm text-gray-500 mb-4">
-              Adicione cada etapa na ordem em que acontece. Você pode selecionar da lista ou digitar etapas personalizadas. Use as setas para reordenar. Esta sequência será usada para gerar o fluxo BPMN.
+              Adicione cada etapa na ordem em que acontece. Você pode selecionar da lista ou digitar etapas personalizadas. Use as setas para reordenar. Esta sequência será usada para gerar o fluxo{' '}
+              <Tooltip content="Business Process Model and Notation — padrão visual para mapear fluxos de processo">BPMN</Tooltip>.
             </p>
             <SequenceBuilder value={data.sequenciaEtapas ?? []} onChange={v => set('sequenciaEtapas', v)} />
           </div>
@@ -1228,7 +1229,7 @@ function WizardView({
             className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-40 font-medium transition-colors border border-gray-200 px-3 py-2 rounded-lg"
           >
             <Save size={13} strokeWidth={1.75} />
-            {saving ? 'Salvando…' : 'Salvar progresso'}
+            {saving ? 'Salvando…' : 'Salvar e continuar depois'}
           </button>
         </div>
         <button
@@ -1237,8 +1238,8 @@ function WizardView({
           disabled={saving || !respondentName.trim()}
           className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
         >
-          {step === TOTAL_STEPS ? 'Finalizar mapeamento' : (
-            <>Continuar <ArrowRight size={15} strokeWidth={2} /></>
+          {step === TOTAL_STEPS ? 'Concluir mapeamento e gerar fluxo' : (
+            <>Próxima pergunta <ArrowRight size={15} strokeWidth={2} /></>
           )}
         </button>
       </div>
@@ -1574,7 +1575,9 @@ function AnalystReviewView({ entry, diagnosticId, bpmn, onFinalize, onReturn, on
           {analysis.tiposAutomacao.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2">
               {analysis.tiposAutomacao.map(t => (
-                <span key={t} className={`inline-flex items-center border rounded-full text-xs font-semibold px-2.5 py-0.5 ${TYPE_COLOURS[t] ?? 'bg-gray-100 border-gray-200 text-gray-700'}`}>{t}</span>
+                <span key={t} className={`inline-flex items-center border rounded-full text-xs font-semibold px-2.5 py-0.5 ${TYPE_COLOURS[t] ?? 'bg-gray-100 border-gray-200 text-gray-700'}`}>
+                  {t === 'RPA' ? <Tooltip content="Robotic Process Automation — robôs de software que imitam ações humanas para automatizar tarefas repetitivas">{t}</Tooltip> : t}
+                </span>
               ))}
             </div>
           )}
@@ -1760,7 +1763,7 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
               <div className="flex flex-wrap gap-2 mb-4">
                 {analysis.tiposAutomacao.map(type => (
                   <span key={type} className={`inline-flex items-center border rounded-full text-xs font-semibold px-3 py-1 ${TYPE_COLOURS[type] ?? 'bg-gray-100 border-gray-200 text-gray-700'}`}>
-                    {type}
+                    {type === 'RPA' ? <Tooltip content="Robotic Process Automation — robôs de software que imitam ações humanas para automatizar tarefas repetitivas">{type}</Tooltip> : type}
                   </span>
                 ))}
               </div>
@@ -1771,9 +1774,7 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
 
             {/* BPMN diagram */}
             {diagramNodes.length > 0 && (
-              <div className="rounded-xl border border-gray-100 bg-white p-4 overflow-x-auto">
-                <BPMNDiagram nodes={diagramNodes} size="full" />
-              </div>
+              <BPMNEditor nodes={diagramNodes} onChange={() => {}} role="respondent" readOnly />
             )}
           </div>
         );

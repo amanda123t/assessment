@@ -85,7 +85,7 @@ function IdentityForm({ onConfirm }: IdentityFormProps) {
         className="text-sm font-semibold px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white
                    disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
-        Confirmar e começar a votar
+        Confirmar identidade e votar
       </button>
     </div>
   );
@@ -564,7 +564,7 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
                 className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white
                            disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {submitting ? 'Salvando…' : isFirstSave ? 'Salvar votos' : 'Atualizar votos'}
+                {submitting ? 'Salvando…' : isFirstSave ? `Registrar ${selectedCount} voto${selectedCount !== 1 ? 's' : ''}` : `Atualizar ${selectedCount} voto${selectedCount !== 1 ? 's' : ''}`}
               </button>
               <span className="text-xs text-gray-500">
                 {selectedCount} de {totalCount} subprocesso{totalCount !== 1 ? 's' : ''} respondido{selectedCount !== 1 ? 's' : ''}
