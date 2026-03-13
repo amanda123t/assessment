@@ -4,7 +4,7 @@ import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { RankedAssessment } from '@/lib/ranking';
 import { RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
-import { FTE_HOURS_YEAR, HOURLY_COST } from '@/lib/impactCalculator';
+import { FTE_HOURS_YEAR, DEFAULT_HOURLY_COST } from '@/lib/impactCalculator';
 
 interface RefinedImpact {
   annualHours: number; savingsHours: number; fteEquivalent: number;
@@ -35,9 +35,9 @@ const CATEGORY_LABELS: Record<RoadmapCategory, string> = {
 };
 
 function getPotential(score: number): { label: string; color: string } {
-  if (score >= 24) return { label: 'Muito Alto', color: '#dc2626' };
-  if (score >= 20) return { label: 'Alto',       color: '#d97706' };
-  if (score >= 16) return { label: 'Médio',      color: '#a16207' };
+  if (score >= 18) return { label: 'Muito Alto', color: '#dc2626' };
+  if (score >= 15) return { label: 'Alto',       color: '#d97706' };
+  if (score >= 12) return { label: 'Médio',      color: '#a16207' };
   return               { label: 'Baixo',      color: '#6b7280' };
 }
 
@@ -330,7 +330,7 @@ export default function PDFDiagnosticReport({
   const totalAnnualHours     = refinedImpact?.annualHours     ?? baseAnnualHours;
   const totalSavingsHours    = refinedImpact?.savingsHours    ?? baseSavingsHours;
   const totalFinancialImpact = refinedImpact?.financialImpact ?? baseFinancialImpact;
-  const effectiveHourlyCost  = refinedImpact?.hourlyCost      ?? HOURLY_COST;
+  const effectiveHourlyCost  = refinedImpact?.hourlyCost      ?? DEFAULT_HOURLY_COST;
 
   const totalFteEquivalent = refinedImpact?.fteEquivalent ?? Math.round((baseSavingsHours / FTE_HOURS_YEAR) * 10) / 10;
   const totalCapacityGain  = refinedImpact?.capacityGain  ?? (baseAnnualHours > 0
