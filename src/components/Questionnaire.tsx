@@ -86,6 +86,7 @@ export default function Questionnaire({
 }: Props) {
   const [scores, setScores] = useState<CriteriaScores>(getEmptyScores());
   const [realRaw, setRealRaw] = useState<RealValuesRaw>(EMPTY_REAL);
+  const [showCompletion, setShowCompletion] = useState(false);
 
   const allAnswered = Object.values(scores).every((s) => s > 0);
   const totalScore = calculateWeightedScore(scores);
@@ -121,11 +122,42 @@ export default function Questionnaire({
 
   const handleSubmit = () => {
     if (!allAnswered) return;
-    onComplete(scores, subprocess, macroprocess, process, parseRealValues(realRaw));
+    setShowCompletion(true);
+    setTimeout(() => {
+      setShowCompletion(false);
+      onComplete(scores, subprocess, macroprocess, process, parseRealValues(realRaw));
+    }, 1200);
   };
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
+      {showCompletion && (
+        <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-center animate-in fade-in zoom-in duration-300">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-lg font-bold text-gray-900">
+              {subprocess.name}
+            </p>
+            <p className="text-sm text-emerald-600 font-medium mt-1">
+              ✓ Avaliado com sucesso
+            </p>
+            {!isLast && (
+              <p className="text-xs text-gray-400 mt-3">
+                Próximo: subprocesso {currentIndex + 2} de {total}
+              </p>
+            )}
+            {isLast && (
+              <p className="text-sm text-blue-600 font-semibold mt-3">
+                Diagnóstico completo — preparando resultados...
+              </p>
+            )}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="mb-8">
         <button
