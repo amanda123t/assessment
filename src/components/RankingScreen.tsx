@@ -343,8 +343,8 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
       {/* ── Identification modal ───────────────────────────────────────── */}
       {showIdModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-lg font-bold text-gray-900">Identificação do relatório</h3>
               <button
@@ -380,10 +380,10 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
       {/* ── Share report modal ────────────────────────────────────────── */}
       {showShareModal && diagnosticId && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50"
           onClick={(e) => { if (e.target === e.currentTarget) setShowShareModal(false); }}
         >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+          <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-lg font-bold text-gray-900">Compartilhar relatório</h3>
               <button
@@ -544,7 +544,45 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
               Ajuste <span className="font-semibold">número de pessoas</span> ou <span className="font-semibold">custo/h</span> para refinar o cálculo de impacto.
             </p>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-gray-200">
+          {/* Mobile: cards */}
+          <div className="block md:hidden space-y-3 mb-4">
+            {ranked.map((item) => {
+              const potential = getAutomationPotential(item.totalScore);
+              const refined   = perSubprocessRefined[item.subprocessId];
+              const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
+              return (
+                <div key={item.subprocessId} className="bg-white rounded-xl border border-gray-100 p-4">
+                  <div className="flex items-start justify-between mb-2 gap-2">
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-gray-400">#{item.rank}</span>
+                      <h4 className="text-sm font-semibold text-gray-900 mt-0.5 leading-snug">{item.subprocessName}</h4>
+                      <p className="text-xs text-gray-400 truncate">{item.processName}</p>
+                    </div>
+                    <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${potential.color}`}>
+                      {potential.label}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-3">
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-gray-900">{fmt(dispSavings)}</p>
+                      <p className="text-[10px] text-gray-400">horas/ano</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-gray-900">{item.automationScore}</p>
+                      <p className="text-[10px] text-gray-400">automation</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-gray-900">{normalizeScore(item.totalScore)}<span className="text-xs font-normal text-gray-400">/100</span></p>
+                      <p className="text-[10px] text-gray-400">score</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200">
             <table className="w-full text-sm" style={{ minWidth: 720 }}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
@@ -716,7 +754,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                 })}
               </tbody>
             </table>
-          </div>
+          </div>{/* end desktop table */}
           <div className="flex items-center gap-3 mt-4">
             <button
               onClick={handleRecalculate}

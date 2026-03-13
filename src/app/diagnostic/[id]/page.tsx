@@ -408,10 +408,10 @@ export default function DiagnosticResumePage() {
       {/* Share link modal */}
       {showShareModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
+          className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
           onClick={(e) => { if (e.target === e.currentTarget) setShowShareModal(false); }}
         >
-          <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
+          <div className="bg-white p-6 w-full sm:max-w-md sm:rounded-xl rounded-t-2xl shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-gray-900">
               Link de compartilhamento
             </h2>
@@ -422,7 +422,7 @@ export default function DiagnosticResumePage() {
               <input
                 value={groupShareLink}
                 readOnly
-                className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
+                className="border border-gray-200 rounded px-2 py-2.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
               />
               <button
                 onClick={() => {
@@ -430,7 +430,7 @@ export default function DiagnosticResumePage() {
                   setShareLinkCopied(true);
                   setTimeout(() => setShareLinkCopied(false), 2000);
                 }}
-                className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
+                className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-2.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
               >
                 Copiar
               </button>
@@ -451,10 +451,10 @@ export default function DiagnosticResumePage() {
       {/* Continuar depois modal */}
       {showContinueModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
+          className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center"
           onClick={(e) => { if (e.target === e.currentTarget) setShowContinueModal(false); }}
         >
-          <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
+          <div className="bg-white p-6 w-full sm:max-w-md sm:rounded-xl rounded-t-2xl shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-gray-900">
               Continuar diagnóstico depois
             </h2>
@@ -465,7 +465,7 @@ export default function DiagnosticResumePage() {
               <input
                 value={typeof window !== 'undefined' ? window.location.href : ''}
                 readOnly
-                className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
+                className="border border-gray-200 rounded px-2 py-2.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
               />
               <button
                 onClick={() => {
@@ -473,7 +473,7 @@ export default function DiagnosticResumePage() {
                   setContinueLinkCopied(true);
                   setTimeout(() => setContinueLinkCopied(false), 2000);
                 }}
-                className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
+                className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-2.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
               >
                 Copiar
               </button>
