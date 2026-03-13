@@ -41,32 +41,63 @@ export function calculateWeightedScore(scores: CriteriaScores): number {
 /**
  * Automation potential score (0–100).
  * Answers: "given the technical nature of this process, how much of it can be automated?"
+ * Measures ONLY technical feasibility — volume/people/time belong to impactScore.
  *
  * Criteria increasing automatability (higher raw score = better candidate):
- *   dataDigitization     25 — manual/paper data is the prime automation target
- *   systemCount          10 — more systems = more integration opportunity
- *   reworkRate           10 — repetitive errors indicate automatable patterns
- *   operationalVolume    10 — high volume amplifies ROI of automation
+ *   dataDigitization     30 — manual/paper data is the prime automation target
+ *   reworkRate           15 — repetitive errors indicate automatable patterns
  *
  * Criteria decreasing automatability (INVERTED — score 1 = most automatable):
- *   standardization      30 — most important: score 1="always follows rules", score 4="each exec differs"
- *   processStability     15 — unstable processes should not be automated
+ *   standardization      35 — most important: score 1="always follows rules", score 4="each exec differs"
+ *   processStability     20 — unstable processes should not be automated
  *
- * Max raw = 4 × (30 + 15 + 25 + 10 + 10 + 10) = 4 × 100 = 400
- * Normalised to 0–100 by dividing by 4.
+ * Σ weights = 100  →  max raw = 4 × 100 = 400  →  /4 = 0–100
  */
 export function calculateAutomationScore(scores: CriteriaScores): number {
   const standardizationInv = 5 - scores.standardization;
   const stabilityInv       = 5 - scores.processStability;
   const raw =
-    standardizationInv          * 30 +  // regras claras
-    stabilityInv                * 15 +  // estabilidade
-    scores.dataDigitization     * 25 +  // formato dos dados (papel = mais oportunidade)
-    scores.systemCount          * 10 +  // fragmentação de sistemas
-    scores.reworkRate           * 10 +  // retrabalho
-    scores.operationalVolume    * 10;   // volume
-  // Max raw = 4 × (30+15+25+10+10+10) = 4 × 100 = 400
+    standardizationInv           * 35 +  // regras claras
+    stabilityInv                 * 20 +  // estabilidade
+    scores.dataDigitization      * 30 +  // dados manuais → oportunidade de automação
+    scores.reworkRate            * 15;   // retrabalho
+  // Σ = 100  →  max raw = 4 × 100 = 400  →  /4 = 0-100
   return Math.round(raw / 4);
+}
+
+/**
+ * Impact score (0–100).
+ * Mede o impacto operacional: quanto esforço/desperdício este processo gera.
+ * Usado para priorizar onde a automação trará mais valor.
+ *
+ * Critérios (todos diretos — score alto = mais impacto):
+ *   operationalVolume  35 — alto volume amplifica qualquer melhoria
+ *   executionTime      25 — processos lentos = muito tempo consumido
+ *   peopleInvolved     20 — muitas pessoas = multiplicador organizacional
+ *   reworkRate         20 — muito retrabalho = desperdício direto
+ *
+ * Σ = 100  →  max raw = 4 × 100 = 400  →  /4 = 0–100
+ */
+export function calculateImpactScore(scores: CriteriaScores): number {
+  const raw =
+    scores.operationalVolume * 35 +
+    scores.executionTime     * 25 +
+    scores.peopleInvolved    * 20 +
+    scores.reworkRate        * 20;
+  return Math.round(raw / 4);
+}
+
+/**
+ * Priority score (0–100).
+ * Combina viabilidade técnica (automationScore) com impacto operacional (impactScore).
+ * Este é o score usado para ordenar o ranking e o roadmap.
+ *
+ * Pesos: 55% automação + 45% impacto.
+ * A viabilidade técnica pesa um pouco mais porque não adianta ter impacto alto
+ * se o processo não é automatizável.
+ */
+export function calculatePriorityScore(automationScore: number, impactScore: number): number {
+  return Math.round(automationScore * 0.55 + impactScore * 0.45);
 }
 
 export const MAX_SCORE = 24;

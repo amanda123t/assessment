@@ -34,6 +34,8 @@ export function reconstructAssessment(data: Record<string, unknown>): Subprocess
     scores:                 EMPTY_SCORES,
     totalScore:             (data.score as number) ?? 0,
     automationScore:        0,
+    impactScore:            0,
+    priorityScore:          0,
     annualHours:            0,
     automationSavingsHours: 0,
     financialImpact:        0,

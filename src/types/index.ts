@@ -57,6 +57,10 @@ export interface SubprocessAssessment {
   totalScore: number;
   /** Automation potential score (0–100). See scoring.ts: calculateAutomationScore. */
   automationScore: number;
+  /** Operational impact score (0–100). See scoring.ts: calculateImpactScore. */
+  impactScore: number;
+  /** Combined priority score (0–100). See scoring.ts: calculatePriorityScore. */
+  priorityScore: number;
   /** Estimated annual operational effort in hours. See impactCalculator.ts. */
   annualHours: number;
   /** Estimated hours saved per year through automation. */

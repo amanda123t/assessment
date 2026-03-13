@@ -12,7 +12,7 @@
  */
 
 import { Macroprocess, Process, Subprocess, CriteriaScores, SubprocessAssessment, RealValues } from '@/types';
-import { calculateWeightedScore, calculateAutomationScore } from './scoring';
+import { calculateWeightedScore, calculateAutomationScore, calculateImpactScore, calculatePriorityScore } from './scoring';
 import { calculateAnnualHours, calculateAutomationSavings, calculateFinancialImpact, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from './impactCalculator';
 
 /** Create an initial empty assessment entry for a subprocess. */
@@ -26,6 +26,8 @@ export function createAssessment(
 ): SubprocessAssessment {
   const totalScore = calculateWeightedScore(scores);
   const automationScore = calculateAutomationScore(scores);
+  const impactScore = calculateImpactScore(scores);
+  const priorityScore = calculatePriorityScore(automationScore, impactScore);
   const annualHours = calculateAnnualHours(scores, realValues);
   const automationSavingsHours = calculateAutomationSavings(annualHours, automationScore, scores.processStability);
   const financialImpact = calculateFinancialImpact(automationSavingsHours);
@@ -43,6 +45,8 @@ export function createAssessment(
     scores,
     totalScore,
     automationScore,
+    impactScore,
+    priorityScore,
     annualHours,
     automationSavingsHours,
     financialImpact,
