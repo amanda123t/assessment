@@ -13,8 +13,8 @@ import {
   savePhase2Response,
   analyzeProcess,
   Phase2Analysis,
-  BPMNNode,
 } from '@/lib/phase2';
+import BPMNDiagram from '@/components/BPMNDiagram';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -292,71 +292,6 @@ function SequenceBuilder({
       {value.length === 0 && (
         <p className="text-[10px] text-gray-400">Adicione as etapas na ordem em que acontecem no processo.</p>
       )}
-    </div>
-  );
-}
-
-// ── BPMN flow visualisation ───────────────────────────────────────────────────
-
-function BPMNFlow({ nodes }: { nodes: BPMNNode[] }) {
-  return (
-    <div className="overflow-x-auto pb-2">
-      <div className="flex items-center gap-1.5 min-w-max py-1">
-        {nodes.map((node, i) => (
-          <span key={i} className="contents">
-            {i > 0 && (
-              <ArrowRight size={13} strokeWidth={1.5} className="text-gray-300 shrink-0" />
-            )}
-
-            {node.type === 'start' && (
-              <div className="flex flex-col items-center gap-1 shrink-0">
-                <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm">
-                  <div className="w-2.5 h-2.5 rounded-full bg-white" />
-                </div>
-                <span className="text-[9px] text-emerald-700 font-semibold">Início</span>
-              </div>
-            )}
-
-            {node.type === 'activity' && (
-              <div className="shrink-0 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1.5 text-[9px] font-medium text-blue-800 max-w-[90px] text-center leading-tight">
-                {node.label}
-              </div>
-            )}
-
-            {node.type === 'gateway' && (
-              <div className="flex flex-col items-center gap-1 shrink-0">
-                <div className="relative w-9 h-9 flex items-center justify-center">
-                  <div className="absolute inset-0 bg-amber-100 border-2 border-amber-400 rotate-45 rounded-sm" />
-                  <span className="relative text-[11px] font-black text-amber-700">?</span>
-                </div>
-                <span className="text-[9px] text-amber-700 font-semibold max-w-[80px] text-center">{node.label}</span>
-                {node.branches && (
-                  <div className="flex gap-1 mt-0.5">
-                    {node.branches.map((b, j) => (
-                      <span key={j} className={`text-[8px] px-1.5 py-0.5 rounded border font-semibold ${
-                        j === 0
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                          : 'bg-red-50 border-red-200 text-red-700'
-                      }`}>
-                        {b.condition}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {node.type === 'end' && (
-              <div className="flex flex-col items-center gap-1 shrink-0">
-                <div className="w-7 h-7 rounded-full border-[3px] border-gray-700 bg-gray-700 flex items-center justify-center shadow-sm">
-                  <div className="w-3 h-3 rounded-full bg-white" />
-                </div>
-                <span className="text-[9px] text-gray-600 font-semibold">Fim</span>
-              </div>
-            )}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
@@ -771,18 +706,36 @@ function SubprocessCard({ entry, diagnosticId, respondentName, initialData, onEr
                 {/* Fluxo BPMN */}
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-3">Fluxo do processo (BPMN simplificado)</p>
-                  <BPMNFlow nodes={analysis.fluxoBPMN} />
-                  <div className="flex gap-3 mt-3 pt-3 border-t border-gray-200">
+                  <BPMNDiagram nodes={analysis.fluxoBPMN} />
+                  <div className="flex gap-3 mt-3 pt-2 border-t border-gray-200">
                     <span className="flex items-center gap-1 text-[8px] text-gray-400">
-                      <div className="w-3 h-3 rounded-full bg-emerald-500" /> Evento
+                      <div className="w-3 h-3 rounded-full bg-emerald-500 flex-shrink-0" /> Evento
                     </span>
                     <span className="flex items-center gap-1 text-[8px] text-gray-400">
-                      <div className="w-4 h-3 rounded bg-blue-200 border border-blue-300" /> Atividade
+                      <div className="w-4 h-3 rounded bg-blue-200 border border-blue-300 flex-shrink-0" /> Atividade
                     </span>
                     <span className="flex items-center gap-1 text-[8px] text-gray-400">
-                      <div className="w-3 h-3 bg-amber-200 border border-amber-400 rotate-45" /> Decisão
+                      <div className="w-3 h-3 bg-amber-200 border border-amber-400 rotate-45 flex-shrink-0" /> Decisão
                     </span>
                   </div>
+                  {/* Accessible text fallback */}
+                  <details className="mt-3">
+                    <summary className="text-[9px] text-gray-400 cursor-pointer hover:text-gray-600 select-none">
+                      Ver etapas em texto
+                    </summary>
+                    <ol className="mt-2 space-y-1 pl-4 list-decimal">
+                      {analysis.fluxoBPMN.map((node, i) => (
+                        <li key={i} className="text-[10px] text-gray-600">
+                          <span className="font-medium">{node.label}</span>
+                          {node.type === 'gateway' && node.branches && (
+                            <span className="text-gray-400">
+                              {' '}({node.branches.map(b => b.condition).join(' / ')})
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
                 </div>
 
                 {/* Justificativa */}
