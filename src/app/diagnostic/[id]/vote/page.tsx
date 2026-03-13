@@ -72,7 +72,7 @@ export default function VotePage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-10 max-w-md w-full text-center">
           <p className="text-gray-700 font-medium mb-1">Diagnóstico não encontrado.</p>
-          <p className="text-sm text-gray-400">Verifique o link compartilhado.</p>
+          <p className="text-sm text-gray-500">Verifique o link compartilhado.</p>
         </div>
       </div>
     );
@@ -87,7 +87,7 @@ export default function VotePage() {
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
-            <p className="text-xs text-gray-400">Votação de Prioridades</p>
+            <p className="text-xs text-gray-500">Votação de Prioridades</p>
           </div>
           <div className="flex items-center gap-4">
             {company && (
@@ -106,7 +106,7 @@ export default function VotePage() {
 
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-8">
         {assessments.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-16">
+          <p className="text-sm text-gray-500 text-center py-16">
             Este diagnóstico ainda não possui subprocessos avaliados.
           </p>
         ) : (

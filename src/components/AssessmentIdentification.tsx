@@ -35,7 +35,7 @@ export default function AssessmentIdentificationScreen({ onComplete, onBack }: P
       {onBack && (
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors mb-8"
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-600 transition-colors mb-8"
         >
           <ArrowLeft size={14} strokeWidth={2} />
           Voltar à seleção

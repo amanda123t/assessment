@@ -339,7 +339,7 @@ export default function AssessmentPage() {
                 <h1 className="text-sm font-bold text-gray-900 leading-none">
                   OEA
                 </h1>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-500">
                   Operational Efficiency Assessment
                 </p>
               </div>

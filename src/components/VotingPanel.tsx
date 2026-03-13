@@ -131,7 +131,7 @@ function AreaTable({ summary }: { summary: VoteSummary }) {
               <td className="px-3 py-2 text-gray-700 font-medium">{row.area}</td>
               <td className="px-3 py-2 text-center">
                 <span className="font-bold text-gray-800">{row.average.toFixed(1)}</span>
-                <span className="text-gray-400 ml-1">/ 5</span>
+                <span className="text-gray-500 ml-1">/ 5</span>
               </td>
               <td className="px-3 py-2 text-center text-gray-500">{row.count}</td>
             </tr>
@@ -176,7 +176,7 @@ function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticI
           <BarChart2 size={16} className="text-violet-500" strokeWidth={1.75} />
           Votação Consolidada
         </h3>
-        <p className="text-xs text-gray-400 mt-2">Nenhum voto registrado ainda.</p>
+        <p className="text-xs text-gray-500 mt-2">Nenhum voto registrado ainda.</p>
       </div>
     );
   }
@@ -194,12 +194,12 @@ function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticI
           <BarChart2 size={16} className="text-violet-500" strokeWidth={1.75} />
           Votação Consolidada
         </h3>
-        <span className="text-xs text-gray-400 flex items-center gap-1">
+        <span className="text-xs text-gray-500 flex items-center gap-1">
           <Users size={12} strokeWidth={1.75} />
           {totalVoters} votante{totalVoters !== 1 ? 's' : ''}
         </span>
       </div>
-      <p className="text-xs text-gray-400 mb-5">
+      <p className="text-xs text-gray-500 mb-5">
         Resultado agregado de todos os votos registrados, ordenado por prioridade média.
       </p>
 
@@ -225,7 +225,7 @@ function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticI
                   <tr className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
                     <td className="px-3 py-3 text-xs">
                       <div className="font-medium text-gray-800">{a.subprocessName}</div>
-                      <div className="text-gray-400">{a.processName}</div>
+                      <div className="text-gray-500">{a.processName}</div>
                     </td>
                     <td className="px-3 py-3">
                       <PriorityBar value={s.average} />
@@ -313,7 +313,7 @@ function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticI
                       <li key={a.subprocessId} className="flex items-center justify-between gap-3 bg-white rounded-lg px-3 py-2 border border-violet-100 text-xs">
                         <div>
                           <span className="font-medium text-gray-800">{a.subprocessName}</span>
-                          <span className="text-gray-400 ml-2">{a.processName}</span>
+                          <span className="text-gray-500 ml-2">{a.processName}</span>
                         </div>
                         <span className="font-bold text-violet-700 shrink-0">média {s.average.toFixed(1)}</span>
                       </li>
@@ -329,7 +329,7 @@ function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticI
                 </Link>
                 <button
                   onClick={() => setFinalized(false)}
-                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-xs text-gray-500 hover:text-gray-600 transition-colors"
                 >
                   Cancelar
                 </button>
@@ -447,7 +447,7 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
         <Star size={16} className="text-amber-500" strokeWidth={1.75} />
         Votar Prioridades
       </h3>
-      <p className="text-xs text-gray-400 mb-5">
+      <p className="text-xs text-gray-500 mb-5">
         Cada participante vota de forma independente. Os resultados são agregados em tempo real.
         {identityReady && voterName && (
           <span className="ml-2 font-medium text-gray-500">
@@ -477,7 +477,7 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
               {/* Subprocess header */}
               <div className="mb-3">
                 <p className="text-sm font-medium text-gray-800">{a.subprocessName}</p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-500">
                   {a.processName}
                   {a.automationSavingsHours > 0 && (
                     <> · <span className="font-medium">{a.automationSavingsHours.toLocaleString('pt-BR')} h</span> economizadas/ano</>
@@ -532,7 +532,7 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
                   {hasBreakdown && (
                     <button
                       onClick={() => toggleExpanded(a.subprocessId)}
-                      className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 hover:text-gray-600 transition-colors"
+                      className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-600 transition-colors"
                     >
                       <Users size={11} strokeWidth={1.75} />
                       {isExpanded ? 'Ocultar análise por área' : 'Ver análise por área'}
@@ -566,7 +566,7 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
               >
                 {submitting ? 'Salvando…' : isFirstSave ? 'Salvar votos' : 'Atualizar votos'}
               </button>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-500">
                 {selectedCount} de {totalCount} subprocesso{totalCount !== 1 ? 's' : ''} respondido{selectedCount !== 1 ? 's' : ''}
               </span>
             </>
