@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Trophy, FileDown, RotateCcw, Activity,
   Lightbulb, TrendingUp, DollarSign, Target, ChevronDown, X, Pencil,
@@ -174,7 +174,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   const [subprocessOverrides, setSubprocessOverrides] = useState<
     Record<string, { people: string; hourlyCost: string }>
   >({});
-  const [editingSubprocessId, setEditingSubprocessId] = useState<string | null>(null);
+  const recalcDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [perSubprocessRefined, setPerSubprocessRefined] = useState<
     Record<string, { annualHours: number; savingsHours: number; fteEquivalent: number; financialImpact: number; hourlyCost: number; fteCurrent: number; fteAfterAutomation: number }>
   >({});
@@ -190,6 +190,21 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
       setVoteSummaries(slim);
     }).catch((err) => console.error('[RankingScreen] Failed to fetch vote summaries:', err));
   }, [diagnosticId]);
+
+  useEffect(() => {
+    const hasOverrides = Object.values(subprocessOverrides).some(
+      o => o.people?.trim() || o.hourlyCost?.trim()
+    );
+    if (!hasOverrides) return;
+    if (recalcDebounce.current) clearTimeout(recalcDebounce.current);
+    recalcDebounce.current = setTimeout(() => {
+      handleRecalculate();
+    }, 500);
+    return () => {
+      if (recalcDebounce.current) clearTimeout(recalcDebounce.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subprocessOverrides]);
 
   const ranked = buildRanking(assessments);
   const summary = buildPrioritySummary(ranked);
@@ -541,7 +556,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
           <div className="flex items-start gap-2 mb-4 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5">
             <Pencil size={13} className="text-blue-500 flex-shrink-0 mt-0.5" strokeWidth={1.75} />
             <p className="text-xs text-blue-700 leading-relaxed">
-              Ajuste <span className="font-semibold">número de pessoas</span> ou <span className="font-semibold">custo/h</span> para refinar o cálculo de impacto.
+              Edite <span className="font-semibold">pessoas</span> ou <span className="font-semibold">custo/h</span> em cada subprocesso — os valores são recalculados automaticamente.
             </p>
           </div>
           {/* Mobile: cards */}
@@ -593,13 +608,11 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Potencial</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Pessoas</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Custo/h</th>
-                  <th className="px-3 py-3 w-16" />
                 </tr>
               </thead>
               <tbody>
                 {ranked.map((item, i) => {
                   const potential   = getAutomationPotential(item.totalScore);
-                  const isEditing   = editingSubprocessId === item.subprocessId;
                   const spOverride  = subprocessOverrides[item.subprocessId] ?? { people: '', hourlyCost: '' };
                   const refined     = perSubprocessRefined[item.subprocessId];
                   const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
@@ -673,81 +686,36 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
                       {/* Pessoas */}
                       <td className="px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            min="1"
-                            value={spOverride.people}
-                            onChange={(e) =>
-                              setSubprocessOverrides((prev) => ({
-                                ...prev,
-                                [item.subprocessId]: { ...spOverride, people: e.target.value },
-                              }))
-                            }
-                            placeholder="padrão"
-                            className="w-20 border border-blue-300 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <span className={`text-xs ${isSpPeople ? 'font-bold text-blue-700' : 'text-gray-600'}`}>
-                            {viewPeople ?? fmtD(PEOPLE_MAP[item.scores.peopleInvolved] ?? 0)}
-                          </span>
-                        )}
+                        <input
+                          type="number"
+                          min="1"
+                          value={spOverride.people}
+                          onChange={(e) =>
+                            setSubprocessOverrides((prev) => ({
+                              ...prev,
+                              [item.subprocessId]: { ...spOverride, people: e.target.value },
+                            }))
+                          }
+                          placeholder={fmtD(PEOPLE_MAP[item.scores.peopleInvolved] ?? 0)}
+                          className="w-20 border border-gray-200 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        />
                       </td>
 
                       {/* Custo/h */}
                       <td className="px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="number"
-                            min="1"
-                            value={spOverride.hourlyCost}
-                            onChange={(e) =>
-                              setSubprocessOverrides((prev) => ({
-                                ...prev,
-                                [item.subprocessId]: { ...spOverride, hourlyCost: e.target.value },
-                              }))
-                            }
-                            placeholder={String(DEFAULT_HOURLY_COST)}
-                            className="w-20 border border-blue-300 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
-                        ) : (
-                          <span className={`text-xs ${isSpCost ? 'font-bold text-blue-700' : 'text-gray-500'}`}>
-                            {viewCost ? `R$${viewCost}` : `R$${DEFAULT_HOURLY_COST}`}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Edit / Confirm / Clear */}
-                      <td className="px-3 py-2 text-center">
-                        {isEditing ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => setEditingSubprocessId(null)}
-                              title="Confirmar"
-                              className="text-xs font-bold px-2 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-                            >✓</button>
-                            <button
-                              onClick={() => {
-                                setSubprocessOverrides((prev) => {
-                                  const next = { ...prev };
-                                  delete next[item.subprocessId];
-                                  return next;
-                                });
-                                setEditingSubprocessId(null);
-                              }}
-                              title="Limpar override"
-                              className="text-xs font-bold px-2 py-1 rounded bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
-                            >×</button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setEditingSubprocessId(item.subprocessId)}
-                            title="Editar valores"
-                            className="p-1.5 rounded-md border border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-400 transition-colors"
-                          >
-                            <Pencil size={15} strokeWidth={1.75} />
-                          </button>
-                        )}
+                        <input
+                          type="number"
+                          min="1"
+                          value={spOverride.hourlyCost}
+                          onChange={(e) =>
+                            setSubprocessOverrides((prev) => ({
+                              ...prev,
+                              [item.subprocessId]: { ...spOverride, hourlyCost: e.target.value },
+                            }))
+                          }
+                          placeholder={String(DEFAULT_HOURLY_COST)}
+                          className="w-20 border border-gray-200 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        />
                       </td>
                     </tr>
                   );
@@ -756,12 +724,6 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
             </table>
           </div>{/* end desktop table */}
           <div className="flex items-center gap-3 mt-4">
-            <button
-              onClick={handleRecalculate}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
-            >
-              Recalcular estimativa
-            </button>
             {refinedImpact && (
               <span className="text-xs text-blue-600 font-medium">
                 ✓ Estimativas atualizadas com valores refinados
