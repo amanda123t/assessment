@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
 import {
   Plus, ChevronDown, ChevronUp, Save, CheckCircle,
@@ -213,9 +213,9 @@ function Radio({
     <button
       type="button"
       onClick={() => onChange(value)}
-      className={`text-left w-full border transition-all ${sz} ${
+      className={`text-left w-full border transition-all duration-200 ${sz} ${
         selected
-          ? 'bg-blue-600 border-blue-600 text-white font-semibold'
+          ? 'bg-blue-600 border-blue-600 text-white font-semibold scale-[0.98]'
           : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
       }`}
     >
@@ -540,7 +540,7 @@ function getEntryStatus(
 ): 'done' | 'in-progress' | 'pending' {
   const data = savedForms.get(entry.subprocessId);
   if (!data) return 'pending';
-  if ((data.gargalos ?? []).length > 0) return 'done';
+  if ((data.gargalos ?? []).length > 0 || data.gargalo) return 'done';
   if (data.departamento || data.comoComeca) return 'in-progress';
   return 'pending';
 }
@@ -560,7 +560,7 @@ function getEntryBadgeStatus(
 ): EntryBadgeStatus {
   const data = savedForms.get(entry.subprocessId);
   if (!data) return 'pending';
-  if ((data.gargalos ?? []).length === 0) {
+  if ((data.gargalos ?? []).length === 0 && !data.gargalo) {
     return (data.departamento || data.comoComeca) ? 'in-progress' : 'pending';
   }
   // Wizard complete — derive from BPMN status
@@ -828,7 +828,7 @@ function WizardView({
   const [data, setData] = useState<Partial<Phase2FormData>>({ ...EMPTY_PHASE2_FORM, ...initialData });
 
   const [step, setStep] = useState<WizardStep>(() => {
-    if ((initialData.gargalos ?? []).length > 0)                          return 'done';
+    if ((initialData.gargalos ?? []).length > 0 || initialData.gargalo)   return 'done';
     if (initialData.outputPrincipal || initialData.customerPrincipal)    return 10;
     if (initialData.sempresMesmosPassos)                                  return 9;
     if (initialData.copiaManual)                                          return 8;
@@ -843,6 +843,22 @@ function WizardView({
 
   const set = useCallback(<K extends keyof Phase2FormData>(key: K, value: Phase2FormData[K]) => {
     setData(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cancel any pending auto-advance timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+    };
+  }, []);
+
+  const scheduleAutoAdvance = useCallback(() => {
+    if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+    autoAdvanceTimer.current = setTimeout(() => {
+      setStep((prev) => ((prev as number) + 1) as WizardStep);
+    }, 350);
   }, []);
 
   const doSave = async (formData: Partial<Phase2FormData>) => {
@@ -865,6 +881,7 @@ function WizardView({
   };
 
   const handleContinue = async () => {
+    if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
     await doSave(data);
     if (step === TOTAL_STEPS) {
       // Auto-persist the generated BPMN when the wizard is finalised.
@@ -896,11 +913,13 @@ function WizardView({
   };
 
   const handleSaveAndBack = async () => {
+    if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
     await doSave(data);
     onBack();
   };
 
   const handleBack = () => {
+    if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
     if (step === 1 || step === 'done') {
       onBack();
     } else {
@@ -1003,7 +1022,7 @@ function WizardView({
             <p className="text-sm text-gray-500 mb-4">Selecione a opção que melhor descreve o gatilho do processo.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {COMO_COMECA_OPTIONS.map(opt => (
-                <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => set('comoComeca', v)} size="base" />
+                <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => { set('comoComeca', v); scheduleAutoAdvance(); }} size="base" />
               ))}
             </div>
             <div className="mt-6">
@@ -1046,7 +1065,14 @@ function WizardView({
                   <button
                     key={opt}
                     type="button"
-                    onClick={() => set('temDecisao', opt)}
+                    onClick={() => {
+                      set('temDecisao', opt);
+                      if (opt === 'Não') {
+                        set('tipoDecisao', '');
+                        set('falhaDecisao', '');
+                        scheduleAutoAdvance();
+                      }
+                    }}
                     className={`flex-1 py-3 rounded-xl border text-sm font-semibold transition-all ${
                       data.temDecisao === opt
                         ? 'bg-blue-600 border-blue-600 text-white'
@@ -1064,7 +1090,10 @@ function WizardView({
                   <p className="text-base font-semibold text-gray-700 mb-2">Qual decisão normalmente acontece?</p>
                   <div className="space-y-2">
                     {TIPO_DECISAO_OPTIONS.map(opt => (
-                      <Radio key={opt} label={opt} value={opt} current={data.tipoDecisao ?? ''} onChange={v => set('tipoDecisao', v)} size="base" />
+                      <Radio key={opt} label={opt} value={opt} current={data.tipoDecisao ?? ''} onChange={v => {
+                        set('tipoDecisao', v);
+                        if (data.falhaDecisao) scheduleAutoAdvance();
+                      }} size="base" />
                     ))}
                   </div>
                 </div>
@@ -1072,7 +1101,10 @@ function WizardView({
                   <p className="text-base font-semibold text-gray-700 mb-2">Se a validação falhar, o que acontece?</p>
                   <div className="space-y-2">
                     {FALHA_DECISAO_OPTIONS.map(opt => (
-                      <Radio key={opt} label={opt} value={opt} current={data.falhaDecisao ?? ''} onChange={v => set('falhaDecisao', v)} size="base" />
+                      <Radio key={opt} label={opt} value={opt} current={data.falhaDecisao ?? ''} onChange={v => {
+                        set('falhaDecisao', v);
+                        if (data.tipoDecisao) scheduleAutoAdvance();
+                      }} size="base" />
                     ))}
                   </div>
                 </div>
@@ -1088,7 +1120,10 @@ function WizardView({
               <p className="text-base font-semibold text-gray-700 mb-2">O processo segue regras claras?</p>
               <div className="space-y-2">
                 {['Sempre segue regras claras', 'Na maioria das vezes segue regras claras', 'Raramente segue regras claras'].map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.seguiRegras ?? ''} onChange={v => set('seguiRegras', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.seguiRegras ?? ''} onChange={v => {
+                    set('seguiRegras', v);
+                    if (data.exigeAnalise) scheduleAutoAdvance();
+                  }} size="base" />
                 ))}
               </div>
             </div>
@@ -1096,7 +1131,10 @@ function WizardView({
               <p className="text-base font-semibold text-gray-700 mb-2">Esse processo exige análise ou decisão humana?</p>
               <div className="space-y-2">
                 {['Não exige análise humana', 'Exige análise humana em alguns casos', 'Exige análise humana com frequência'].map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.exigeAnalise ?? ''} onChange={v => set('exigeAnalise', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.exigeAnalise ?? ''} onChange={v => {
+                    set('exigeAnalise', v);
+                    if (data.seguiRegras) scheduleAutoAdvance();
+                  }} size="base" />
                 ))}
               </div>
             </div>
@@ -1151,7 +1189,10 @@ function WizardView({
               <p className="text-base font-semibold text-gray-700 mb-2">Este processo normalmente segue sempre os mesmos passos?</p>
               <div className="space-y-2">
                 {['Sempre segue os mesmos passos', 'Na maioria das vezes segue os mesmos passos', 'Varia bastante dependendo do caso'].map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.sempresMesmosPassos ?? ''} onChange={v => set('sempresMesmosPassos', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.sempresMesmosPassos ?? ''} onChange={v => {
+                    set('sempresMesmosPassos', v);
+                    if (data.previsaoMudanca) scheduleAutoAdvance();
+                  }} size="base" />
                 ))}
               </div>
             </div>
@@ -1159,7 +1200,10 @@ function WizardView({
               <p className="text-base font-semibold text-gray-700 mb-2">Existe previsão de mudança nesse processo ou nos sistemas envolvidos?</p>
               <div className="space-y-2">
                 {['Não há previsão de mudança', 'Existe possibilidade de mudança', 'Mudanças já estão planejadas', 'Não sei'].map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.previsaoMudanca ?? ''} onChange={v => set('previsaoMudanca', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.previsaoMudanca ?? ''} onChange={v => {
+                    set('previsaoMudanca', v);
+                    if (data.sempresMesmosPassos) scheduleAutoAdvance();
+                  }} size="base" />
                 ))}
               </div>
             </div>
@@ -1195,42 +1239,21 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 10: Gargalos + espera + SLA */}
+        {/* Step 10: Principal gargalo */}
         {step === 10 && (
-          <div className="space-y-6">
-            <div>
-              <p className="text-base font-semibold text-gray-700 mb-1">
-                Quais são os principais problemas deste processo?
-              </p>
-              <p className="text-sm text-gray-500 mb-4">Selecione todos os que se aplicam.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {GARGALO_OPTIONS.map(opt => (
-                  <MultiCheck key={opt} label={opt} value={opt} current={data.gargalos ?? []} onChange={v => set('gargalos', v)} size="base" />
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-base font-semibold text-gray-700 mb-2">
-                Existe tempo de espera significativo entre as etapas?
-              </p>
-              <p className="text-sm text-gray-500 mb-4">
-                Esperas por aprovação, informação de outra área, ou processamento de sistema.
-              </p>
-              <div className="space-y-2">
-                {WAIT_TIME_OPTIONS.map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.tempoEspera ?? ''} onChange={v => set('tempoEspera', v)} size="base" />
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="text-base font-semibold text-gray-700 mb-2">
-                Qual é o prazo esperado (SLA) para conclusão deste processo, do início ao fim?
-              </p>
-              <div className="space-y-2">
-                {SLA_OPTIONS.map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.slaEsperado ?? ''} onChange={v => set('slaEsperado', v)} size="base" />
-                ))}
-              </div>
+          <div>
+            <p className="text-base font-semibold text-gray-700 mb-1">Qual é o principal problema desse processo hoje?</p>
+            <p className="text-sm text-gray-500 mb-4">Selecione o que mais impacta o dia a dia da equipe.</p>
+            <div className="space-y-2">
+              {GARGALO_OPTIONS.map(opt => (
+                <Radio key={opt} label={opt} value={opt} current={data.gargalo ?? ''} onChange={v => {
+                  set('gargalo', v);
+                  if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+                  autoAdvanceTimer.current = setTimeout(() => {
+                    handleContinue();
+                  }, 350);
+                }} size="base" />
+              ))}
             </div>
           </div>
         )}

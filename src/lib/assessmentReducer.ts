@@ -196,11 +196,30 @@ export function assessmentReducer(
       return { ...state, currentSubprocessIndex: 0, step: 'questionnaire' };
 
     case 'COMPLETE_QUESTIONNAIRE': {
-      const updatedAssessments = addAssessment(state.assessments, action.payload);
-      const done = isAssessmentComplete(
-        state.globalSelectedSubprocesses.map(i => i.subprocess),
-        state.currentSubprocessIndex,
+      const assessment = action.payload;
+
+      // Guard: ignore duplicate dispatches for the same subprocess.
+      const alreadyAssessed = state.assessments.some(
+        (a) => a.subprocessId === assessment.subprocessId,
       );
+      if (alreadyAssessed) {
+        console.warn('[Reducer] Duplicate COMPLETE_QUESTIONNAIRE for', assessment.subprocessId, '— ignoring');
+        return state;
+      }
+
+      const updatedAssessments = addAssessment(state.assessments, assessment);
+      const subprocesses = state.globalSelectedSubprocesses.map((i) => i.subprocess);
+      const done = isAssessmentComplete(subprocesses, state.currentSubprocessIndex);
+
+      console.log('[Reducer] COMPLETE_QUESTIONNAIRE', {
+        subprocessId: assessment.subprocessId,
+        currentIndex: state.currentSubprocessIndex,
+        totalSelected: subprocesses.length,
+        done,
+        nextIndex: done ? state.currentSubprocessIndex : advanceIndex(state.currentSubprocessIndex),
+        nextStep: done ? 'ranking' : 'questionnaire',
+      });
+
       return {
         ...state,
         assessments:            updatedAssessments,
