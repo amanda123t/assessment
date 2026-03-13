@@ -492,6 +492,8 @@ export default function AssessmentPage() {
                   lockedSubprocessIds={lockedSubprocessIds}
                   initialCustomAreas={state.customAreas}
                   onCustomAreasChange={handleCustomAreasChange}
+                  globalSelectedSubprocesses={state.globalSelectedSubprocesses}
+                  onClear={clearSelection}
                 />
               )
 
