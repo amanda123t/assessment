@@ -21,8 +21,8 @@ import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const EMPTY_SCORES: CriteriaScores = {
-  operationalVolume: 0, peopleInvolved: 0, executionTime: 0,
-  reworkOrErrors: 0, systemsOrSpreadsheets: 0, systemIntegrations: 0,
+  operationalVolume: 0, executionTime: 0, peopleInvolved: 0,
+  standardization: 0, digitization: 0, reworkRate: 0, processStability: 0,
 };
 
 function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessment {

@@ -39,13 +39,13 @@ export interface RoadmapItem {
  *  - Fallback → Automação de Processos (BPA)
  */
 export function suggestAutomationTechnology(a: SubprocessAssessment): string {
-  const { systemsOrSpreadsheets, systemIntegrations, reworkOrErrors, executionTime } = a.scores;
+  const { digitization, processStability, reworkRate, executionTime } = a.scores;
 
-  if (systemsOrSpreadsheets >= 3 && executionTime >= 3) return 'RPA + OCR';
-  if (systemIntegrations >= 3)                          return 'API + Workflow';
-  if (reworkOrErrors >= 3)                              return 'Workflow + Regras de Negócio';
-  if (systemsOrSpreadsheets >= 3)                       return 'RPA';
-  if (executionTime >= 3)                               return 'RPA + OCR';
+  if (digitization >= 3 && executionTime >= 3) return 'RPA + OCR';
+  if (processStability >= 3)                   return 'API + Workflow';
+  if (reworkRate >= 3)                         return 'Workflow + Regras de Negócio';
+  if (digitization >= 3)                       return 'RPA';
+  if (executionTime >= 3)                      return 'RPA + OCR';
   return 'Automação de Processos (BPA)';
 }
 
@@ -58,9 +58,9 @@ export function suggestAutomationTechnology(a: SubprocessAssessment): string {
  */
 export function calculateEffortScore(a: SubprocessAssessment): number {
   const raw =
-    a.scores.systemIntegrations * 2 +
-    a.scores.reworkOrErrors * 1 +
-    a.scores.systemsOrSpreadsheets * 1;
+    a.scores.processStability * 2 +
+    a.scores.reworkRate * 1 +
+    a.scores.digitization * 1;
   return Math.round(((raw - 4) / 12) * 100);
 }
 
