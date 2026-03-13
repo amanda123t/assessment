@@ -199,15 +199,6 @@ export default function Phase2Page() {
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Mapeamento Detalhado de Processos</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Preencha os dados abaixo para cada subprocesso priorizado. Você pode salvar o progresso a qualquer momento.
-          </p>
-        </div>
-      </div>
-
       <Phase2Screen
         diagnosticId={id}
         prioritized={prioritized}

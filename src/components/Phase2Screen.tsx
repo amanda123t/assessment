@@ -585,6 +585,7 @@ interface SelectionViewProps {
   onRespondentChange: (name: string) => void;
   onNameConfirm:  () => void;
   onSelectEntry:  (index: number) => void;
+  onStartBatch:   (indices: number[]) => void;
   onViewReport:   () => void;
   onShowLibrary:  () => void;
   onShowManual:   () => void;
@@ -592,9 +593,28 @@ interface SelectionViewProps {
 
 function SelectionView({
   entries, savedForms, bpmnMap, role, respondentName, nameConfirmed,
-  onRespondentChange, onNameConfirm, onSelectEntry, onViewReport,
+  onRespondentChange, onNameConfirm, onSelectEntry, onStartBatch, onViewReport,
   onShowLibrary, onShowManual,
 }: SelectionViewProps) {
+  const [selectedForMapping, setSelectedForMapping] = useState<Set<number>>(new Set());
+
+  const toggleSelection = (index: number) => {
+    setSelectedForMapping(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index); else next.add(index);
+      return next;
+    });
+  };
+
+  const selectAllPending = () => {
+    const indices = entries
+      .map((e, i) => ({ e, i }))
+      .filter(({ e }) => getEntryStatus(e, savedForms) !== 'done')
+      .map(({ i }) => i);
+    setSelectedForMapping(new Set(indices));
+  };
+
+  const clearSelection = () => setSelectedForMapping(new Set());
   const doneCount   = entries.filter(e => getEntryStatus(e, savedForms) === 'done').length;
   const total       = entries.length;
   const progressPct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
@@ -676,14 +696,26 @@ function SelectionView({
   // ── Respondent mode ──────────────────────────────────────────────────────────
   return (
     <div>
+      {/* Page title */}
+      <div className="mb-5">
+        <h2 className="text-lg font-bold text-gray-900">Mapeamento Detalhado de Processos</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Preencha o detalhamento de cada subprocesso prioritário.
+        </p>
+      </div>
+
       {/* Respondent identification */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
         <h3 className="text-sm font-bold text-gray-800 mb-3">Identificação do respondente</h3>
         <div className="flex gap-3">
           <input
             type="text"
+            autoFocus
             value={respondentName}
-            onChange={e => onRespondentChange(e.target.value)}
+            onChange={e => {
+              console.log('[SelectionView] name input onChange:', e.target.value);
+              onRespondentChange(e.target.value);
+            }}
             placeholder="Digite seu nome"
             className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
@@ -719,6 +751,51 @@ function SelectionView({
         </div>
       )}
 
+      {/* Multi-select hint / warning */}
+      {nameConfirmed && entries.length > 0 && selectedForMapping.size === 0 && (
+        <p className="text-xs text-gray-400 mb-3 pl-1">
+          Selecione um ou mais subprocessos para iniciar o mapeamento em sequência.
+        </p>
+      )}
+      {!nameConfirmed && entries.length > 0 && (
+        <p className="text-xs text-amber-600 mb-3 pl-1 font-medium">
+          Confirme seu nome antes de iniciar o mapeamento.
+        </p>
+      )}
+
+      {/* Batch action bar */}
+      {selectedForMapping.size > 0 && (
+        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-blue-800">
+              {selectedForMapping.size} selecionado{selectedForMapping.size !== 1 ? 's' : ''}
+            </span>
+            <button
+              type="button"
+              onClick={selectAllPending}
+              className="text-xs text-blue-600 hover:underline"
+            >
+              Selecionar todos pendentes
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="text-xs text-gray-500 hover:underline"
+            >
+              Limpar
+            </button>
+          </div>
+          <button
+            type="button"
+            disabled={!nameConfirmed}
+            onClick={() => onStartBatch(Array.from(selectedForMapping).sort((a, b) => a - b))}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg px-4 py-2 transition-colors"
+          >
+            Iniciar mapeamento ({selectedForMapping.size})
+          </button>
+        </div>
+      )}
+
       {/* Subprocess list */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
         {entries.length === 0 ? (
@@ -736,15 +813,33 @@ function SelectionView({
             'finalized':           { icon: <CheckCircle size={16} className="text-emerald-700" strokeWidth={2.5} />, label: 'Finalizado', cls: 'bg-emerald-200 border-emerald-300 text-emerald-900' },
           };
           const cfg = BADGE_CFG[badge];
+          const isSelected = selectedForMapping.has(index);
           return (
-            <button
+            <div
               key={entry.subprocessId}
-              type="button"
-              onClick={() => onSelectEntry(index)}
-              className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors text-left"
+              className={`w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 last:border-b-0 transition-colors text-left ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
             >
-              {/* Left: status icon + names */}
-              <div className="flex items-center gap-3 min-w-0 flex-1">
+              {/* Checkbox */}
+              <button
+                type="button"
+                onClick={() => toggleSelection(index)}
+                className="shrink-0 mr-3 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                style={{ borderColor: isSelected ? '#2563eb' : '#d1d5db', backgroundColor: isSelected ? '#2563eb' : 'white' }}
+                aria-label={isSelected ? 'Desselecionar' : 'Selecionar'}
+              >
+                {isSelected && (
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Left: status icon + names — clicking opens wizard */}
+              <button
+                type="button"
+                onClick={() => onSelectEntry(index)}
+                className="flex items-center gap-3 min-w-0 flex-1 text-left"
+              >
                 <div className="shrink-0">{cfg.icon}</div>
                 <div className="min-w-0">
                   <span className="block text-sm font-semibold text-gray-800 truncate">
@@ -754,10 +849,10 @@ function SelectionView({
                     {entry.processName}
                   </span>
                 </div>
-              </div>
+              </button>
 
               {/* Right: vote badge + status badge + chevron */}
-              <div className="flex items-center gap-2 shrink-0 ml-3">
+              <div className="flex items-center gap-2 shrink-0 ml-3 pointer-events-none">
                 {entry.voteAverage !== undefined && (
                   <span className="text-[10px] font-semibold text-violet-600 whitespace-nowrap">
                     ★ {entry.voteAverage.toFixed(1)}
@@ -768,7 +863,7 @@ function SelectionView({
                 </span>
                 <ChevronRight size={14} className="text-gray-300" strokeWidth={2} />
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -1872,17 +1967,20 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Phase2Screen({ diagnosticId, prioritized, savedForms: initialSavedForms, role = 'respondent' }: Props) {
-  const [respondentName,   setRespondentName]   = useState('');
-  const [nameConfirmed,    setNameConfirmed]    = useState(false);
-  const [entries,          setEntries]          = useState<Phase2Entry[]>(prioritized);
-  const [savedForms,       setSavedForms]       = useState<Map<string, Partial<Phase2FormData>>>(initialSavedForms);
-  const [bpmnMap,          setBpmnMap]          = useState<Map<string, PersistedBPMN>>(new Map());
-  const [showLibrary,      setShowLibrary]      = useState(false);
-  const [showManual,       setShowManual]       = useState(false);
-  const [view,             setView]             = useState<Phase2View>('selection');
-  const [activeEntryIndex, setActiveEntryIndex] = useState<number | null>(null);
+  const [respondentName,      setRespondentName]      = useState('');
+  const [nameConfirmed,       setNameConfirmed]       = useState(false);
+  const [entries,             setEntries]             = useState<Phase2Entry[]>(prioritized);
+  const [savedForms,          setSavedForms]          = useState<Map<string, Partial<Phase2FormData>>>(initialSavedForms);
+  const [bpmnMap,             setBpmnMap]             = useState<Map<string, PersistedBPMN>>(new Map());
+  const [showLibrary,         setShowLibrary]         = useState(false);
+  const [showManual,          setShowManual]          = useState(false);
+  const [view,                setView]                = useState<Phase2View>('selection');
+  const [activeEntryIndex,    setActiveEntryIndex]    = useState<number | null>(null);
   // Tracks the finalData passed from WizardView so ValidationView can access it immediately.
-  const [wizardFinalData,  setWizardFinalData]  = useState<Partial<Phase2FormData>>({});
+  const [wizardFinalData,     setWizardFinalData]     = useState<Partial<Phase2FormData>>({});
+  // Batch mapping queue: ordered list of entry indices + position pointer.
+  const [mappingQueue,        setMappingQueue]        = useState<number[]>([]);
+  const [mappingQueuePosition, setMappingQueuePosition] = useState(0);
 
   const { toasts, showToast, dismissToast } = useToast();
 
@@ -1938,17 +2036,39 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
   };
 
   const handleWizardBack = () => {
+    setMappingQueue([]);
+    setMappingQueuePosition(0);
     setView('selection');
     setActiveEntryIndex(null);
   };
 
   const handleApprove = () => {
     refreshBpmnMap();
-    setView('selection');
-    setActiveEntryIndex(null);
+    // If we're in a batch queue and there are more items, advance to the next one.
+    const nextPosition = mappingQueuePosition + 1;
+    if (mappingQueue.length > 0 && nextPosition < mappingQueue.length) {
+      const nextIndex = mappingQueue[nextPosition];
+      setMappingQueuePosition(nextPosition);
+      setActiveEntryIndex(nextIndex);
+      setView('wizard');
+    } else {
+      setMappingQueue([]);
+      setMappingQueuePosition(0);
+      setView('selection');
+      setActiveEntryIndex(null);
+    }
   };
 
   const handleValidationBack = () => {
+    setView('wizard');
+  };
+
+  // Start a batch mapping session for the given ordered list of entry indices.
+  const handleStartBatchMapping = (indices: number[]) => {
+    if (indices.length === 0) return;
+    setMappingQueue(indices);
+    setMappingQueuePosition(0);
+    setActiveEntryIndex(indices[0]);
     setView('wizard');
   };
 
@@ -1992,6 +2112,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           onRespondentChange={name => { setRespondentName(name); setNameConfirmed(false); }}
           onNameConfirm={() => setNameConfirmed(true)}
           onSelectEntry={handleSelectEntry}
+          onStartBatch={handleStartBatchMapping}
           onViewReport={() => setView('report')}
           onShowLibrary={() => setShowLibrary(true)}
           onShowManual={() => setShowManual(true)}
@@ -2004,8 +2125,8 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           diagnosticId={diagnosticId}
           respondentName={respondentName}
           initialData={savedForms.get(entries[activeEntryIndex].subprocessId) ?? {}}
-          totalEntries={entries.length}
-          entryIndex={activeEntryIndex}
+          totalEntries={mappingQueue.length > 0 ? mappingQueue.length : entries.length}
+          entryIndex={mappingQueue.length > 0 ? mappingQueuePosition : activeEntryIndex}
           onComplete={handleWizardComplete}
           onBack={handleWizardBack}
           onError={showToast}
