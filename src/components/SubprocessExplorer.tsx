@@ -575,8 +575,14 @@ export default function SubprocessExplorer({
                                   className={`w-full flex items-center gap-3 pl-16 pr-5 py-2.5 text-left transition-colors
                                     ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-100'}`}
                                 >
-                                  <div className={`w-4 h-4 rounded border-2 flex-shrink-0 transition-all
-                                    ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'}`} />
+                                  <div className={`w-4 h-4 rounded border-2 flex-shrink-0 transition-all flex items-center justify-center
+                                    ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'}`}>
+                                    {isSelected && (
+                                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                                        <path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    )}
+                                  </div>
                                   <span className={`text-sm ${isSelected ? 'text-blue-700 font-medium' : 'text-gray-600'}`}>
                                     {sp.name}
                                   </span>
@@ -686,8 +692,14 @@ export default function SubprocessExplorer({
                                   className={`w-full flex items-center gap-3 pl-16 pr-5 py-2.5 text-left transition-colors
                                     ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-100'}`}
                                 >
-                                  <div className={`w-4 h-4 rounded border-2 flex-shrink-0 transition-all
-                                    ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'}`} />
+                                  <div className={`w-4 h-4 rounded border-2 flex-shrink-0 transition-all flex items-center justify-center
+                                    ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300 bg-white'}`}>
+                                    {isSelected && (
+                                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                                        <path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    )}
+                                  </div>
                                   <span className={`text-sm ${isSelected ? 'text-blue-700 font-medium' : 'text-gray-600'}`}>
                                     {sp.name}
                                   </span>
