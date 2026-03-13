@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
 import {
   Plus, ChevronDown, ChevronUp, Save, CheckCircle,
@@ -15,9 +15,14 @@ import {
   Phase2Analysis,
   loadPhase2Responses,
   saveBPMN,
+  loadBPMN,
+  loadAllBPMNs,
   BPMNHistoryEntry,
+  PersistedBPMN,
+  BPMNNode,
 } from '@/lib/phase2';
 import BPMNDiagram from '@/components/BPMNDiagram';
+import BPMNEditor from '@/components/BPMNEditor';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -35,7 +40,7 @@ interface Props {
   savedForms:   Map<string, Partial<Phase2FormData>>;
 }
 
-type Phase2View = 'selection' | 'wizard' | 'report';
+type Phase2View = 'selection' | 'wizard' | 'validation' | 'report';
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 'done';
 
@@ -454,11 +459,40 @@ function getEntryStatus(
   return 'pending';
 }
 
+type EntryBadgeStatus =
+  | 'pending'
+  | 'in-progress'
+  | 'awaiting-validation'
+  | 'validated'
+  | 'returned'
+  | 'finalized';
+
+function getEntryBadgeStatus(
+  entry:      Phase2Entry,
+  savedForms: Map<string, Partial<Phase2FormData>>,
+  bpmnMap:    Map<string, PersistedBPMN>,
+): EntryBadgeStatus {
+  const data = savedForms.get(entry.subprocessId);
+  if (!data) return 'pending';
+  if (!data.gargalo) {
+    return (data.departamento || data.comoComeca) ? 'in-progress' : 'pending';
+  }
+  // Wizard complete — derive from BPMN status
+  const bpmn = bpmnMap.get(entry.subprocessId);
+  if (!bpmn || bpmn.status === 'draft')                  return 'awaiting-validation';
+  if (bpmn.status === 'respondent_validated' ||
+      bpmn.status === 'analyst_reviewed')                return 'validated';
+  if (bpmn.status === 'returned')                        return 'returned';
+  if (bpmn.status === 'finalized')                       return 'finalized';
+  return 'awaiting-validation';
+}
+
 // ── Selection view ────────────────────────────────────────────────────────────
 
 interface SelectionViewProps {
   entries:        Phase2Entry[];
   savedForms:     Map<string, Partial<Phase2FormData>>;
+  bpmnMap:        Map<string, PersistedBPMN>;
   respondentName: string;
   nameConfirmed:  boolean;
   onRespondentChange: (name: string) => void;
@@ -470,7 +504,7 @@ interface SelectionViewProps {
 }
 
 function SelectionView({
-  entries, savedForms, respondentName, nameConfirmed,
+  entries, savedForms, bpmnMap, respondentName, nameConfirmed,
   onRespondentChange, onNameConfirm, onSelectEntry, onViewReport,
   onShowLibrary, onShowManual,
 }: SelectionViewProps) {
@@ -530,7 +564,16 @@ function SelectionView({
             Nenhum subprocesso ainda. Adicione da biblioteca ou crie manualmente.
           </div>
         ) : entries.map((entry, index) => {
-          const status = getEntryStatus(entry, savedForms);
+          const badge = getEntryBadgeStatus(entry, savedForms, bpmnMap);
+          const BADGE_CFG: Record<EntryBadgeStatus, { icon: React.ReactNode; label: string; cls: string }> = {
+            'pending':              { icon: <div className="w-4 h-4 rounded-full border-2 border-gray-300" />, label: 'Pendente', cls: 'bg-gray-100 border-gray-200 text-gray-500' },
+            'in-progress':         { icon: <div className="w-4 h-4 rounded-full border-2 border-blue-400 flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-blue-400" /></div>, label: 'Em progresso', cls: 'bg-yellow-100 border-yellow-200 text-yellow-700' },
+            'awaiting-validation': { icon: <div className="w-4 h-4 rounded-full border-2 border-blue-500 flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-blue-500" /></div>, label: 'Aguardando validação', cls: 'bg-blue-100 border-blue-200 text-blue-700' },
+            'validated':           { icon: <CheckCircle size={16} className="text-emerald-500" strokeWidth={2} />, label: 'Validado', cls: 'bg-emerald-100 border-emerald-200 text-emerald-700' },
+            'returned':            { icon: <div className="w-4 h-4 rounded-full border-2 border-orange-400 flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-orange-400" /></div>, label: 'Devolvido', cls: 'bg-orange-100 border-orange-200 text-orange-700' },
+            'finalized':           { icon: <CheckCircle size={16} className="text-emerald-700" strokeWidth={2.5} />, label: 'Finalizado', cls: 'bg-emerald-200 border-emerald-300 text-emerald-900' },
+          };
+          const cfg = BADGE_CFG[badge];
           return (
             <button
               key={entry.subprocessId}
@@ -540,17 +583,7 @@ function SelectionView({
             >
               {/* Left: status icon + names */}
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="shrink-0">
-                  {status === 'done' ? (
-                    <CheckCircle size={16} className="text-emerald-500" strokeWidth={2} />
-                  ) : status === 'in-progress' ? (
-                    <div className="w-4 h-4 rounded-full border-2 border-blue-400 flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full bg-blue-400" />
-                    </div>
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
-                  )}
-                </div>
+                <div className="shrink-0">{cfg.icon}</div>
                 <div className="min-w-0">
                   <span className="block text-sm font-semibold text-gray-800 truncate">
                     {entry.subprocessName}
@@ -568,19 +601,9 @@ function SelectionView({
                     ★ {entry.voteAverage.toFixed(1)}
                   </span>
                 )}
-                {status === 'done' ? (
-                  <span className="inline-flex items-center bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
-                    Concluído
-                  </span>
-                ) : status === 'in-progress' ? (
-                  <span className="inline-flex items-center bg-yellow-100 border border-yellow-200 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
-                    Em progresso
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center bg-gray-100 border border-gray-200 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
-                    Pendente
-                  </span>
-                )}
+                <span className={`inline-flex items-center border text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${cfg.cls}`}>
+                  {cfg.label}
+                </span>
                 <ChevronRight size={14} className="text-gray-300" strokeWidth={2} />
               </div>
             </button>
@@ -629,7 +652,7 @@ interface WizardViewProps {
   initialData:    Partial<Phase2FormData>;
   totalEntries:   number;
   entryIndex:     number;
-  onComplete:     () => void;
+  onComplete:     (finalData: Partial<Phase2FormData>) => void;
   onBack:         () => void;
   onError:        (msg: string) => void;
 }
@@ -701,7 +724,7 @@ function WizardView({
           console.error('[Phase2] Failed to persist BPMN:', err);
         });
       }
-      onComplete();
+      onComplete(data);
     } else {
       setStep(((step as number) + 1) as WizardStep);
     }
@@ -1013,6 +1036,176 @@ function WizardView({
   );
 }
 
+// ── Validation view ───────────────────────────────────────────────────────────
+
+interface ValidationViewProps {
+  entry:          Phase2Entry;
+  diagnosticId:   string;
+  respondentName: string;
+  formData:       Partial<Phase2FormData>;
+  onApprove:      () => void;
+  onBack:         () => void;
+}
+
+function ValidationView({
+  entry, diagnosticId, respondentName, formData, onApprove, onBack,
+}: ValidationViewProps) {
+  // Initialise nodes synchronously from formData as a fallback,
+  // then override with persisted BPMN if one exists in Firestore.
+  const [nodes,   setNodes]   = useState<BPMNNode[]>(() => analyzeProcess(formData)?.fluxoBPMN ?? []);
+  const [comment, setComment] = useState('');
+  const [saving,  setSaving]  = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadBPMN(diagnosticId, entry.subprocessId)
+      .then(bpmn => {
+        if (bpmn) {
+          setNodes(bpmn.nodes);
+          if (bpmn.respondentComment) setComment(bpmn.respondentComment);
+        } else {
+          // No persisted BPMN yet — save the auto-generated draft.
+          const initialNodes = analyzeProcess(formData)?.fluxoBPMN ?? [];
+          if (initialNodes.length > 0) {
+            saveBPMN({
+              diagnosticId,
+              subprocessId:  entry.subprocessId,
+              nodes:         initialNodes,
+              status:        'draft',
+              history:       [{
+                action:  'edited',
+                by:      respondentName || 'respondent',
+                role:    'respondent',
+                comment: 'BPMN gerado automaticamente',
+                at:      new Date().toISOString(),
+              }],
+            }).catch(err => console.error('[Phase2] Draft BPMN save failed:', err));
+          }
+        }
+      })
+      .catch(err => console.error('[Phase2] loadBPMN failed:', err))
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleValidate = async () => {
+    setSaving(true);
+    try {
+      await saveBPMN({
+        diagnosticId,
+        subprocessId:      entry.subprocessId,
+        nodes,
+        status:            'respondent_validated',
+        history:           [{
+          action:  'validated',
+          by:      respondentName || 'respondent',
+          role:    'respondent',
+          comment: comment.trim() || undefined,
+          at:      new Date().toISOString(),
+        }],
+        respondentComment: comment.trim() || undefined,
+      });
+      onApprove();
+    } catch (err) {
+      console.error('[Phase2] Validate save failed:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBack = async () => {
+    // Persist current draft before going back so the editor state is preserved.
+    saveBPMN({
+      diagnosticId,
+      subprocessId:      entry.subprocessId,
+      nodes,
+      status:            'draft',
+      history:           [{
+        action:  'edited',
+        by:      respondentName || 'respondent',
+        role:    'respondent',
+        comment: 'Rascunho salvo ao voltar para o questionário',
+        at:      new Date().toISOString(),
+      }],
+      respondentComment: comment.trim() || undefined,
+    }).catch(err => console.error('[Phase2] Back-draft save failed:', err));
+    onBack();
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-1">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <ChevronLeft size={16} strokeWidth={2} />
+          Voltar ao questionário
+        </button>
+      </div>
+      <div className="mb-1">
+        <span className="text-[10px] font-bold tracking-widest text-blue-500 uppercase">Validação do Fluxo</span>
+      </div>
+      <h2 className="text-lg font-bold text-gray-900 mb-0.5">{entry.subprocessName}</h2>
+      <p className="text-sm text-gray-400 mb-5">{entry.processName}</p>
+
+      {/* Instructions */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-5 text-sm text-blue-700">
+        Revise o fluxo gerado automaticamente. Você pode reordenar, adicionar ou remover etapas antes de validar.
+      </div>
+
+      {/* BPMN Editor */}
+      {loading ? (
+        <div className="h-[500px] rounded-xl border border-gray-200 flex items-center justify-center text-sm text-gray-400">
+          Carregando fluxo…
+        </div>
+      ) : (
+        <BPMNEditor
+          nodes={nodes}
+          onChange={setNodes}
+          role="respondent"
+        />
+      )}
+
+      {/* Respondent comment */}
+      <div className="mt-4">
+        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+          Comentário (opcional)
+        </label>
+        <textarea
+          value={comment}
+          onChange={e => setComment(e.target.value)}
+          placeholder="Adicione observações sobre este fluxo…"
+          rows={3}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+      </div>
+
+      {/* Footer buttons */}
+      <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-100">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="inline-flex items-center gap-2 border border-gray-200 rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+        >
+          <ChevronLeft size={14} strokeWidth={2} />
+          Editar respostas
+        </button>
+        <button
+          type="button"
+          onClick={handleValidate}
+          disabled={saving || nodes.length === 0}
+          className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
+        >
+          <CheckCircle size={15} strokeWidth={2} />
+          {saving ? 'Salvando…' : 'Validar fluxo'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Report view ───────────────────────────────────────────────────────────────
 
 interface ReportViewProps {
@@ -1131,14 +1324,30 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
   const [nameConfirmed,    setNameConfirmed]    = useState(false);
   const [entries,          setEntries]          = useState<Phase2Entry[]>(prioritized);
   const [savedForms,       setSavedForms]       = useState<Map<string, Partial<Phase2FormData>>>(initialSavedForms);
+  const [bpmnMap,          setBpmnMap]          = useState<Map<string, PersistedBPMN>>(new Map());
   const [showLibrary,      setShowLibrary]      = useState(false);
   const [showManual,       setShowManual]       = useState(false);
   const [view,             setView]             = useState<Phase2View>('selection');
   const [activeEntryIndex, setActiveEntryIndex] = useState<number | null>(null);
+  // Tracks the finalData passed from WizardView so ValidationView can access it immediately.
+  const [wizardFinalData,  setWizardFinalData]  = useState<Partial<Phase2FormData>>({});
 
   const { toasts, showToast, dismissToast } = useToast();
 
   const existingIds = new Set(entries.map(e => e.subprocessId));
+
+  // Load persisted BPMNs on mount.
+  useEffect(() => {
+    loadAllBPMNs(diagnosticId)
+      .then(m => setBpmnMap(m))
+      .catch(err => console.error('[Phase2] loadAllBPMNs failed:', err));
+  }, [diagnosticId]);
+
+  const refreshBpmnMap = () => {
+    loadAllBPMNs(diagnosticId)
+      .then(m => setBpmnMap(m))
+      .catch(err => console.error('[Phase2] bpmnMap refresh failed:', err));
+  };
 
   const addEntry = (entry: Phase2Entry) => {
     const newEntry = { ...entry, isPrioritized: false };
@@ -1156,19 +1365,39 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
     });
   };
 
-  const handleWizardComplete = () => {
+  const handleWizardComplete = (finalData: Partial<Phase2FormData>) => {
+    // Optimistically update savedForms with the just-saved data.
+    if (activeEntryIndex !== null) {
+      setSavedForms(prev => {
+        const next = new Map(prev);
+        next.set(entries[activeEntryIndex].subprocessId, finalData);
+        return next;
+      });
+    }
+    setWizardFinalData(finalData);
+    // Also reload savedForms in background.
     loadPhase2Responses(diagnosticId).then(existing => {
       const formsMap = new Map<string, Partial<Phase2FormData>>();
       existing.forEach((v, k) => formsMap.set(k, v as Partial<Phase2FormData>));
       setSavedForms(formsMap);
     }).catch(err => console.error('[Phase2] Failed to reload responses:', err));
-    setView('selection');
-    setActiveEntryIndex(null);
+    // Go to validation instead of selection.
+    setView('validation');
   };
 
   const handleWizardBack = () => {
     setView('selection');
     setActiveEntryIndex(null);
+  };
+
+  const handleApprove = () => {
+    refreshBpmnMap();
+    setView('selection');
+    setActiveEntryIndex(null);
+  };
+
+  const handleValidationBack = () => {
+    setView('wizard');
   };
 
   return (
@@ -1180,6 +1409,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
         <SelectionView
           entries={entries}
           savedForms={savedForms}
+          bpmnMap={bpmnMap}
           respondentName={respondentName}
           nameConfirmed={nameConfirmed}
           onRespondentChange={name => { setRespondentName(name); setNameConfirmed(false); }}
@@ -1202,6 +1432,17 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           onComplete={handleWizardComplete}
           onBack={handleWizardBack}
           onError={showToast}
+        />
+      )}
+
+      {view === 'validation' && activeEntryIndex !== null && (
+        <ValidationView
+          entry={entries[activeEntryIndex]}
+          diagnosticId={diagnosticId}
+          respondentName={respondentName}
+          formData={wizardFinalData}
+          onApprove={handleApprove}
+          onBack={handleValidationBack}
         />
       )}
 
