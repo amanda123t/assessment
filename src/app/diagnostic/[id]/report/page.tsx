@@ -21,6 +21,7 @@ import { SubprocessAssessment } from '@/types';
 import { reconstructAssessment } from '@/lib/reconstructAssessment';
 
 import RankingScreen from '@/components/RankingScreen';
+import { SkeletonMetrics, SkeletonList } from '@/components/Skeleton';
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -63,8 +64,11 @@ export default function SharedReportPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-sm text-gray-500">Carregando relatório...</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+          <SkeletonMetrics />
+          <SkeletonList count={5} />
+        </div>
       </div>
     );
   }
