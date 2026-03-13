@@ -40,7 +40,8 @@ export interface CriteriaScores {
   executionTime: number;
   peopleInvolved: number;
   standardization: number;
-  digitization: number;
+  dataDigitization: number;      // formato dos dados (digital vs papel)
+  systemCount: number;           // quantos sistemas são usados
   reworkRate: number;
   processStability: number;
 }
@@ -159,13 +160,32 @@ export const CRITERIA = [
     options: ['Sempre segue as mesmas regras', 'Na maioria das vezes, com poucas exceções', 'Depende de análise caso a caso', 'Cada execução é diferente'] as const,
   },
   {
-    key: 'digitization' as keyof CriteriaScores,
-    label: 'Grau de Digitalização',
-    description: 'Como os dados são manipulados durante a execução deste subprocesso',
-    example: "Ex: se o colaborador copia dados do SAP para uma planilha Excel, selecione 'Sistemas com cópia manual entre telas'",
+    key: 'dataDigitization' as keyof CriteriaScores,
+    label: 'Formato dos Dados',
+    description: 'Em que formato estão os dados usados durante a execução deste subprocesso',
+    example: "Ex: se o colaborador imprime relatórios para conferir manualmente, selecione 'Mistura de digital e papel/e-mail'",
     lowLabel: 'Totalmente digital',
     highLabel: 'Totalmente manual',
-    options: ['Tudo em sistemas integrados', 'Sistemas com cópia manual entre telas', 'Planilhas como ferramenta principal', 'Processos manuais com papel ou e-mail'] as const,
+    options: [
+      'Todos digitais e estruturados (sistemas, bancos de dados)',
+      'Maioria digital mas com entrada manual em alguns pontos',
+      'Mistura de digital e papel/e-mail',
+      'Predominantemente papel, PDF escaneado ou e-mail não estruturado',
+    ] as const,
+  },
+  {
+    key: 'systemCount' as keyof CriteriaScores,
+    label: 'Quantidade de Sistemas',
+    description: 'Em quantos sistemas, aplicações ou ferramentas diferentes o colaborador precisa trabalhar durante a execução',
+    example: "Ex: se o colaborador usa ERP, planilha Excel e e-mail para concluir o processo, selecione '2 a 3 sistemas'",
+    lowLabel: 'Poucos sistemas',
+    highLabel: 'Muitos sistemas',
+    options: [
+      '1 sistema ou ferramenta',
+      '2 a 3 sistemas',
+      '4 a 5 sistemas',
+      'Mais de 5 sistemas',
+    ] as const,
   },
   {
     key: 'reworkRate' as keyof CriteriaScores,

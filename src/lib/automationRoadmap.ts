@@ -31,37 +31,38 @@ export interface RoadmapItem {
  * Suggest an automation technology based on questionnaire criteria scores.
  *
  * Rules (evaluated in priority order):
- *  - High manual digitization + high volume → RPA (classic desktop automation)
- *  - High manual digitization + long execution → RPA + OCR
+ *  - High manual data format + high volume → RPA (classic desktop automation)
+ *  - High manual data format + long execution → RPA + OCR
  *  - Low standardization (decisions required) → IA Assistiva
  *  - High rework rate → Workflow + Regras de Negócio
- *  - Partially digital + moderate time → API + Workflow
+ *  - Many systems (integration complexity) or partially digital + moderate time → API + Workflow
  *  - Fallback → Automação de Processos (BPA)
  */
 export function suggestAutomationTechnology(a: SubprocessAssessment): string {
-  const { digitization, standardization, reworkRate, executionTime } = a.scores;
+  const { dataDigitization, standardization, reworkRate, executionTime } = a.scores;
 
-  if (digitization >= 3 && a.scores.operationalVolume >= 3) return 'RPA';
-  if (digitization >= 3 && executionTime >= 3)              return 'RPA + OCR';
-  if (standardization >= 3)                                 return 'IA Assistiva';
-  if (reworkRate >= 3)                                      return 'Workflow + Regras de Negócio';
-  if (digitization === 2 && executionTime >= 2)             return 'API + Workflow';
+  if (dataDigitization >= 3 && a.scores.operationalVolume >= 3) return 'RPA';
+  if (dataDigitization >= 3 && executionTime >= 3)              return 'RPA + OCR';
+  if (standardization >= 3)                                     return 'IA Assistiva';
+  if (reworkRate >= 3)                                          return 'Workflow + Regras de Negócio';
+  if (a.scores.systemCount >= 3 || (dataDigitization === 2 && executionTime >= 2)) return 'API + Workflow';
   return 'Automação de Processos (BPA)';
 }
 
 /**
- * Effort proxy: combines rule variability, process instability, and manual tool
- * dependency — all available from existing criteria scores.
- * Less standardised + less stable + more manual → harder to automate.
+ * Effort proxy: combines rule variability, process instability, manual data
+ * format and system fragmentation — all from existing criteria scores.
+ * Less standardised + less stable + more manual + more systems → harder to automate.
  *
- * Raw range: min = (1*2 + 1*2 + 1*1) = 5, max = (4*2 + 4*2 + 4*1) = 20
+ * Raw range: min = (1*2 + 1*2 + 1*0.7 + 1*0.3) = 5, max = (4*2 + 4*2 + 4*0.7 + 4*0.3) = 20
  * Normalised to 0–100.
  */
 export function calculateEffortScore(a: SubprocessAssessment): number {
   const raw =
-    a.scores.standardization  * 2 +
-    a.scores.processStability * 2 +
-    a.scores.digitization     * 1;
+    a.scores.standardization    * 2   +
+    a.scores.processStability   * 2   +
+    a.scores.dataDigitization   * 0.7 +  // manual data format → implementation effort
+    a.scores.systemCount        * 0.3;   // system fragmentation → integration effort
   return Math.round(((raw - 5) / 15) * 100);
 }
 
