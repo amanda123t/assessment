@@ -21,7 +21,6 @@ import {
   PersistedBPMN,
   BPMNNode,
 } from '@/lib/phase2';
-import BPMNDiagram from '@/components/BPMNDiagram';
 import BPMNEditor from '@/components/BPMNEditor';
 import Tooltip from '@/components/Tooltip';
 
@@ -1775,9 +1774,7 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
 
             {/* BPMN diagram */}
             {diagramNodes.length > 0 && (
-              <div className="rounded-xl border border-gray-100 bg-white p-4 overflow-x-auto">
-                <BPMNDiagram nodes={diagramNodes} size="full" />
-              </div>
+              <BPMNEditor nodes={diagramNodes} onChange={() => {}} role="respondent" readOnly />
             )}
           </div>
         );

@@ -185,18 +185,20 @@ function BPMNEditorInner({ nodes: bpmnNodes, onChange, role, readOnly = false }:
       fitView
       fitViewOptions={{ padding: 0.2 }}
     >
-      <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#e2e8f0" />
+      <Background variant={BackgroundVariant.Dots} gap={16} size={1} color={readOnly ? '#e9ecef' : '#e2e8f0'} />
       <Controls showInteractive={false} className="!border-gray-200 !shadow-sm" />
-      <MiniMap
-        nodeColor={n => {
-          if (n.type === 'start')    return '#86efac';
-          if (n.type === 'end')      return '#374151';
-          if (n.type === 'gateway')  return '#fcd34d';
-          return '#bfdbfe';
-        }}
-        maskColor="rgba(248,250,252,0.7)"
-        className="!border !border-gray-200 !rounded-lg !shadow-sm"
-      />
+      {!readOnly && (
+        <MiniMap
+          nodeColor={n => {
+            if (n.type === 'start')    return '#86efac';
+            if (n.type === 'end')      return '#374151';
+            if (n.type === 'gateway')  return '#fcd34d';
+            return '#bfdbfe';
+          }}
+          maskColor="rgba(248,250,252,0.7)"
+          className="!border !border-gray-200 !rounded-lg !shadow-sm"
+        />
+      )}
 
       {/* Inline node label editor */}
       {editingNodeId && (
@@ -294,7 +296,9 @@ function ToolbarButton({
 
 export default function BPMNEditor(props: BPMNEditorProps) {
   return (
-    <div className="h-[500px] w-full rounded-xl border border-gray-200 overflow-hidden">
+    <div className={`w-full rounded-xl border border-gray-200 overflow-hidden ${
+      props.readOnly ? 'h-[400px] cursor-grab' : 'h-[500px]'
+    }`}>
       <ReactFlowProvider>
         <BPMNEditorInner {...props} />
       </ReactFlowProvider>
