@@ -14,6 +14,8 @@ import {
   analyzeProcess,
   Phase2Analysis,
   loadPhase2Responses,
+  saveBPMN,
+  BPMNHistoryEntry,
 } from '@/lib/phase2';
 import BPMNDiagram from '@/components/BPMNDiagram';
 
@@ -679,6 +681,26 @@ function WizardView({
   const handleContinue = async () => {
     await doSave(data);
     if (step === TOTAL_STEPS) {
+      // Auto-persist the generated BPMN when the wizard is finalised.
+      const analysis = analyzeProcess(data);
+      if (analysis && analysis.fluxoBPMN.length > 0) {
+        const historyEntry: BPMNHistoryEntry = {
+          action:  'edited',
+          by:      respondentName || 'respondent',
+          role:    'respondent',
+          comment: 'BPMN gerado automaticamente',
+          at:      new Date().toISOString(),
+        };
+        saveBPMN({
+          diagnosticId: diagnosticId,
+          subprocessId: entry.subprocessId,
+          nodes:        analysis.fluxoBPMN,
+          status:       'draft',
+          history:      [historyEntry],
+        }).catch(err => {
+          console.error('[Phase2] Failed to persist BPMN:', err);
+        });
+      }
       onComplete();
     } else {
       setStep(((step as number) + 1) as WizardStep);

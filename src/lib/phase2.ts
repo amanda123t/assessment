@@ -8,7 +8,7 @@
  */
 
 import {
-  collection, doc, setDoc, getDocs, query, where,
+  collection, doc, setDoc, getDoc, getDocs, query, where,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -143,6 +143,34 @@ export interface Phase2Analysis {
   complexidade:   ComplexityLevel;
   fluxoBPMN:      BPMNNode[];
   justificativa:  string;
+}
+
+// ── BPMN validation cycle types ────────────────────────────────────────────────
+
+export type BPMNStatus =
+  | 'draft'
+  | 'respondent_validated'
+  | 'analyst_reviewed'
+  | 'returned'
+  | 'finalized';
+
+export interface BPMNHistoryEntry {
+  action:   'validated' | 'returned' | 'edited' | 'finalized';
+  by:       string;
+  role:     'respondent' | 'analyst';
+  comment?: string;
+  at:       string;
+}
+
+export interface PersistedBPMN {
+  diagnosticId:      string;
+  subprocessId:      string;
+  nodes:             BPMNNode[];
+  status:            BPMNStatus;
+  history:           BPMNHistoryEntry[];
+  respondentComment?: string;
+  analystComment?:    string;
+  updatedAt?:         unknown;
 }
 
 // ── Classification helpers ─────────────────────────────────────────────────────
@@ -359,4 +387,61 @@ export async function loadPhase2Responses(
     result.set(data.subprocessId, data);
   });
   return result;
+}
+
+// ── BPMN persistence ───────────────────────────────────────────────────────────
+
+function bpmnDocId(diagnosticId: string, subprocessId: string): string {
+  return `bpmn_${diagnosticId}_${subprocessId}`;
+}
+
+export async function saveBPMN(data: PersistedBPMN): Promise<void> {
+  const docRef = doc(db, 'phase2_bpmn', bpmnDocId(data.diagnosticId, data.subprocessId));
+  await setDoc(
+    docRef,
+    { ...data, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
+
+export async function loadBPMN(
+  diagnosticId: string,
+  subprocessId: string,
+): Promise<PersistedBPMN | null> {
+  const docRef  = doc(db, 'phase2_bpmn', bpmnDocId(diagnosticId, subprocessId));
+  const snap    = await getDoc(docRef);
+  if (!snap.exists()) return null;
+  return snap.data() as PersistedBPMN;
+}
+
+export async function loadAllBPMNs(
+  diagnosticId: string,
+): Promise<Map<string, PersistedBPMN>> {
+  const snapshot = await getDocs(
+    query(collection(db, 'phase2_bpmn'), where('diagnosticId', '==', diagnosticId)),
+  );
+  const result = new Map<string, PersistedBPMN>();
+  snapshot.forEach((d) => {
+    const bpmn = d.data() as PersistedBPMN;
+    result.set(bpmn.subprocessId, bpmn);
+  });
+  return result;
+}
+
+export async function updateBPMNStatus(
+  diagnosticId: string,
+  subprocessId:  string,
+  newStatus:     BPMNStatus,
+  entry:         BPMNHistoryEntry,
+  updates?:      Partial<Pick<PersistedBPMN, 'nodes' | 'respondentComment' | 'analystComment'>>,
+): Promise<void> {
+  const existing = await loadBPMN(diagnosticId, subprocessId);
+  const history  = existing ? [...existing.history, entry] : [entry];
+  const merged: PersistedBPMN = {
+    ...(existing ?? { diagnosticId, subprocessId, nodes: [], status: newStatus, history: [] }),
+    ...updates,
+    status:  newStatus,
+    history,
+  };
+  await saveBPMN(merged);
 }
