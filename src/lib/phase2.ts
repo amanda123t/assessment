@@ -220,6 +220,22 @@ function classifyAutomationTypes(data: Partial<Phase2FormData>): AutomationType[
     (data.seguiRegras ?? '').startsWith(V.seguiRegras.SEMPRE_PREFIX);
   if (hasAPI) types.push('Integração API');
 
+  // Gargalo de integração → reforçar Integração API
+  if ((data.gargalos ?? []).some(g => g.includes('integração'))) {
+    if (!types.includes('Integração API')) types.push('Integração API');
+  }
+
+  // Espera por aprovação → IA Assistiva para auto-routing
+  if (data.tempoEspera?.includes('aprovação')) {
+    if (!types.includes('IA Assistiva')) types.push('IA Assistiva');
+  }
+
+  // Processo cross-functional (3+ áreas) → Integração API
+  const crossFunctionalAreas = (data.areasEnvolvidas ?? []).filter(a => a !== 'Nenhuma outra área');
+  if (crossFunctionalAreas.length >= 3) {
+    if (!types.includes('Integração API')) types.push('Integração API');
+  }
+
   if (types.length === 0) types.push('RPA');
 
   return types;
@@ -239,7 +255,12 @@ function classifyComplexity(data: Partial<Phase2FormData>): ComplexityLevel {
   const fewSystems   = (data.sistemas             ?? []).length <= 1;
   const noHuman      = data.exigeAnalise === V.exigeAnalise.NAO_EXIGE;
 
-  if (rulesAlways && stableAlways && noDecision && fewSystems && noHuman) return 'Baixa';
+  if (rulesAlways && stableAlways && noDecision && fewSystems && noHuman) {
+    // Many cross-functional areas bump Baixa → Média
+    const manyAreas = (data.areasEnvolvidas ?? []).filter(a => a !== 'Nenhuma outra área').length >= 3;
+    if (manyAreas) return 'Média';
+    return 'Baixa';
+  }
   return 'Média';
 }
 
@@ -293,6 +314,22 @@ function generateBPMN(data: Partial<Phase2FormData>): BPMNNode[] {
     });
   }
 
+  // Assign lanes based on areasEnvolvidas
+  const areas = (data.areasEnvolvidas ?? []).filter(a => a !== 'Nenhuma outra área');
+  if (areas.length > 0 && data.departamento) {
+    const half = Math.floor(nodes.length / 2);
+    nodes.forEach((n, i) => {
+      if (n.type === 'activity') {
+        n.lane = i < half ? data.departamento : (areas[0] || data.departamento);
+      }
+    });
+  }
+
+  // Add output node before End if defined
+  if (data.outputPrincipal && data.outputPrincipal !== 'Outro') {
+    nodes.push({ type: 'activity', label: data.outputPrincipal, lane: data.departamento });
+  }
+
   nodes.push({ type: 'end', label: 'Fim' });
   return nodes;
 }
@@ -338,6 +375,12 @@ function buildJustificativa(
 
   if (types.length > 0)
     parts.push(`a tecnologia indicada é ${types.join(' + ')}`);
+
+  if (data.tempoEspera && data.tempoEspera !== 'Não há esperas significativas')
+    parts.push('há tempos de espera que podem ser reduzidos com automação de notificações e escalações');
+
+  if (data.slaEsperado && data.slaEsperado !== 'Não tem prazo definido')
+    parts.push(`o SLA esperado é ${data.slaEsperado.toLowerCase()}`);
 
   return parts.join(', ') + '.';
 }
