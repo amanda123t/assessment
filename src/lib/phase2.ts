@@ -125,9 +125,16 @@ export type ComplexityLevel    = 'Baixa' | 'Média' | 'Alta';
 export type AutomationPotential = 'ALTO' | 'MÉDIO' | 'BAIXO';
 
 export interface BPMNNode {
-  type:      'start' | 'activity' | 'gateway' | 'end';
+  type:      'start' | 'activity' | 'gateway' | 'end' | 'intermediate-event' | 'subprocess';
   label:     string;
-  branches?: { condition: string }[];
+  /** Lane / department this node belongs to (inferred from Phase 2 data). */
+  lane?:     string;
+  /** For gateways: outgoing branches with conditions. */
+  branches?: { condition: string; target?: string }[];
+  /** For activities: whether this step is typically automatable. */
+  automatable?: boolean;
+  /** Systems involved in this step (drawn as small badges below the shape). */
+  systems?: string[];
 }
 
 export interface Phase2Analysis {
