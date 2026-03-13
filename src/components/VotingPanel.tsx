@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Fragment } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
 import { Star, ChevronDown, ChevronUp, Users, BarChart2 } from 'lucide-react';
 import { SubprocessAssessment } from '@/types';
@@ -350,20 +350,40 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
   const [voterArea, setVoterArea]         = useState('');
   const [identityReady, setIdentityReady] = useState(false);
 
-  const [selections, setSelections] = useState<Map<string, number>>(new Map());
-  const [summaries, setSummaries]   = useState<Map<string, VoteSummary>>(new Map());
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted]   = useState(false);
-  const [expanded, setExpanded]     = useState<Set<string>>(new Set());
+  const [selections, setSelections]           = useState<Map<string, number>>(new Map());
+  const [summaries, setSummaries]             = useState<Map<string, VoteSummary>>(new Map());
+  const [submitting, setSubmitting]           = useState(false);
+  const [savedVotes, setSavedVotes]           = useState<Map<string, number>>(new Map());
+  const [showSavedBanner, setShowSavedBanner] = useState(false);
+  const [expanded, setExpanded]               = useState<Set<string>>(new Set());
+
+  // Prevents re-seeding selections every time the real-time snapshot fires.
+  const seededRef = useRef(false);
 
   const { toasts, showToast, dismissToast } = useToast();
 
+  // ── Real-time vote subscription ──────────────────────────────────────────────
   useEffect(() => {
     const unsubscribe = subscribeToVoteSummaries(assessmentId, voterToken, (data) => {
       setSummaries(data);
     });
     return unsubscribe;
   }, [assessmentId, voterToken]);
+
+  // ── Seed selections from Firestore on first load ─────────────────────────────
+  // When the snapshot arrives and this user already has votes (userVote != null),
+  // pre-populate selections and savedVotes so the counter and buttons are correct.
+  useEffect(() => {
+    if (seededRef.current || summaries.size === 0) return;
+    const fromFirestore = new Map<string, number>();
+    summaries.forEach((s, spId) => {
+      if (s.userVote !== null) fromFirestore.set(spId, s.userVote);
+    });
+    if (fromFirestore.size === 0) return;
+    seededRef.current = true;
+    setSelections(fromFirestore);
+    setSavedVotes(fromFirestore);
+  }, [summaries]);
 
   const handleIdentityConfirm = useCallback((name: string, area: string) => {
     setVoterName(name);
@@ -376,22 +396,29 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
   }, []);
 
   const handleSaveAll = useCallback(async () => {
-    if (selections.size === 0 || submitting) return;
+    if (submitting) return;
+    const isFirst  = savedVotes.size === 0;
+    const toSubmit = isFirst
+      ? Array.from(selections.entries())
+      : Array.from(selections.entries()).filter(([spId, v]) => v !== savedVotes.get(spId));
+    if (toSubmit.length === 0) return;
     setSubmitting(true);
     try {
       await Promise.all(
-        Array.from(selections.entries()).map(([spId, vote]) =>
+        toSubmit.map(([spId, vote]) =>
           submitVote(assessmentId, spId, voterToken, voterName, voterArea, vote)
         )
       );
-      setSubmitted(true);
+      setSavedVotes(new Map(selections));
+      setShowSavedBanner(true);
+      setTimeout(() => setShowSavedBanner(false), 3000);
     } catch (err) {
       console.error('[VotingPanel] Failed to submit votes:', err);
       showToast('Erro ao salvar votos. Verifique sua conexão e tente novamente.');
     } finally {
       setSubmitting(false);
     }
-  }, [assessmentId, voterToken, voterName, voterArea, selections, submitting]);
+  }, [assessmentId, voterToken, voterName, voterArea, selections, savedVotes, submitting, showToast]);
 
   const toggleExpanded = useCallback((spId: string) => {
     setExpanded(prev => {
@@ -403,6 +430,10 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
 
   const totalCount    = assessments.length;
   const selectedCount = selections.size;
+  const isFirstSave   = savedVotes.size === 0;
+  const hasChanges    = isFirstSave
+    ? selections.size > 0
+    : Array.from(selections).some(([spId, v]) => v !== savedVotes.get(spId));
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -464,12 +495,11 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
                         key={v}
                         onClick={() => handleSelect(a.subprocessId, v)}
                         title={PRIORITY_LABELS[v]}
-                        disabled={submitted}
                         className={`w-9 h-9 rounded-full border-2 text-sm font-bold transition-all ${
                           selected === v
                             ? 'bg-blue-600 border-blue-600 text-white scale-110 shadow-sm'
                             : 'bg-white border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600'
-                        } disabled:opacity-60 disabled:cursor-not-allowed`}
+                        }`}
                       >
                         {v}
                       </button>
@@ -524,19 +554,17 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
       {/* ── Single save button at the bottom ── */}
       {identityReady && (
         <div className="mt-6 flex items-center gap-4">
-          {submitted ? (
-            <p className="text-sm font-semibold text-emerald-600">
-              ✓ Votos registrados com sucesso!
-            </p>
+          {showSavedBanner ? (
+            <p className="text-sm font-semibold text-emerald-600">✓ Votos salvos</p>
           ) : (
             <>
               <button
                 onClick={handleSaveAll}
-                disabled={selectedCount === 0 || submitting}
+                disabled={!hasChanges || submitting}
                 className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white
                            disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {submitting ? 'Salvando…' : `Salvar votos`}
+                {submitting ? 'Salvando…' : isFirstSave ? 'Salvar votos' : 'Atualizar votos'}
               </button>
               <span className="text-xs text-gray-400">
                 {selectedCount} de {totalCount} subprocesso{totalCount !== 1 ? 's' : ''} respondido{selectedCount !== 1 ? 's' : ''}
