@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Trophy, FileDown, RotateCcw, Activity,
   Lightbulb, TrendingUp, DollarSign, Target, ChevronDown, X, Pencil,
@@ -12,6 +12,7 @@ import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap
 import { FTE_HOURS_YEAR, HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, getAutomationRate, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
 import Link from 'next/link';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
+import { fetchVoteSummaries } from '@/lib/votes';
 
 interface Props {
   assessments: SubprocessAssessment[];
@@ -177,10 +178,22 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     Record<string, { annualHours: number; savingsHours: number; fteEquivalent: number; financialImpact: number; hourlyCost: number; fteCurrent: number; fteAfterAutomation: number }>
   >({});
 
+  const [voteSummaries, setVoteSummaries] = useState<Map<string, { average: number; count: number }>>(new Map());
+
+  useEffect(() => {
+    if (!diagnosticId) return;
+    // voterToken is not needed here — we only use average + count from the summary, not userVote
+    fetchVoteSummaries(diagnosticId, '').then((data) => {
+      const slim = new Map<string, { average: number; count: number }>();
+      data.forEach((s, spId) => slim.set(spId, { average: s.average, count: s.count }));
+      setVoteSummaries(slim);
+    }).catch((err) => console.error('[RankingScreen] Failed to fetch vote summaries:', err));
+  }, [diagnosticId]);
+
   const ranked = buildRanking(assessments);
   const summary = buildPrioritySummary(ranked);
   const insights = buildInsights(ranked);
-  const autoRoadmap = buildAutomationRoadmap(assessments);
+  const autoRoadmap = buildAutomationRoadmap(assessments, voteSummaries.size > 0 ? voteSummaries : undefined);
 
   const totalAnnualHours     = assessments.reduce((s, a) => s + a.annualHours, 0);
   const totalSavingsHours    = assessments.reduce((s, a) => s + a.automationSavingsHours, 0);
@@ -810,7 +823,14 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                           >
                             {/* Name + process */}
                             <div className="col-span-5">
-                              <p className="text-xs font-medium text-gray-800 leading-snug">{item.subprocessName}</p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-xs font-medium text-gray-800 leading-snug">{item.subprocessName}</p>
+                                {item.voteCount != null && item.voteCount > 0 && (
+                                  <span className="text-[10px] font-semibold text-amber-600 whitespace-nowrap">
+                                    ⭐ {item.voteAverage!.toFixed(1)} ({item.voteCount} voto{item.voteCount !== 1 ? 's' : ''})
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[10px] text-gray-400 truncate">{item.processName}</p>
                             </div>
 
