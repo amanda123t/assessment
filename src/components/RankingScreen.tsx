@@ -9,7 +9,7 @@ import {
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
-import { FTE_HOURS_YEAR, HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, getAutomationRate, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
+import { FTE_HOURS_YEAR, DEFAULT_HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, getAutomationRate, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
 import Link from 'next/link';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 import { fetchVoteSummaries } from '@/lib/votes';
@@ -31,9 +31,9 @@ function fmtD(n: number): string {
 }
 
 function getAutomationPotential(score: number): { label: string; color: string } {
-  if (score >= 24) return { label: 'Muito Alto', color: 'text-red-600 bg-red-50 border-red-200' };
-  if (score >= 20) return { label: 'Alto',       color: 'text-orange-600 bg-orange-50 border-orange-200' };
-  if (score >= 16) return { label: 'Médio',      color: 'text-yellow-700 bg-yellow-50 border-yellow-200' };
+  if (score >= 18) return { label: 'Muito Alto', color: 'text-red-600 bg-red-50 border-red-200' };
+  if (score >= 15) return { label: 'Alto',       color: 'text-orange-600 bg-orange-50 border-orange-200' };
+  if (score >= 12) return { label: 'Médio',      color: 'text-yellow-700 bg-yellow-50 border-yellow-200' };
   return               { label: 'Baixo',      color: 'text-gray-600 bg-gray-50 border-gray-200' };
 }
 
@@ -69,7 +69,7 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
     }
   }
 
-  const highRework = ranked.filter((r) => r.scores.reworkOrErrors >= 3).length;
+  const highRework = ranked.filter((r) => r.scores.reworkRate >= 3).length;
   if (highRework >= 2) {
     pool.push({
       weight: 9,
@@ -88,7 +88,7 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
     });
   }
 
-  const heavyManual = ranked.filter((r) => r.scores.systemsOrSpreadsheets >= 3).length;
+  const heavyManual = ranked.filter((r) => r.scores.digitization >= 3).length;
   const manualPct = Math.round((heavyManual / n) * 100);
   if (manualPct >= 40) {
     pool.push({
@@ -205,7 +205,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   const dispSavingsHours    = refinedImpact?.savingsHours    ?? totalSavingsHours;
   const dispFteEquivalent   = refinedImpact?.fteEquivalent   ?? totalFteEquivalent;
   const dispFinancialImpact = refinedImpact?.financialImpact ?? totalFinancialImpact;
-  const dispHourlyCost      = refinedImpact?.hourlyCost      ?? HOURLY_COST;
+  const dispHourlyCost      = refinedImpact?.hourlyCost      ?? DEFAULT_HOURLY_COST;
 
   // ── Operational equivalencies ─────────────────────────────────────────────
   /** Automatable hours converted to a monthly figure. */
@@ -224,11 +224,11 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
       // display only (hours per person).  Annual hours come from volume × time only.
       const newAnnual = a.annualHours;
 
-      // Cost: subprocess override → HOURLY_COST
+      // Cost: subprocess override → DEFAULT_HOURLY_COST
       const rawSpCost     = parseFloat(override?.hourlyCost ?? '');
-      const effectiveCost = (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost : HOURLY_COST;
+      const effectiveCost = (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost : DEFAULT_HOURLY_COST;
 
-      const newSavings         = calculateAutomationSavings(newAnnual, a.automationScore);
+      const newSavings         = calculateAutomationSavings(newAnnual, a.automationScore, a.scores.processStability);
       const fteSp              = calculateFteEquivalent(newSavings);
       const fteCurrentSp       = calculateFteCurrent(newAnnual);
       const fteAfterAutoSp     = calculateFteAfterAutomation(fteCurrentSp, fteSp);
@@ -263,7 +263,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
       fteEquivalent,
       capacityGain,
       financialImpact:   newFinancialTotal,
-      hourlyCost:        HOURLY_COST,
+      hourlyCost:        DEFAULT_HOURLY_COST,
       fteCurrent,
       fteAfterAutomation,
     });
@@ -666,12 +666,12 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                                 [item.subprocessId]: { ...spOverride, hourlyCost: e.target.value },
                               }))
                             }
-                            placeholder={String(HOURLY_COST)}
+                            placeholder={String(DEFAULT_HOURLY_COST)}
                             className="w-20 border border-blue-300 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         ) : (
                           <span className={`text-xs ${isSpCost ? 'font-bold text-blue-700' : 'text-gray-400'}`}>
-                            {viewCost ? `R$${viewCost}` : `R$${HOURLY_COST}`}
+                            {viewCost ? `R$${viewCost}` : `R$${DEFAULT_HOURLY_COST}`}
                           </span>
                         )}
                       </td>

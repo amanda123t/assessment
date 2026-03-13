@@ -37,11 +37,12 @@ export interface Industry {
 
 export interface CriteriaScores {
   operationalVolume: number;
-  peopleInvolved: number;
   executionTime: number;
-  reworkOrErrors: number;
-  systemsOrSpreadsheets: number;
-  systemIntegrations: number;
+  peopleInvolved: number;
+  standardization: number;
+  digitization: number;
+  reworkRate: number;
+  processStability: number;
 }
 
 export interface SubprocessAssessment {
@@ -123,50 +124,58 @@ export interface RealValues {
 export const CRITERIA = [
   {
     key: 'operationalVolume' as keyof CriteriaScores,
-    label: 'Volume Operacional',
-    description: 'Frequência e quantidade de transações ou ocorrências do subprocesso por mês',
+    label: 'Volume de Execuções',
+    description: 'Quantas vezes este subprocesso é executado por mês, considerando todas as ocorrências',
     lowLabel: 'Baixo volume',
     highLabel: 'Alto volume',
-    options: ['Menos de 50', '50 a 200', '200 a 500', 'Mais de 500'] as const,
-  },
-  {
-    key: 'peopleInvolved' as keyof CriteriaScores,
-    label: 'Pessoas Envolvidas',
-    description: 'Quantidade de colaboradores necessários para executar o subprocesso',
-    lowLabel: 'Poucas pessoas',
-    highLabel: 'Muitas pessoas',
-    options: ['1 pessoa', '2–3 pessoas', '4–6 pessoas', 'Mais de 6'] as const,
+    options: ['Menos de 50 vezes/mês', '50 a 200 vezes/mês', '200 a 500 vezes/mês', 'Mais de 500 vezes/mês'] as const,
   },
   {
     key: 'executionTime' as keyof CriteriaScores,
-    label: 'Tempo de Execução por Tarefa',
-    description: 'Tempo médio gasto para completar o subprocesso por tarefa',
+    label: 'Tempo por Execução',
+    description: 'Tempo médio que uma pessoa leva para completar uma execução do início ao fim',
     lowLabel: 'Muito rápido',
     highLabel: 'Muito demorado',
     options: ['Menos de 5 minutos', '5 a 15 minutos', '15 a 30 minutos', 'Mais de 30 minutos'] as const,
   },
   {
-    key: 'reworkOrErrors' as keyof CriteriaScores,
-    label: 'Frequência de Retrabalho',
-    description: 'Frequência de erros, retrabalho ou exceções no subprocesso',
+    key: 'peopleInvolved' as keyof CriteriaScores,
+    label: 'Pessoas Envolvidas',
+    description: 'Quantidade de colaboradores que executam este subprocesso regularmente',
+    lowLabel: 'Poucas pessoas',
+    highLabel: 'Muitas pessoas',
+    options: ['1 pessoa', '2 a 3 pessoas', '4 a 6 pessoas', 'Mais de 6 pessoas'] as const,
+  },
+  {
+    key: 'standardization' as keyof CriteriaScores,
+    label: 'Padronização e Regras',
+    description: 'O quanto este subprocesso segue regras claras e previsíveis, sem necessidade de julgamento humano',
+    lowLabel: 'Totalmente padronizado',
+    highLabel: 'Totalmente variável',
+    options: ['Sempre segue as mesmas regras', 'Na maioria das vezes, com poucas exceções', 'Depende de análise caso a caso', 'Cada execução é diferente'] as const,
+  },
+  {
+    key: 'digitization' as keyof CriteriaScores,
+    label: 'Grau de Digitalização',
+    description: 'Como os dados são manipulados durante a execução deste subprocesso',
+    lowLabel: 'Totalmente digital',
+    highLabel: 'Totalmente manual',
+    options: ['Tudo em sistemas integrados', 'Sistemas com cópia manual entre telas', 'Planilhas como ferramenta principal', 'Processos manuais com papel ou e-mail'] as const,
+  },
+  {
+    key: 'reworkRate' as keyof CriteriaScores,
+    label: 'Taxa de Retrabalho ou Erros',
+    description: 'Percentual estimado de execuções que geram erro, retrabalho ou necessidade de correção',
     lowLabel: 'Poucos erros',
     highLabel: 'Muitos erros',
-    options: ['Raro', 'Ocasional', 'Frequente', 'Muito frequente'] as const,
+    options: ['Menos de 5%', '5% a 15%', '15% a 30%', 'Mais de 30%'] as const,
   },
   {
-    key: 'systemsOrSpreadsheets' as keyof CriteriaScores,
-    label: 'Uso de Sistemas ou Planilhas',
-    description: 'Dependência de planilhas manuais ou sistemas legados',
-    lowLabel: 'Totalmente sistematizado',
-    highLabel: 'Totalmente manual',
-    options: ['Totalmente sistematizado', 'Algumas planilhas', 'Principalmente planilhas', 'Manual + planilhas'] as const,
-  },
-  {
-    key: 'systemIntegrations' as keyof CriteriaScores,
-    label: 'Integrações Manuais',
-    description: 'Quantidade de integrações manuais entre sistemas ou interfaces',
-    lowLabel: 'Nenhuma',
-    highLabel: 'Constante',
-    options: ['Nenhuma', 'Ocasional', 'Frequente', 'Constante'] as const,
+    key: 'processStability' as keyof CriteriaScores,
+    label: 'Estabilidade do Processo',
+    description: 'O quanto este subprocesso tem permanecido estável nos últimos meses, sem mudanças de regras ou sistemas',
+    lowLabel: 'Muito estável',
+    highLabel: 'Em constante mudança',
+    options: ['Estável há mais de 6 meses', 'Poucas mudanças recentes', 'Muda com alguma frequência', 'Em processo de mudança agora'] as const,
   },
 ] as const;

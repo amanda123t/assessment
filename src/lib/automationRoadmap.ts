@@ -31,37 +31,38 @@ export interface RoadmapItem {
  * Suggest an automation technology based on questionnaire criteria scores.
  *
  * Rules (evaluated in priority order):
- *  - Many spreadsheets + long manual execution → RPA + OCR
- *  - Many system integrations → API + Workflow
- *  - High rework / error rate → Workflow + Regras de Negócio
- *  - Many spreadsheets → RPA
- *  - Long manual execution time → RPA + OCR
+ *  - High manual digitization + high volume → RPA (classic desktop automation)
+ *  - High manual digitization + long execution → RPA + OCR
+ *  - Low standardization (decisions required) → IA Assistiva
+ *  - High rework rate → Workflow + Regras de Negócio
+ *  - Partially digital + moderate time → API + Workflow
  *  - Fallback → Automação de Processos (BPA)
  */
 export function suggestAutomationTechnology(a: SubprocessAssessment): string {
-  const { systemsOrSpreadsheets, systemIntegrations, reworkOrErrors, executionTime } = a.scores;
+  const { digitization, standardization, reworkRate, executionTime } = a.scores;
 
-  if (systemsOrSpreadsheets >= 3 && executionTime >= 3) return 'RPA + OCR';
-  if (systemIntegrations >= 3)                          return 'API + Workflow';
-  if (reworkOrErrors >= 3)                              return 'Workflow + Regras de Negócio';
-  if (systemsOrSpreadsheets >= 3)                       return 'RPA';
-  if (executionTime >= 3)                               return 'RPA + OCR';
+  if (digitization >= 3 && a.scores.operationalVolume >= 3) return 'RPA';
+  if (digitization >= 3 && executionTime >= 3)              return 'RPA + OCR';
+  if (standardization >= 3)                                 return 'IA Assistiva';
+  if (reworkRate >= 3)                                      return 'Workflow + Regras de Negócio';
+  if (digitization === 2 && executionTime >= 2)             return 'API + Workflow';
   return 'Automação de Processos (BPA)';
 }
 
 /**
- * Effort proxy: combines system integration density, rework frequency, and
- * manual system usage — all available from existing criteria scores.
+ * Effort proxy: combines rule variability, process instability, and manual tool
+ * dependency — all available from existing criteria scores.
+ * Less standardised + less stable + more manual → harder to automate.
  *
- * Raw range: min = (1*2 + 1 + 1) = 4, max = (4*2 + 4 + 4) = 16
+ * Raw range: min = (1*2 + 1*2 + 1*1) = 5, max = (4*2 + 4*2 + 4*1) = 20
  * Normalised to 0–100.
  */
 export function calculateEffortScore(a: SubprocessAssessment): number {
   const raw =
-    a.scores.systemIntegrations * 2 +
-    a.scores.reworkOrErrors * 1 +
-    a.scores.systemsOrSpreadsheets * 1;
-  return Math.round(((raw - 4) / 12) * 100);
+    a.scores.standardization  * 2 +
+    a.scores.processStability * 2 +
+    a.scores.digitization     * 1;
+  return Math.round(((raw - 5) / 15) * 100);
 }
 
 /**
