@@ -161,6 +161,35 @@ const CUSTOMER_OPTIONS = [
   'Outro',
 ];
 
+const HANDOFF_AREAS_OPTIONS = [
+  'Financeiro',
+  'TI / Tecnologia',
+  'Jurídico / Compliance',
+  'Comercial / Vendas',
+  'Operações / Logística',
+  'RH / Pessoas',
+  'Diretoria / Gestão',
+  'Fornecedor externo',
+  'Cliente externo',
+  'Nenhuma outra área',
+];
+
+const WAIT_TIME_OPTIONS = [
+  'Não há esperas significativas',
+  'Sim, esperando aprovação de alguém',
+  'Sim, esperando informação de outra área',
+  'Sim, esperando sistema ou processamento batch',
+  'Sim, esperando resposta de cliente ou fornecedor externo',
+];
+
+const SLA_OPTIONS = [
+  'Menos de 1 hora',
+  'Algumas horas (mesmo dia)',
+  '1 a 3 dias',
+  'Mais de 3 dias',
+  'Não tem prazo definido',
+];
+
 // ── UI helpers ────────────────────────────────────────────────────────────────
 
 function Radio({
@@ -499,7 +528,7 @@ function getEntryStatus(
 ): 'done' | 'in-progress' | 'pending' {
   const data = savedForms.get(entry.subprocessId);
   if (!data) return 'pending';
-  if (data.gargalo) return 'done';
+  if ((data.gargalos ?? []).length > 0) return 'done';
   if (data.departamento || data.comoComeca) return 'in-progress';
   return 'pending';
 }
@@ -519,7 +548,7 @@ function getEntryBadgeStatus(
 ): EntryBadgeStatus {
   const data = savedForms.get(entry.subprocessId);
   if (!data) return 'pending';
-  if (!data.gargalo) {
+  if ((data.gargalos ?? []).length === 0) {
     return (data.departamento || data.comoComeca) ? 'in-progress' : 'pending';
   }
   // Wizard complete — derive from BPMN status
@@ -786,7 +815,7 @@ function WizardView({
   const [data, setData] = useState<Partial<Phase2FormData>>({ ...EMPTY_PHASE2_FORM, ...initialData });
 
   const [step, setStep] = useState<WizardStep>(() => {
-    if (initialData.gargalo)                                              return 'done';
+    if ((initialData.gargalos ?? []).length > 0)                          return 'done';
     if (initialData.outputPrincipal || initialData.customerPrincipal)    return 10;
     if (initialData.sempresMesmosPassos)                                  return 9;
     if (initialData.copiaManual)                                          return 8;
@@ -921,17 +950,32 @@ function WizardView({
 
         {/* Step 1: Identificação */}
         {step === 1 && (
-          <div>
-            <label className="block text-base font-semibold text-gray-700 mb-2">
-              Departamento responsável por este processo
-            </label>
-            <input
-              type="text"
-              value={data.departamento ?? ''}
-              onChange={e => set('departamento', e.target.value)}
-              placeholder="Ex: Financeiro, RH, Operações"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
+          <div className="space-y-6">
+            <div>
+              <label className="block text-base font-semibold text-gray-700 mb-2">
+                Departamento responsável por este processo
+              </label>
+              <input
+                type="text"
+                value={data.departamento ?? ''}
+                onChange={e => set('departamento', e.target.value)}
+                placeholder="Ex: Financeiro, RH, Operações"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-1">
+                Além do departamento principal, quais outras áreas participam deste processo?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Selecione todas as áreas que recebem ou enviam informações durante a execução.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {HANDOFF_AREAS_OPTIONS.map(opt => (
+                  <MultiCheck key={opt} label={opt} value={opt} current={data.areasEnvolvidas ?? []} onChange={v => set('areasEnvolvidas', v)} size="base" />
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1120,15 +1164,42 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 10: Gargalos */}
+        {/* Step 10: Gargalos + espera + SLA */}
         {step === 10 && (
-          <div>
-            <p className="text-base font-semibold text-gray-700 mb-1">Qual é o principal problema desse processo hoje?</p>
-            <p className="text-sm text-gray-500 mb-4">Selecione o que mais impacta o dia a dia da equipe.</p>
-            <div className="space-y-2">
-              {GARGALO_OPTIONS.map(opt => (
-                <Radio key={opt} label={opt} value={opt} current={data.gargalo ?? ''} onChange={v => set('gargalo', v)} size="base" />
-              ))}
+          <div className="space-y-6">
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-1">
+                Quais são os principais problemas deste processo?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">Selecione todos os que se aplicam.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {GARGALO_OPTIONS.map(opt => (
+                  <MultiCheck key={opt} label={opt} value={opt} current={data.gargalos ?? []} onChange={v => set('gargalos', v)} size="base" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">
+                Existe tempo de espera significativo entre as etapas?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Esperas por aprovação, informação de outra área, ou processamento de sistema.
+              </p>
+              <div className="space-y-2">
+                {WAIT_TIME_OPTIONS.map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.tempoEspera ?? ''} onChange={v => set('tempoEspera', v)} size="base" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">
+                Qual é o prazo esperado (SLA) para conclusão deste processo, do início ao fim?
+              </p>
+              <div className="space-y-2">
+                {SLA_OPTIONS.map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.slaEsperado ?? ''} onChange={v => set('slaEsperado', v)} size="base" />
+                ))}
+              </div>
             </div>
           </div>
         )}
