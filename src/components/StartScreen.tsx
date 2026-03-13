@@ -2,6 +2,7 @@
 
 import { ClipboardList, BarChart3, TrendingUp, FileDown, Users } from 'lucide-react';
 import { INDUSTRIES } from '@/data/industryLibrary';
+import { CRITERIA } from '@/types';
 
 interface Props {
   onStart: () => void;
@@ -16,20 +17,12 @@ interface Props {
 }
 
 const features = [
-  { icon: ClipboardList, title: 'Diagnóstico em minutos',      desc: 'Avalie múltiplos subprocessos com 6 critérios objetivos e obtenha resultados imediatos' },
+  { icon: ClipboardList, title: 'Diagnóstico em minutos',      desc: 'Avalie múltiplos subprocessos com 7 critérios objetivos e obtenha resultados imediatos' },
   { icon: BarChart3,     title: 'Priorize o que importa',      desc: 'Descubra quais processos geram mais desperdício e onde automatizar primeiro' },
   { icon: TrendingUp,    title: 'Decisões baseadas em dados',  desc: 'Visualize o potencial de automação e o impacto financeiro de cada oportunidade' },
   { icon: FileDown,      title: 'Relatório pronto para usar',  desc: 'Exporte em PDF e apresente o diagnóstico para liderança sem retrabalho' },
 ];
 
-const criteria = [
-  'Volume Operacional',
-  'Pessoas Envolvidas',
-  'Tempo de Execução',
-  'Retrabalho / Erros',
-  'Uso de Sistemas / Planilhas',
-  'Integrações entre Sistemas',
-];
 
 export default function StartScreen({
   onStart, onStartGroup,
@@ -157,12 +150,12 @@ export default function StartScreen({
         {/* Criteria */}
         <div className="max-w-4xl w-full mt-8 bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">
-            Critérios de Avaliação (pontuados de 1 a 5)
+            Critérios de Avaliação (pontuados de 1 a 4)
           </h3>
           <div className="flex flex-wrap gap-2">
-            {criteria.map((c) => (
-              <span key={c} className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-100">
-                {c}
+            {CRITERIA.map((c) => (
+              <span key={c.key} className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-100">
+                {c.label}
               </span>
             ))}
           </div>
