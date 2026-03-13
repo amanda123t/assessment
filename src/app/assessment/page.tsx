@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useCallback, useMemo, useEffect, useRef, useReducer } from 'react';
 import {
-  AssessmentState,
   Macroprocess, Process, Subprocess, CriteriaScores,
   SelectedSubprocessItem, CustomArea,
 } from '@/types';
-import { createAssessment, addAssessment, advanceIndex, isAssessmentComplete } from '@/lib/assessmentEngine';
+import { createAssessment } from '@/lib/assessmentEngine';
+import {
+  assessmentReducer, INITIAL_FULL_STATE,
+} from '@/lib/assessmentReducer';
 
 import { db } from '@/lib/firebase';
 import { collection, addDoc, query, getDocs, where, doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -20,53 +22,15 @@ import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
 import Questionnaire from '@/components/Questionnaire';
 import RankingScreen from '@/components/RankingScreen';
 
-// ── Initial state ────────────────────────────────────────────────────────────
-
-const INITIAL_STATE: AssessmentState = {
-  globalSelectedSubprocesses: [],
-  assessments: [],
-  currentSubprocessIndex: 0,
-  step: 'start',
-};
-
 // ── Page component ───────────────────────────────────────────────────────────
 
 export default function AssessmentPage() {
 
-  const [state, setState] = useState<AssessmentState>(INITIAL_STATE);
-  const [company, setCompany] = useState('');
-  const [email, setEmail] = useState('');
-  const [industry, setIndustry] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(assessmentReducer, INITIAL_FULL_STATE);
 
-  const [answeredSubprocessIds, setAnsweredSubprocessIds] = useState<string[]>([]);
-  const [continueError, setContinueError] = useState<string | null>(null);
-  const [isContinuing, setIsContinuing] = useState(false);
-  const [showResumeModal, setShowResumeModal] = useState(false);
-  const [resumeLink, setResumeLink] = useState('');
-  const [linkCopied, setLinkCopied] = useState(false);
-
-  // Group mode
-  const [mode, setMode] = useState<'individual' | 'group'>('individual');
-  const [shareLink, setShareLink] = useState('');
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [shareLinkCopied, setShareLinkCopied] = useState(false);
-
-  // Custom areas created in SubprocessExplorer — persisted to Firestore
-  const [customAreas, setCustomAreas] = useState<CustomArea[]>([]);
-  const handleCustomAreasChange = useCallback((areas: CustomArea[]) => {
-    setCustomAreas(areas);
-    // For group mode: the diagnostic already exists, update it immediately
-    if (mode === 'group' && diagnosticId.current) {
-      updateDoc(doc(db, 'diagnostics', diagnosticId.current), { custom_areas: areas })
-        .catch(err => console.error('[Firestore] Failed to update custom_areas:', err));
-    }
-    // For individual mode: custom_areas are included when the diagnostic is created in startEvaluation
-  }, [mode]);
-
-  // Stable diagnostic identifier — generated once per page mount
-  const diagnosticId = useRef(crypto.randomUUID());
-  const alreadySaved = useRef(false);
-  // Tracks subprocess IDs saved incrementally so the ranking useEffect skips them
+  // Stable refs — not managed by the reducer (no render implications)
+  const diagnosticId      = useRef(crypto.randomUUID());
+  const alreadySaved      = useRef(false);
   const savedAssessmentIds = useRef(new Set<string>());
 
   // ── Persist responses in Firestore when ranking is reached ──────────────────
@@ -85,11 +49,11 @@ export default function AssessmentPage() {
       addDoc(collection(db, 'responses'), {
         diagnostic_id: diagnosticId.current,
         subprocess_id: a.subprocessId,
-        process: a.processName,
-        score: a.totalScore,
-        scores: a.scores,
-        answered_by: email,
-        created_at: createdAt,
+        process:       a.processName,
+        score:         a.totalScore,
+        scores:        a.scores,
+        answered_by:   state.email,
+        created_at:    createdAt,
       }).catch((err) =>
         console.error('[Firestore] Failed to save response:', err)
       );
@@ -110,8 +74,8 @@ export default function AssessmentPage() {
     );
 
     getDocs(q).then((snapshot) => {
-      const ids = snapshot.docs.map((doc) => doc.data().subprocess_id as string);
-      setAnsweredSubprocessIds(ids);
+      const ids = snapshot.docs.map((d) => d.data().subprocess_id as string);
+      dispatch({ type: 'SET_ANSWERED_IDS', payload: ids });
     }).catch((err) =>
       console.error('[Firestore] Failed to load responses:', err)
     );
@@ -122,64 +86,59 @@ export default function AssessmentPage() {
   // ── Navigation ─────────────────────────────────────────────────────────────
 
   const goToExplore = useCallback(() => {
-    if (!company.trim()) {
+    if (!state.company.trim()) {
       alert('Informe o nome da empresa');
       return;
     }
-
-    setState((s) => ({ ...s, step: 'explore', industry }));
-  }, [company]);
+    dispatch({ type: 'SET_STEP', payload: 'explore' });
+  }, [state.company]);
 
   const goToExploreGroup = useCallback(async () => {
-    if (!company.trim()) {
+    if (!state.company.trim()) {
       alert('Informe o nome da empresa');
       return;
     }
 
     try {
       const docRef = await addDoc(collection(db, 'diagnostics'), {
-        company,
+        company:    state.company,
         created_at: new Date().toISOString(),
-        mode: 'group',
+        mode:       'group',
         custom_areas: [],
       });
       diagnosticId.current = docRef.id;
       const link = `${window.location.origin}/diagnostic/${docRef.id}`;
-      setMode('group');
-      setShareLink(link);
-      setShowShareModal(true);
-      setState((s) => ({ ...s, step: 'explore', industry }));
+      dispatch({ type: 'GROUP_DIAGNOSTIC_CREATED', payload: { link } });
     } catch (err) {
       console.error('[Firestore] Failed to create group diagnostic:', err);
       alert('Erro ao criar diagnóstico em grupo. Tente novamente.');
     }
-  }, [company, industry]);
+  }, [state.company]);
 
   const goBackToStart = useCallback(() => {
-    setState((s) => ({ ...s, step: 'start' }));
+    dispatch({ type: 'SET_STEP', payload: 'start' });
   }, []);
 
   const handleContinueDiagnostic = useCallback(async (code: string) => {
-    setContinueError(null);
-    setIsContinuing(true);
+    dispatch({ type: 'SET_CONTINUE_ERROR', payload: null });
+    dispatch({ type: 'SET_IS_CONTINUING',  payload: true });
 
     try {
       const diagnosticSnap = await getDoc(doc(db, 'diagnostics', code));
 
       if (!diagnosticSnap.exists()) {
-        setContinueError('Diagnostic not found. Check the code.');
+        dispatch({ type: 'SET_CONTINUE_ERROR', payload: 'Diagnostic not found. Check the code.' });
         return;
       }
 
       const data = diagnosticSnap.data();
-      setCompany(data.company || '');
       diagnosticId.current = code;
-      setState((s) => ({ ...s, step: 'explore' }));
+      dispatch({ type: 'LOAD_DIAGNOSTIC_SUCCESS', payload: { company: data.company || '' } });
     } catch (err) {
       console.error('[Firestore] Failed to load diagnostic:', err);
-      setContinueError('Diagnostic not found. Check the code.');
+      dispatch({ type: 'SET_CONTINUE_ERROR', payload: 'Diagnostic not found. Check the code.' });
     } finally {
-      setIsContinuing(false);
+      dispatch({ type: 'SET_IS_CONTINUING', payload: false });
     }
   }, []);
 
@@ -187,33 +146,7 @@ export default function AssessmentPage() {
 
   const toggleSubprocess = useCallback(
     (subprocess: Subprocess, macroprocess: Macroprocess, process: Process) => {
-
-      setState((s) => {
-
-        const exists = s.globalSelectedSubprocesses.some(
-          (item) => item.subprocess.id === subprocess.id
-        );
-
-        if (exists) {
-          return {
-            ...s,
-            globalSelectedSubprocesses:
-              s.globalSelectedSubprocesses.filter(
-                (item) => item.subprocess.id !== subprocess.id
-              ),
-          };
-        }
-
-        return {
-          ...s,
-          globalSelectedSubprocesses: [
-            ...s.globalSelectedSubprocesses,
-            { macroprocess, process, subprocess },
-          ],
-        };
-
-      });
-
+      dispatch({ type: 'TOGGLE_SUBPROCESS', payload: { subprocess, macroprocess, process } });
     },
     []
   );
@@ -225,114 +158,67 @@ export default function AssessmentPage() {
       process: Process,
       selectAll: boolean
     ) => {
-
-      setState((s) => {
-
-        if (selectAll) {
-
-          const existingIds = new Set(
-            s.globalSelectedSubprocesses.map((i) => i.subprocess.id)
-          );
-
-          const toAdd: SelectedSubprocessItem[] = subprocesses
-            .filter((sp) => !existingIds.has(sp.id))
-            .map((sp) => ({ macroprocess, process, subprocess: sp }));
-
-          return {
-            ...s,
-            globalSelectedSubprocesses: [
-              ...s.globalSelectedSubprocesses,
-              ...toAdd,
-            ],
-          };
-        }
-
-        const idsToRemove = new Set(subprocesses.map((sp) => sp.id));
-
-        return {
-          ...s,
-          globalSelectedSubprocesses:
-            s.globalSelectedSubprocesses.filter(
-              (item) => !idsToRemove.has(item.subprocess.id)
-            ),
-        };
-
-      });
-
+      dispatch({ type: 'TOGGLE_ALL_IN_PROCESS', payload: { subprocesses, macroprocess, process, selectAll } });
     },
     []
   );
 
   const clearSelection = useCallback(() => {
-    setState((s) => ({ ...s, globalSelectedSubprocesses: [] }));
+    dispatch({ type: 'CLEAR_SELECTION' });
   }, []);
 
   const addCustomSubprocess = useCallback((item: SelectedSubprocessItem) => {
-
-    setState((s) => {
-
-      const customCount =
-        s.globalSelectedSubprocesses.filter((i) => i.isCustom).length;
-
-      if (customCount >= 3) return s;
-
-      return {
-        ...s,
-        globalSelectedSubprocesses: [
-          ...s.globalSelectedSubprocesses,
-          item,
-        ],
-      };
-
-    });
-
+    dispatch({ type: 'ADD_CUSTOM_SUBPROCESS', payload: item });
   }, []);
 
   const removeCustomSubprocess = useCallback((subprocessId: string) => {
-
-    setState((s) => ({
-      ...s,
-      globalSelectedSubprocesses:
-        s.globalSelectedSubprocesses.filter(
-          (i) => i.subprocess.id !== subprocessId
-        ),
-    }));
-
+    dispatch({ type: 'REMOVE_CUSTOM_SUBPROCESS', payload: subprocessId });
   }, []);
+
+  // ── Custom areas ───────────────────────────────────────────────────────────
+
+  const handleCustomAreasChange = useCallback((areas: CustomArea[]) => {
+    dispatch({ type: 'SET_CUSTOM_AREAS', payload: areas });
+    // For group mode: the diagnostic already exists, update it immediately
+    if (state.mode === 'group' && diagnosticId.current) {
+      updateDoc(doc(db, 'diagnostics', diagnosticId.current), { custom_areas: areas })
+        .catch(err => console.error('[Firestore] Failed to update custom_areas:', err));
+    }
+    // For individual mode: custom_areas are included when the diagnostic is created in startEvaluation
+  }, [state.mode]);
 
   // ── Start evaluation ───────────────────────────────────────────────────────
 
   const startEvaluation = useCallback(() => {
 
-    if (mode === 'individual') {
+    if (state.mode === 'individual') {
       // Individual: create the diagnostic now (first moment all fields are known).
       // selected_subprocess_ids lets the resume page rebuild the exact queue.
       addDoc(collection(db, 'diagnostics'), {
-        company,
-        created_at: new Date().toISOString(),
-        selected_subprocess_ids: state.globalSelectedSubprocesses.map((i) => i.subprocess.id),
-        custom_areas: customAreas,
+        company:                  state.company,
+        created_at:               new Date().toISOString(),
+        selected_subprocess_ids:  state.globalSelectedSubprocesses.map((i) => i.subprocess.id),
+        custom_areas:             state.customAreas,
       }).then((docRef) => {
         diagnosticId.current = docRef.id;
       }).catch((err) => console.error('[Firestore] Failed to create diagnostic:', err));
     }
     // Group: diagnostic already created in goToExploreGroup; diagnosticId.current is set.
 
-    setState((s) => ({ ...s, currentSubprocessIndex: 0, step: 'questionnaire' }));
+    dispatch({ type: 'START_EVALUATION' });
 
-  }, [mode, company, state.globalSelectedSubprocesses, customAreas]);
+  }, [state.mode, state.company, state.globalSelectedSubprocesses, state.customAreas]);
 
   // ── Questionnaire ──────────────────────────────────────────────────────────
 
   const completeQuestionnaire = useCallback((
-    scores: CriteriaScores,
-    subprocess: Subprocess,
+    scores:      CriteriaScores,
+    subprocess:  Subprocess,
     macroprocess: Macroprocess,
-    process: Process,
+    process:     Process,
   ) => {
 
-    // Compute assessment outside setState to get totalScore for Firestore save.
-    // isCustom is not needed for the persisted fields so we omit it here.
+    // Compute assessment outside dispatch to get totalScore for Firestore save.
     const assessmentForSave = createAssessment(macroprocess, process, subprocess, scores);
 
     // Incremental save — persists progress immediately so resuming works even
@@ -345,104 +231,46 @@ export default function AssessmentPage() {
         process:       assessmentForSave.processName,
         score:         assessmentForSave.totalScore,
         scores:        assessmentForSave.scores,
-        answered_by:   email,
+        answered_by:   state.email,
         created_at:    new Date().toISOString(),
       }).catch((err) => console.error('[Firestore] Failed to save response:', err));
     }
 
-    setState((s) => {
+    dispatch({ type: 'COMPLETE_QUESTIONNAIRE', payload: { scores, subprocess, macroprocess, process } });
 
-      // subprocess / macroprocess / process come from Questionnaire props —
-      // no state re-read needed.  isCustom is not a Questionnaire concern so
-      // it is still read from state (custom subprocesses added at runtime).
-      const { isCustom } = s.globalSelectedSubprocesses[s.currentSubprocessIndex];
-
-      const assessment = createAssessment(
-        macroprocess,
-        process,
-        subprocess,
-        scores,
-        isCustom
-      );
-
-      const updatedAssessments = addAssessment(s.assessments, assessment);
-
-      const done = isAssessmentComplete(
-        s.globalSelectedSubprocesses.map((i) => i.subprocess),
-        s.currentSubprocessIndex
-      );
-
-      return {
-        ...s,
-        assessments: updatedAssessments,
-        currentSubprocessIndex: done
-          ? s.currentSubprocessIndex
-          : advanceIndex(s.currentSubprocessIndex),
-        step: done ? 'ranking' : 'questionnaire',
-      };
-
-    });
-
-  }, [email]);
+  }, [state.email]);
 
   const goBackInQuestionnaire = useCallback(() => {
-
-    setState((s) => {
-
-      if (s.currentSubprocessIndex === 0) {
-        return { ...s, step: 'explore' };
-      }
-
-      return {
-        ...s,
-        currentSubprocessIndex: s.currentSubprocessIndex - 1,
-      };
-
-    });
-
+    dispatch({ type: 'GO_BACK_IN_QUESTIONNAIRE' });
   }, []);
 
   const restart = useCallback(() => {
-    setState(INITIAL_STATE);
-    diagnosticId.current = crypto.randomUUID();
-    setAnsweredSubprocessIds([]);
-    setContinueError(null);
-    setShowResumeModal(false);
-    setLinkCopied(false);
-    setMode('individual');
-    setShareLink('');
-    setShowShareModal(false);
-    setShareLinkCopied(false);
-    alreadySaved.current = false;
+    dispatch({ type: 'RESTART' });
+    diagnosticId.current      = crypto.randomUUID();
+    alreadySaved.current      = false;
     savedAssessmentIds.current = new Set();
   }, []);
 
   const openResumeModal = useCallback(() => {
-    setResumeLink(`${window.location.origin}/diagnostic/${diagnosticId.current}`);
-    setShowResumeModal(true);
+    dispatch({ type: 'SET_RESUME_LINK',     payload: `${window.location.origin}/diagnostic/${diagnosticId.current}` });
+    dispatch({ type: 'TOGGLE_RESUME_MODAL', payload: true });
   }, []);
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
   const selectedIds = useMemo(
-    () =>
-      new Set(
-        state.globalSelectedSubprocesses.map(
-          (i) => i.subprocess.id
-        )
-      ),
+    () => new Set(state.globalSelectedSubprocesses.map((i) => i.subprocess.id)),
     [state.globalSelectedSubprocesses]
   );
 
   const customSubprocesses = useMemo(
-    () =>
-      state.globalSelectedSubprocesses.filter((i) => i.isCustom),
+    () => state.globalSelectedSubprocesses.filter((i) => i.isCustom),
     [state.globalSelectedSubprocesses]
   );
 
   const lockedSubprocessIds = useMemo(
-    () => new Set(answeredSubprocessIds),
-    [answeredSubprocessIds]
+    () => new Set(state.answeredSubprocessIds),
+    [state.answeredSubprocessIds]
   );
 
   const allStandardSubprocesses = useMemo(
@@ -456,7 +284,7 @@ export default function AssessmentPage() {
   );
 
   const allAnswered =
-    answeredSubprocessIds.length > 0 &&
+    state.answeredSubprocessIds.length > 0 &&
     remainingSubprocesses.length === 0;
 
   const currentItem =
@@ -473,12 +301,12 @@ export default function AssessmentPage() {
         <StartScreen
           onStart={goToExplore}
           onStartGroup={goToExploreGroup}
-          company={company}
-          onCompanyChange={setCompany}
-          email={email}
-          onEmailChange={setEmail}
-          industry={industry}
-          onIndustryChange={setIndustry}
+          company={state.company}
+          onCompanyChange={(v) => dispatch({ type: 'SET_COMPANY',  payload: v })}
+          email={state.email}
+          onEmailChange={(v)   => dispatch({ type: 'SET_EMAIL',   payload: v })}
+          industry={state.industry}
+          onIndustryChange={(v) => dispatch({ type: 'SET_INDUSTRY', payload: v })}
         />
 
       ) : (
@@ -499,9 +327,9 @@ export default function AssessmentPage() {
               </div>
 
               <div className="flex items-center gap-4">
-                {mode === 'group' && (state.step === 'explore' || state.step === 'questionnaire') && (
+                {state.mode === 'group' && (state.step === 'explore' || state.step === 'questionnaire') && (
                   <button
-                    onClick={() => setShowShareModal(true)}
+                    onClick={() => dispatch({ type: 'TOGGLE_SHARE_MODAL', payload: true })}
                     className="text-sm text-white font-medium bg-blue-600 hover:bg-blue-700 rounded-lg px-3 py-1.5 transition-colors"
                   >
                     Link de compartilhamento
@@ -523,10 +351,10 @@ export default function AssessmentPage() {
           </header>
 
           {/* Share link modal (group mode) */}
-          {showShareModal && (
+          {state.showShareModal && (
             <div
               className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
-              onClick={(e) => { if (e.target === e.currentTarget) setShowShareModal(false); }}
+              onClick={(e) => { if (e.target === e.currentTarget) dispatch({ type: 'TOGGLE_SHARE_MODAL', payload: false }); }}
             >
               <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -537,26 +365,26 @@ export default function AssessmentPage() {
                 </p>
                 <div className="flex gap-2">
                   <input
-                    value={shareLink}
+                    value={state.shareLink}
                     readOnly
                     className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
                   />
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(shareLink);
-                      setShareLinkCopied(true);
-                      setTimeout(() => setShareLinkCopied(false), 2000);
+                      navigator.clipboard.writeText(state.shareLink);
+                      dispatch({ type: 'SET_SHARE_LINK_COPIED', payload: true });
+                      setTimeout(() => dispatch({ type: 'SET_SHARE_LINK_COPIED', payload: false }), 2000);
                     }}
                     className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
                   >
                     Copiar
                   </button>
                 </div>
-                {shareLinkCopied && (
+                {state.shareLinkCopied && (
                   <p className="text-green-600 text-xs -mt-2">Link copiado!</p>
                 )}
                 <button
-                  onClick={() => setShowShareModal(false)}
+                  onClick={() => dispatch({ type: 'TOGGLE_SHARE_MODAL', payload: false })}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
                 >
                   Continuar para seleção
@@ -566,10 +394,10 @@ export default function AssessmentPage() {
           )}
 
           {/* Resume modal */}
-          {showResumeModal && (
+          {state.showResumeModal && (
             <div
               className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4"
-              onClick={(e) => { if (e.target === e.currentTarget) setShowResumeModal(false); }}
+              onClick={(e) => { if (e.target === e.currentTarget) dispatch({ type: 'TOGGLE_RESUME_MODAL', payload: false }); }}
             >
               <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md flex flex-col gap-4">
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -580,26 +408,26 @@ export default function AssessmentPage() {
                 </p>
                 <div className="flex gap-2">
                   <input
-                    value={resumeLink}
+                    value={state.resumeLink}
                     readOnly
                     className="border border-gray-200 rounded px-2 py-1.5 w-full text-sm font-mono bg-gray-50 text-gray-700"
                   />
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(resumeLink);
-                      setLinkCopied(true);
-                      setTimeout(() => setLinkCopied(false), 2000);
+                      navigator.clipboard.writeText(state.resumeLink);
+                      dispatch({ type: 'SET_LINK_COPIED', payload: true });
+                      setTimeout(() => dispatch({ type: 'SET_LINK_COPIED', payload: false }), 2000);
                     }}
                     className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap transition-colors"
                   >
                     Copiar
                   </button>
                 </div>
-                {linkCopied && (
+                {state.linkCopied && (
                   <p className="text-green-600 text-xs -mt-2">Link copiado!</p>
                 )}
                 <button
-                  onClick={() => setShowResumeModal(false)}
+                  onClick={() => dispatch({ type: 'TOGGLE_RESUME_MODAL', payload: false })}
                   className="text-sm text-gray-500 hover:text-gray-700 transition-colors text-left"
                 >
                   Voltar ao diagnóstico
@@ -644,7 +472,7 @@ export default function AssessmentPage() {
                   onRemoveCustom={removeCustomSubprocess}
                   onBack={goBackToStart}
                   lockedSubprocessIds={lockedSubprocessIds}
-                  initialCustomAreas={customAreas}
+                  initialCustomAreas={state.customAreas}
                   onCustomAreasChange={handleCustomAreasChange}
                 />
               )
