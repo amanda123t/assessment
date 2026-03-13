@@ -87,7 +87,11 @@ export interface Phase2SubprocessData {
   sempresMesmosPassos: string;
   previsaoMudanca:     string;
 
-  // Block 9 — Gargalos
+  // Block 9 — Output + Customer
+  outputPrincipal?:   string;
+  customerPrincipal?: string;
+
+  // Block 10 — Gargalos
   gargalo: string;
 
   updatedAt?: unknown;
@@ -115,6 +119,8 @@ export const EMPTY_PHASE2_FORM: Phase2FormData = {
   copiaManual:         '',
   sempresMesmosPassos: '',
   previsaoMudanca:     '',
+  outputPrincipal:     '',
+  customerPrincipal:   '',
   gargalo:             '',
 };
 

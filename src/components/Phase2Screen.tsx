@@ -48,13 +48,13 @@ type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 'done';
 const STEP_LABELS = [
   'Identificação',
   'Como começa',
-  'Etapas do processo',
-  'Sequência',
+  'Etapas e sequência',
   'Decisões',
   'Como funciona',
   'Origem dos dados',
   'Sistemas',
   'Estabilidade',
+  'Entrega e cliente',
   'Gargalos',
 ];
 
@@ -138,6 +138,26 @@ const GARGALO_OPTIONS = [
   'Dependência de pessoas específicas',
   'Demora para cumprir prazos ou SLA',
   'Falta de integração entre sistemas',
+  'Outro',
+];
+
+const OUTPUT_OPTIONS = [
+  'Relatório ou documento gerado',
+  'Dados atualizados em sistema',
+  'Aprovação ou validação concluída',
+  'Notificação ou comunicação enviada',
+  'Pagamento ou transação processada',
+  'Cadastro ou registro criado/atualizado',
+  'Outro',
+];
+
+const CUSTOMER_OPTIONS = [
+  'Outro departamento interno',
+  'Cliente externo',
+  'Gestão ou diretoria',
+  'Órgão regulador ou auditoria',
+  'Fornecedor ou parceiro',
+  'O próprio departamento (uso interno)',
   'Outro',
 ];
 
@@ -239,10 +259,16 @@ function SystemsInput({
 function SequenceBuilder({
   value, onChange,
 }: { value: string[]; onChange: (v: string[]) => void }) {
-  const [selected, setSelected] = useState('');
+  const [selected,   setSelected]   = useState('');
+  const [customStep, setCustomStep] = useState('');
 
   const addStep = () => {
     if (selected) { onChange([...value, selected]); setSelected(''); }
+  };
+
+  const addCustom = () => {
+    const trimmed = customStep.trim();
+    if (trimmed) { onChange([...value, trimmed]); setCustomStep(''); }
   };
 
   const removeStep = (i: number) => onChange(value.filter((_, idx) => idx !== i));
@@ -302,8 +328,26 @@ function SequenceBuilder({
           Adicionar
         </button>
       </div>
+      <div className="flex gap-2 mt-2">
+        <input
+          type="text"
+          value={customStep}
+          onChange={e => setCustomStep(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
+          placeholder="Ou digite uma etapa personalizada..."
+          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <button
+          type="button"
+          onClick={addCustom}
+          disabled={!customStep.trim()}
+          className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-600 text-xs font-medium transition-colors whitespace-nowrap"
+        >
+          Adicionar
+        </button>
+      </div>
       {value.length === 0 && (
-        <p className="text-[10px] text-gray-400">Adicione as etapas na ordem em que acontecem no processo.</p>
+        <p className="text-[10px] text-gray-400 mt-1">Adicione as etapas na ordem em que acontecem no processo.</p>
       )}
     </div>
   );
@@ -742,16 +786,16 @@ function WizardView({
   const [data, setData] = useState<Partial<Phase2FormData>>({ ...EMPTY_PHASE2_FORM, ...initialData });
 
   const [step, setStep] = useState<WizardStep>(() => {
-    if (initialData.gargalo)                  return 'done';
-    if (initialData.sempresMesmosPassos)       return 10;
-    if (initialData.copiaManual)              return 9;
-    if (initialData.fontesDados?.length)      return 8;
-    if (initialData.seguiRegras)              return 7;
-    if (initialData.temDecisao)               return 6;
-    if (initialData.sequenciaEtapas?.length)  return 5;
-    if (initialData.etapasPrincipais?.length) return 4;
-    if (initialData.comoComeca)               return 3;
-    if (initialData.departamento)             return 2;
+    if (initialData.gargalo)                                              return 'done';
+    if (initialData.outputPrincipal || initialData.customerPrincipal)    return 10;
+    if (initialData.sempresMesmosPassos)                                  return 9;
+    if (initialData.copiaManual)                                          return 8;
+    if (initialData.fontesDados?.length)                                  return 7;
+    if (initialData.seguiRegras)                                          return 6;
+    if (initialData.temDecisao)                                           return 5;
+    if (initialData.sequenciaEtapas?.length)                              return 4;
+    if (initialData.comoComeca)                                           return 3;
+    if (initialData.departamento)                                         return 2;
     return 1;
   });
 
@@ -904,33 +948,21 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 3: Etapas principais */}
+        {/* Step 3: Etapas e sequência (unified) */}
         {step === 3 && (
           <div>
-            <p className="text-base font-semibold text-gray-700 mb-1">Quais etapas normalmente acontecem nesse processo?</p>
-            <p className="text-sm text-gray-500 mb-4">Selecione todas as que se aplicam.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {ETAPAS_PRINCIPAIS_OPTIONS.map(opt => (
-                <MultiCheck key={opt} label={opt} value={opt} current={data.etapasPrincipais ?? []} onChange={v => set('etapasPrincipais', v)} size="base" />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Sequência */}
-        {step === 4 && (
-          <div>
-            <p className="text-base font-semibold text-gray-700 mb-1">Qual é a sequência do processo?</p>
+            <p className="text-base font-semibold text-gray-700 mb-1">
+              Quais são as etapas deste processo e em qual ordem acontecem?
+            </p>
             <p className="text-sm text-gray-500 mb-4">
-              Adicione as etapas na ordem em que acontecem. Use as setas para reordenar.
-              Esta sequência será usada para gerar o fluxo BPMN.
+              Adicione cada etapa na ordem em que acontece. Você pode selecionar da lista ou digitar etapas personalizadas. Use as setas para reordenar. Esta sequência será usada para gerar o fluxo BPMN.
             </p>
             <SequenceBuilder value={data.sequenciaEtapas ?? []} onChange={v => set('sequenciaEtapas', v)} />
           </div>
         )}
 
-        {/* Step 5: Decisões */}
-        {step === 5 && (
+        {/* Step 4: Decisões */}
+        {step === 4 && (
           <div className="space-y-6">
             <div>
               <p className="text-base font-semibold text-gray-700 mb-3">Existe alguma decisão ou validação nesse processo?</p>
@@ -974,8 +1006,8 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 6: Como funciona */}
-        {step === 6 && (
+        {/* Step 5: Como funciona */}
+        {step === 5 && (
           <div className="space-y-6">
             <div>
               <p className="text-base font-semibold text-gray-700 mb-2">O processo segue regras claras?</p>
@@ -996,8 +1028,8 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 7: Origem dos dados */}
-        {step === 7 && (
+        {/* Step 6: Origem dos dados */}
+        {step === 6 && (
           <div className="space-y-6">
             <div>
               <p className="text-base font-semibold text-gray-700 mb-1">De onde vêm as informações usadas nesse processo?</p>
@@ -1019,8 +1051,8 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 8: Sistemas */}
-        {step === 8 && (
+        {/* Step 7: Sistemas */}
+        {step === 7 && (
           <div className="space-y-6">
             <div>
               <p className="text-base font-semibold text-gray-700 mb-2">Quais sistemas são utilizados nesse processo?</p>
@@ -1037,8 +1069,8 @@ function WizardView({
           </div>
         )}
 
-        {/* Step 9: Estabilidade */}
-        {step === 9 && (
+        {/* Step 8: Estabilidade */}
+        {step === 8 && (
           <div className="space-y-6">
             <div>
               <p className="text-base font-semibold text-gray-700 mb-2">Este processo normalmente segue sempre os mesmos passos?</p>
@@ -1053,6 +1085,35 @@ function WizardView({
               <div className="space-y-2">
                 {['Não há previsão de mudança', 'Existe possibilidade de mudança', 'Mudanças já estão planejadas', 'Não sei'].map(opt => (
                   <Radio key={opt} label={opt} value={opt} current={data.previsaoMudanca ?? ''} onChange={v => set('previsaoMudanca', v)} size="base" />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 9: Output + Customer */}
+        {step === 9 && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-1">
+                Qual é a principal entrega deste processo?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                O que o processo produz quando é concluído com sucesso?
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {OUTPUT_OPTIONS.map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.outputPrincipal ?? ''} onChange={v => set('outputPrincipal', v)} size="base" />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-700 mb-2">
+                Quem recebe essa entrega?
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {CUSTOMER_OPTIONS.map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.customerPrincipal ?? ''} onChange={v => set('customerPrincipal', v)} size="base" />
                 ))}
               </div>
             </div>
