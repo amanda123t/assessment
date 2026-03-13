@@ -9,7 +9,7 @@ import { createAssessment } from '@/lib/assessmentEngine';
 
 export const EMPTY_SCORES: CriteriaScores = {
   operationalVolume: 0, executionTime: 0, peopleInvolved: 0,
-  standardization: 0, digitization: 0, reworkRate: 0, processStability: 0,
+  standardization: 0, dataDigitization: 0, systemCount: 0, reworkRate: 0, processStability: 0,
 };
 
 export function reconstructAssessment(data: Record<string, unknown>): SubprocessAssessment {

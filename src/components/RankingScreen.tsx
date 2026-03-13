@@ -90,7 +90,7 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
     });
   }
 
-  const heavyManual = ranked.filter((r) => r.scores.digitization >= 3).length;
+  const heavyManual = ranked.filter((r) => r.scores.dataDigitization >= 3).length;
   const manualPct = Math.round((heavyManual / n) * 100);
   if (manualPct >= 40) {
     pool.push({
