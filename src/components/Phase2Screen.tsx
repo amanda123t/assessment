@@ -63,6 +63,17 @@ const TOTAL_STEPS = 10;
 
 // ── Option lists ──────────────────────────────────────────────────────────────
 
+const SUPPLIER_OPTIONS = [
+  'Cliente externo',
+  'Outro departamento interno',
+  'Gestor ou diretoria',
+  'Sistema automático (scheduler, trigger)',
+  'Fornecedor ou parceiro',
+  'O próprio departamento (demanda interna)',
+  'Órgão regulador ou auditoria',
+  'Outro',
+];
+
 const COMO_COMECA_OPTIONS = [
   'Recebimento de e-mail',
   'Solicitação de cliente',
@@ -994,6 +1005,19 @@ function WizardView({
               {COMO_COMECA_OPTIONS.map(opt => (
                 <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => set('comoComeca', v)} size="base" />
               ))}
+            </div>
+            <div className="mt-6">
+              <p className="text-base font-semibold text-gray-700 mb-1">
+                Quem normalmente inicia ou solicita este processo?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                De onde vem a demanda que dispara a execução.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {SUPPLIER_OPTIONS.map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.origemDemanda ?? ''} onChange={v => set('origemDemanda', v)} size="base" />
+                ))}
+              </div>
             </div>
           </div>
         )}
