@@ -38,9 +38,10 @@ interface Props {
   diagnosticId: string;
   prioritized:  Phase2Entry[];
   savedForms:   Map<string, Partial<Phase2FormData>>;
+  role?:        'respondent' | 'analyst';
 }
 
-type Phase2View = 'selection' | 'wizard' | 'validation' | 'report';
+type Phase2View = 'selection' | 'wizard' | 'validation' | 'analyst_review' | 'bpmn_readonly' | 'report';
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 'done';
 
@@ -493,6 +494,7 @@ interface SelectionViewProps {
   entries:        Phase2Entry[];
   savedForms:     Map<string, Partial<Phase2FormData>>;
   bpmnMap:        Map<string, PersistedBPMN>;
+  role:           'respondent' | 'analyst';
   respondentName: string;
   nameConfirmed:  boolean;
   onRespondentChange: (name: string) => void;
@@ -504,14 +506,89 @@ interface SelectionViewProps {
 }
 
 function SelectionView({
-  entries, savedForms, bpmnMap, respondentName, nameConfirmed,
+  entries, savedForms, bpmnMap, role, respondentName, nameConfirmed,
   onRespondentChange, onNameConfirm, onSelectEntry, onViewReport,
   onShowLibrary, onShowManual,
 }: SelectionViewProps) {
-  const doneCount  = entries.filter(e => getEntryStatus(e, savedForms) === 'done').length;
-  const total      = entries.length;
+  const doneCount   = entries.filter(e => getEntryStatus(e, savedForms) === 'done').length;
+  const total       = entries.length;
   const progressPct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
+  // ── Analyst mode ────────────────────────────────────────────────────────────
+  if (role === 'analyst') {
+    const ANALYST_STATUSES = new Set<string>(['respondent_validated', 'returned', 'finalized']);
+    const analystEntries = entries.filter(e => {
+      const bpmn = bpmnMap.get(e.subprocessId);
+      return bpmn && ANALYST_STATUSES.has(bpmn.status);
+    });
+
+    return (
+      <div>
+        <div className="mb-5">
+          <h2 className="text-lg font-bold text-gray-900">Revisão do Analista</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            {analystEntries.length} subprocesso{analystEntries.length !== 1 ? 's' : ''} aguardando revisão ou finalizados.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+          {analystEntries.length === 0 ? (
+            <div className="text-center py-12 text-sm text-gray-400">
+              Nenhum subprocesso validado pelo respondente ainda.
+            </div>
+          ) : analystEntries.map(entry => {
+            const bpmn     = bpmnMap.get(entry.subprocessId)!;
+            const index    = entries.indexOf(entry);
+            const lastValidation = [...bpmn.history].reverse().find(h => h.role === 'respondent' && h.action === 'validated');
+            const validatedBy   = lastValidation?.by ?? '—';
+            const validatedAt   = lastValidation?.at
+              ? new Date(lastValidation.at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+              : '—';
+
+            const ANALYST_BADGE: Record<string, { label: string; cls: string }> = {
+              respondent_validated: { label: 'Aguard. revisão', cls: 'bg-violet-100 border-violet-200 text-violet-700' },
+              returned:             { label: 'Devolvido',       cls: 'bg-orange-100 border-orange-200 text-orange-700' },
+              finalized:            { label: 'Finalizado',      cls: 'bg-emerald-200 border-emerald-300 text-emerald-900' },
+            };
+            const badgeCfg = ANALYST_BADGE[bpmn.status] ?? ANALYST_BADGE.respondent_validated;
+
+            return (
+              <button
+                key={entry.subprocessId}
+                type="button"
+                onClick={() => onSelectEntry(index)}
+                className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-gray-800 truncate">{entry.subprocessName}</span>
+                  <span className="block text-xs text-gray-400 mt-0.5 truncate">
+                    {entry.processName} · Validado por {validatedBy} em {validatedAt}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                  <span className={`inline-flex items-center border text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${badgeCfg.cls}`}>
+                    {badgeCfg.label}
+                  </span>
+                  <ChevronRight size={14} className="text-gray-300" strokeWidth={2} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={onViewReport}
+          className="inline-flex items-center gap-2 border border-blue-600 rounded-lg px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 transition-colors"
+        >
+          <Sparkles size={14} strokeWidth={2} />
+          Ver Relatório
+        </button>
+      </div>
+    );
+  }
+
+  // ── Respondent mode ──────────────────────────────────────────────────────────
   return (
     <div>
       {/* Respondent identification */}
@@ -1052,10 +1129,11 @@ function ValidationView({
 }: ValidationViewProps) {
   // Initialise nodes synchronously from formData as a fallback,
   // then override with persisted BPMN if one exists in Firestore.
-  const [nodes,   setNodes]   = useState<BPMNNode[]>(() => analyzeProcess(formData)?.fluxoBPMN ?? []);
-  const [comment, setComment] = useState('');
-  const [saving,  setSaving]  = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [nodes,        setNodes]        = useState<BPMNNode[]>(() => analyzeProcess(formData)?.fluxoBPMN ?? []);
+  const [comment,      setComment]      = useState('');
+  const [saving,       setSaving]       = useState(false);
+  const [loading,      setLoading]      = useState(true);
+  const [returnReason, setReturnReason] = useState<string | null>(null);
 
   useEffect(() => {
     loadBPMN(diagnosticId, entry.subprocessId)
@@ -1063,6 +1141,11 @@ function ValidationView({
         if (bpmn) {
           setNodes(bpmn.nodes);
           if (bpmn.respondentComment) setComment(bpmn.respondentComment);
+          // Show return reason if analyst returned this BPMN.
+          if (bpmn.status === 'returned') {
+            const returnEntry = [...bpmn.history].reverse().find(h => h.action === 'returned');
+            setReturnReason(returnEntry?.comment ?? 'Sem motivo especificado');
+          }
         } else {
           // No persisted BPMN yet — save the auto-generated draft.
           const initialNodes = analyzeProcess(formData)?.fluxoBPMN ?? [];
@@ -1150,6 +1233,13 @@ function ValidationView({
       <h2 className="text-lg font-bold text-gray-900 mb-0.5">{entry.subprocessName}</h2>
       <p className="text-sm text-gray-400 mb-5">{entry.processName}</p>
 
+      {/* Return reason banner */}
+      {returnReason && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-4 text-sm text-orange-800">
+          <span className="font-bold">⚠ Devolvido pelo analista:</span> {returnReason}
+        </div>
+      )}
+
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-5 text-sm text-blue-700">
         Revise o fluxo gerado automaticamente. Você pode reordenar, adicionar ou remover etapas antes de validar.
@@ -1206,15 +1296,237 @@ function ValidationView({
   );
 }
 
+// ── Analyst review view ───────────────────────────────────────────────────────
+
+interface AnalystReviewViewProps {
+  entry:       Phase2Entry;
+  diagnosticId: string;
+  bpmn:        PersistedBPMN;
+  onFinalize:  () => void;
+  onReturn:    () => void;
+  onBack:      () => void;
+}
+
+function AnalystReviewView({ entry, diagnosticId, bpmn, onFinalize, onReturn, onBack }: AnalystReviewViewProps) {
+  const [nodes,          setNodes]          = useState<BPMNNode[]>(bpmn.nodes);
+  const [analystName,    setAnalystName]    = useState(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('oea_analyst_name') ?? '') : '',
+  );
+  const [analystComment, setAnalystComment] = useState(bpmn.analystComment ?? '');
+  const [showReturnForm, setShowReturnForm] = useState(false);
+  const [returnReason,   setReturnReason]   = useState('');
+  const [saving,         setSaving]         = useState(false);
+
+  const lastValidation = [...bpmn.history].reverse().find(h => h.role === 'respondent' && h.action === 'validated');
+  const validatedBy    = lastValidation?.by ?? '—';
+  const validatedAt    = lastValidation?.at
+    ? new Date(lastValidation.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : '—';
+
+  // Compute auto-analysis from saved form data (display-only, read-only section).
+  // Note: we use the existing BPMN nodes for the diagram, but show the classifier results.
+  const analysis = analyzeProcess({});  // will be overridden if savedForms available — parent passes bpmn
+
+  const handleAnalystNameChange = (name: string) => {
+    setAnalystName(name);
+    if (typeof window !== 'undefined') localStorage.setItem('oea_analyst_name', name);
+  };
+
+  const handleFinalize = async () => {
+    if (!analystName.trim()) return;
+    setSaving(true);
+    try {
+      await saveBPMN({
+        ...bpmn,
+        nodes,
+        status:         'finalized',
+        history:        [...bpmn.history, {
+          action:  'finalized',
+          by:      analystName.trim(),
+          role:    'analyst',
+          comment: analystComment.trim() || undefined,
+          at:      new Date().toISOString(),
+        }],
+        analystComment: analystComment.trim() || undefined,
+      });
+      onFinalize();
+    } catch (err) {
+      console.error('[Phase2] Finalize failed:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReturn = async () => {
+    if (!analystName.trim() || !returnReason.trim()) return;
+    setSaving(true);
+    try {
+      await saveBPMN({
+        ...bpmn,
+        nodes,
+        status:         'returned',
+        history:        [...bpmn.history, {
+          action:  'returned',
+          by:      analystName.trim(),
+          role:    'analyst',
+          comment: returnReason.trim(),
+          at:      new Date().toISOString(),
+        }],
+        analystComment: analystComment.trim() || undefined,
+      });
+      onReturn();
+    } catch (err) {
+      console.error('[Phase2] Return failed:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-1">
+        <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+          <ChevronLeft size={16} strokeWidth={2} />
+          Voltar à lista
+        </button>
+      </div>
+      <div className="mb-1">
+        <span className="text-[10px] font-bold tracking-widest text-purple-500 uppercase">Revisão do Analista</span>
+      </div>
+      <h2 className="text-lg font-bold text-gray-900 mb-0.5">{entry.subprocessName}</h2>
+      <p className="text-sm text-gray-400 mb-4">{entry.processName}</p>
+
+      {/* Validation info */}
+      <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 mb-5 text-sm text-gray-600">
+        Validado por <span className="font-semibold text-gray-800">{validatedBy}</span> em {validatedAt}
+        {bpmn.respondentComment && (
+          <div className="mt-1.5 text-gray-500 italic">"{bpmn.respondentComment}"</div>
+        )}
+      </div>
+
+      {/* Analyst name */}
+      <div className="mb-5">
+        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nome do analista</label>
+        <input
+          type="text"
+          value={analystName}
+          onChange={e => handleAnalystNameChange(e.target.value)}
+          placeholder="Seu nome"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 w-full max-w-xs"
+        />
+      </div>
+
+      {/* BPMN Editor */}
+      <BPMNEditor nodes={nodes} onChange={setNodes} role="analyst" />
+
+      {/* Auto-analysis read-only section */}
+      {analysis && (
+        <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 p-4">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Análise automática</p>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className={`rounded-lg p-3 ${potentialColor(analysis.potential)}`}>
+              <div className="text-[10px] font-semibold uppercase opacity-70 mb-0.5">Potencial</div>
+              <div className="text-base font-bold">{analysis.potential}</div>
+            </div>
+            <div className={`rounded-lg p-3 ${complexityColor(analysis.complexidade)}`}>
+              <div className="text-[10px] font-semibold uppercase opacity-70 mb-0.5">Complexidade</div>
+              <div className="text-base font-bold">{analysis.complexidade}</div>
+            </div>
+          </div>
+          {analysis.tiposAutomacao.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {analysis.tiposAutomacao.map(t => (
+                <span key={t} className={`inline-flex items-center border rounded-full text-xs font-semibold px-2.5 py-0.5 ${TYPE_COLOURS[t] ?? 'bg-gray-100 border-gray-200 text-gray-700'}`}>{t}</span>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-gray-500 leading-relaxed">{analysis.justificativa}</p>
+        </div>
+      )}
+
+      {/* Analyst comment */}
+      <div className="mt-4">
+        <label className="block text-xs font-semibold text-gray-600 mb-1.5">Comentário do analista (opcional)</label>
+        <textarea
+          value={analystComment}
+          onChange={e => setAnalystComment(e.target.value)}
+          placeholder="Observações técnicas ou justificativa…"
+          rows={3}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"
+        />
+      </div>
+
+      {/* Return form */}
+      {showReturnForm && (
+        <div className="mt-3 bg-orange-50 border border-orange-200 rounded-xl p-4">
+          <label className="block text-xs font-semibold text-orange-700 mb-1.5">Motivo da devolução <span className="text-red-500">*</span></label>
+          <textarea
+            value={returnReason}
+            onChange={e => setReturnReason(e.target.value)}
+            placeholder="Descreva o que precisa ser corrigido…"
+            rows={3}
+            className="w-full border border-orange-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            autoFocus
+          />
+        </div>
+      )}
+
+      {!analystName.trim() && (
+        <p className="text-xs text-amber-600 mt-3">Informe seu nome para salvar.</p>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-100 flex-wrap gap-3">
+        <button type="button" onClick={onBack} className="inline-flex items-center gap-2 border border-gray-200 rounded-xl px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+          <ChevronLeft size={14} strokeWidth={2} />
+          Voltar
+        </button>
+        <div className="flex items-center gap-2">
+          {!showReturnForm ? (
+            <button
+              type="button"
+              onClick={() => setShowReturnForm(true)}
+              disabled={!analystName.trim()}
+              className="inline-flex items-center gap-2 border border-orange-300 text-orange-600 rounded-xl px-5 py-2.5 text-sm font-semibold hover:bg-orange-50 disabled:opacity-40 transition-colors"
+            >
+              ↩ Devolver
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleReturn}
+              disabled={saving || !analystName.trim() || !returnReason.trim()}
+              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
+            >
+              {saving ? 'Salvando…' : '↩ Confirmar devolução'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleFinalize}
+            disabled={saving || !analystName.trim() || showReturnForm}
+            className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
+          >
+            <CheckCircle size={15} strokeWidth={2} />
+            {saving ? 'Salvando…' : '✓✓ Aprovar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Report view ───────────────────────────────────────────────────────────────
 
 interface ReportViewProps {
   entries:    Phase2Entry[];
   savedForms: Map<string, Partial<Phase2FormData>>;
+  bpmnMap:    Map<string, PersistedBPMN>;
   onBack:     () => void;
 }
 
-function ReportView({ entries, savedForms, onBack }: ReportViewProps) {
+function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
   const completedEntries = entries.filter(e => getEntryStatus(e, savedForms) === 'done');
 
   const analyses = completedEntries.flatMap(entry => {
@@ -1268,58 +1580,74 @@ function ReportView({ entries, savedForms, onBack }: ReportViewProps) {
       {/* Per-subprocess sections */}
       {analyses.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-12">Nenhum subprocesso concluído com análise disponível.</p>
-      ) : analyses.map(({ entry, analysis }) => (
-        <div key={entry.subprocessId} className="mb-10">
-          {/* Section header */}
-          <div className="mb-4 pb-2 border-b border-gray-100">
-            <h3 className="text-base font-bold text-gray-900">{entry.subprocessName}</h3>
-            <p className="text-sm text-gray-400 mt-0.5">{entry.processName}</p>
-          </div>
+      ) : analyses.map(({ entry, analysis }) => {
+        const bpmn          = bpmnMap.get(entry.subprocessId);
+        const usePersistedNodes =
+          bpmn?.status === 'finalized' || bpmn?.status === 'respondent_validated';
+        const diagramNodes  = usePersistedNodes ? (bpmn!.nodes) : analysis.fluxoBPMN;
+        const bpmnBadge     = bpmn?.status === 'finalized'
+          ? { label: '✓✓ Finalizado pelo analista', cls: 'bg-emerald-200 border-emerald-300 text-emerald-900' }
+          : bpmn?.status === 'respondent_validated'
+          ? { label: '✓ Validado',                  cls: 'bg-emerald-100 border-emerald-200 text-emerald-700' }
+          : null;
 
-          {/* Potential + complexity */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className={`rounded-xl p-4 ${potentialColor(analysis.potential)}`}>
-              <div className="text-[10px] font-semibold uppercase tracking-wider mb-1 opacity-70">Potencial de automação</div>
-              <div className="text-xl font-bold">{analysis.potential}</div>
-            </div>
-            <div className={`rounded-xl p-4 ${complexityColor(analysis.complexidade)}`}>
-              <div className="text-[10px] font-semibold uppercase tracking-wider mb-1 opacity-70">Complexidade</div>
-              <div className="text-xl font-bold">{analysis.complexidade}</div>
-            </div>
-          </div>
-
-          {/* Technology badges */}
-          {analysis.tiposAutomacao.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {analysis.tiposAutomacao.map(type => (
-                <span
-                  key={type}
-                  className={`inline-flex items-center border rounded-full text-xs font-semibold px-3 py-1 ${TYPE_COLOURS[type] ?? 'bg-gray-100 border-gray-200 text-gray-700'}`}
-                >
-                  {type}
+        return (
+          <div key={entry.subprocessId} className="mb-10">
+            {/* Section header */}
+            <div className="mb-4 pb-2 border-b border-gray-100 flex items-start justify-between gap-2">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">{entry.subprocessName}</h3>
+                <p className="text-sm text-gray-400 mt-0.5">{entry.processName}</p>
+              </div>
+              {bpmnBadge && (
+                <span className={`shrink-0 inline-flex items-center border text-[10px] font-bold px-2.5 py-1 rounded-full ${bpmnBadge.cls}`}>
+                  {bpmnBadge.label}
                 </span>
-              ))}
+              )}
             </div>
-          )}
 
-          {/* Justification */}
-          <p className="text-sm text-gray-600 leading-relaxed mb-4">{analysis.justificativa}</p>
-
-          {/* BPMN diagram */}
-          {analysis.fluxoBPMN.length > 0 && (
-            <div className="rounded-xl border border-gray-100 bg-white p-4 overflow-x-auto">
-              <BPMNDiagram nodes={analysis.fluxoBPMN} size="full" />
+            {/* Potential + complexity */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className={`rounded-xl p-4 ${potentialColor(analysis.potential)}`}>
+                <div className="text-[10px] font-semibold uppercase tracking-wider mb-1 opacity-70">Potencial de automação</div>
+                <div className="text-xl font-bold">{analysis.potential}</div>
+              </div>
+              <div className={`rounded-xl p-4 ${complexityColor(analysis.complexidade)}`}>
+                <div className="text-[10px] font-semibold uppercase tracking-wider mb-1 opacity-70">Complexidade</div>
+                <div className="text-xl font-bold">{analysis.complexidade}</div>
+              </div>
             </div>
-          )}
-        </div>
-      ))}
+
+            {/* Technology badges */}
+            {analysis.tiposAutomacao.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {analysis.tiposAutomacao.map(type => (
+                  <span key={type} className={`inline-flex items-center border rounded-full text-xs font-semibold px-3 py-1 ${TYPE_COLOURS[type] ?? 'bg-gray-100 border-gray-200 text-gray-700'}`}>
+                    {type}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Justification */}
+            <p className="text-sm text-gray-600 leading-relaxed mb-4">{analysis.justificativa}</p>
+
+            {/* BPMN diagram */}
+            {diagramNodes.length > 0 && (
+              <div className="rounded-xl border border-gray-100 bg-white p-4 overflow-x-auto">
+                <BPMNDiagram nodes={diagramNodes} size="full" />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Phase2Screen({ diagnosticId, prioritized, savedForms: initialSavedForms }: Props) {
+export default function Phase2Screen({ diagnosticId, prioritized, savedForms: initialSavedForms, role = 'respondent' }: Props) {
   const [respondentName,   setRespondentName]   = useState('');
   const [nameConfirmed,    setNameConfirmed]    = useState(false);
   const [entries,          setEntries]          = useState<Phase2Entry[]>(prioritized);
@@ -1400,6 +1728,28 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
     setView('wizard');
   };
 
+  // Route an entry selection based on role and BPMN status.
+  const handleSelectEntry = (index: number) => {
+    setActiveEntryIndex(index);
+    if (role === 'analyst') {
+      const bpmn = bpmnMap.get(entries[index].subprocessId);
+      if (bpmn?.status === 'finalized') {
+        setView('bpmn_readonly');
+      } else {
+        setView('analyst_review');
+      }
+    } else {
+      // Respondent: if BPMN is 'returned', go to validation; else wizard.
+      const bpmn = bpmnMap.get(entries[index].subprocessId);
+      if (bpmn?.status === 'returned') {
+        setWizardFinalData(savedForms.get(entries[index].subprocessId) ?? {});
+        setView('validation');
+      } else {
+        setView('wizard');
+      }
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
 
@@ -1410,11 +1760,12 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           entries={entries}
           savedForms={savedForms}
           bpmnMap={bpmnMap}
+          role={role}
           respondentName={respondentName}
           nameConfirmed={nameConfirmed}
           onRespondentChange={name => { setRespondentName(name); setNameConfirmed(false); }}
           onNameConfirm={() => setNameConfirmed(true)}
-          onSelectEntry={index => { setActiveEntryIndex(index); setView('wizard'); }}
+          onSelectEntry={handleSelectEntry}
           onViewReport={() => setView('report')}
           onShowLibrary={() => setShowLibrary(true)}
           onShowManual={() => setShowManual(true)}
@@ -1446,10 +1797,45 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
         />
       )}
 
+      {view === 'analyst_review' && activeEntryIndex !== null && (() => {
+        const bpmn = bpmnMap.get(entries[activeEntryIndex].subprocessId);
+        if (!bpmn) return null;
+        return (
+          <AnalystReviewView
+            entry={entries[activeEntryIndex]}
+            diagnosticId={diagnosticId}
+            bpmn={bpmn}
+            onFinalize={() => { refreshBpmnMap(); setView('selection'); setActiveEntryIndex(null); }}
+            onReturn={() => { refreshBpmnMap(); setView('selection'); setActiveEntryIndex(null); }}
+            onBack={() => { setView('selection'); setActiveEntryIndex(null); }}
+          />
+        );
+      })()}
+
+      {view === 'bpmn_readonly' && activeEntryIndex !== null && (() => {
+        const bpmn = bpmnMap.get(entries[activeEntryIndex].subprocessId);
+        if (!bpmn) return null;
+        return (
+          <div>
+            <button type="button" onClick={() => { setView('selection'); setActiveEntryIndex(null); }} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4 transition-colors">
+              <ChevronLeft size={16} strokeWidth={2} />
+              Voltar à lista
+            </button>
+            <h2 className="text-lg font-bold text-gray-900 mb-0.5">{entries[activeEntryIndex].subprocessName}</h2>
+            <p className="text-sm text-gray-400 mb-5">{entries[activeEntryIndex].processName}</p>
+            <div className="inline-flex items-center bg-emerald-200 border border-emerald-300 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full mb-4">
+              ✓✓ Finalizado pelo analista
+            </div>
+            <BPMNEditor nodes={bpmn.nodes} onChange={() => {}} role="analyst" readOnly />
+          </div>
+        );
+      })()}
+
       {view === 'report' && (
         <ReportView
           entries={entries}
           savedForms={savedForms}
+          bpmnMap={bpmnMap}
           onBack={() => setView('selection')}
         />
       )}
