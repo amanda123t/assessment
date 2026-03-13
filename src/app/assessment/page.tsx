@@ -151,9 +151,14 @@ export default function AssessmentPage() {
 
   const toggleSubprocess = useCallback(
     (subprocess: Subprocess, macroprocess: Macroprocess, process: Process) => {
+      console.log('[toggleSubprocess]', {
+        subprocessId: subprocess.id,
+        wasSelected: state.globalSelectedSubprocesses.some(i => i.subprocess.id === subprocess.id),
+        currentSelectedCount: state.globalSelectedSubprocesses.length,
+      });
       dispatch({ type: 'TOGGLE_SUBPROCESS', payload: { subprocess, macroprocess, process } });
     },
-    []
+    [state.globalSelectedSubprocesses]
   );
 
   const toggleAllInProcess = useCallback(
@@ -231,38 +236,49 @@ export default function AssessmentPage() {
     process:      Process,
     realValues?:  RealValues,
   ) => {
-
-    console.log('[Page] completeQuestionnaire called', {
-      subprocessId:   subprocess.id,
-      currentIndex:   state.currentSubprocessIndex,
-      totalSelected:  state.globalSelectedSubprocesses.length,
-    });
-
-    // Compute once — isCustom comes from the current item in state.
-    const { isCustom } = state.globalSelectedSubprocesses[state.currentSubprocessIndex];
-    const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom, realValues);
-
-    // Incremental save — persists progress immediately so resuming works even
-    // if the user closes the tab before reaching the ranking screen.
-    if (!savedAssessmentIds.current.has(assessment.subprocessId)) {
-      savedAssessmentIds.current.add(assessment.subprocessId);
-      addDoc(collection(db, 'responses'), {
-        diagnostic_id: diagnosticId.current,
-        subprocess_id: assessment.subprocessId,
-        process:       assessment.processName,
-        score:         assessment.totalScore,
-        scores:        assessment.scores,
-        real_values:   realValues ?? null,
-        answered_by:   state.email,
-        created_at:    new Date().toISOString(),
-      }).catch((err) => {
-        console.error('[Firestore] Failed to save response:', err);
-        showToast('Erro ao salvar resposta. Verifique sua conexão.');
+    try {
+      console.log('[completeQuestionnaire] CALLED', {
+        subprocessId:   subprocess.id,
+        subprocessName: subprocess.name,
+        currentIndex:   state.currentSubprocessIndex,
+        totalSelected:  state.globalSelectedSubprocesses.length,
       });
+
+      // Compute once — isCustom comes from the current item in state.
+      const { isCustom } = state.globalSelectedSubprocesses[state.currentSubprocessIndex];
+      const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom, realValues);
+
+      console.log('[completeQuestionnaire] assessment created', {
+        assessmentId: assessment.subprocessId,
+        totalScore:   assessment.totalScore,
+      });
+
+      // Incremental save — persists progress immediately so resuming works even
+      // if the user closes the tab before reaching the ranking screen.
+      if (!savedAssessmentIds.current.has(assessment.subprocessId)) {
+        savedAssessmentIds.current.add(assessment.subprocessId);
+        addDoc(collection(db, 'responses'), {
+          diagnostic_id: diagnosticId.current,
+          subprocess_id: assessment.subprocessId,
+          process:       assessment.processName,
+          score:         assessment.totalScore,
+          scores:        assessment.scores,
+          real_values:   realValues ?? null,
+          answered_by:   state.email,
+          created_at:    new Date().toISOString(),
+        }).catch((err) => {
+          console.error('[Firestore] Failed to save response:', err);
+          showToast('Erro ao salvar resposta. Verifique sua conexão.');
+        });
+      }
+
+      console.log('[completeQuestionnaire] dispatching COMPLETE_QUESTIONNAIRE');
+      dispatch({ type: 'COMPLETE_QUESTIONNAIRE', payload: assessment });
+      console.log('[completeQuestionnaire] dispatch DONE');
+
+    } catch (err) {
+      console.error('[completeQuestionnaire] ERROR:', err);
     }
-
-    dispatch({ type: 'COMPLETE_QUESTIONNAIRE', payload: assessment });
-
   }, [state.email, state.globalSelectedSubprocesses, state.currentSubprocessIndex]);
 
   const goBackInQuestionnaire = useCallback(() => {
@@ -314,6 +330,14 @@ export default function AssessmentPage() {
 
   const currentItem =
     state.globalSelectedSubprocesses[state.currentSubprocessIndex];
+
+  if (state.step === 'questionnaire') {
+    console.log('[Page render] questionnaire state', {
+      currentIndex:  state.currentSubprocessIndex,
+      currentItem:   currentItem ? currentItem.subprocess.name : 'NULL',
+      totalSelected: state.globalSelectedSubprocesses.length,
+    });
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -492,6 +516,7 @@ export default function AssessmentPage() {
                   </div>
                 ) : (
                   <SubprocessExplorer
+                    key={`explorer-${state.globalSelectedSubprocesses.length}`}
                     selectedIds={selectedIds}
                     customSubprocesses={customSubprocesses}
                     initialIndustry={state.industry ?? null}
