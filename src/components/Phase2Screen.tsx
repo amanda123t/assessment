@@ -1701,6 +1701,44 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
         </h2>
       </div>
 
+      {/* Index */}
+      {completedEntries.length > 1 && (
+        <nav className="mb-10 bg-white rounded-xl border border-gray-100 p-5">
+          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
+            Índice — {completedEntries.length} subprocessos
+          </h4>
+          <div className="space-y-1">
+            {completedEntries.map((entry, i) => {
+              const data   = savedForms.get(entry.subprocessId);
+              const result = data ? analyzeProcess(data as Partial<Phase2FormData>) : null;
+              return (
+                <a
+                  key={entry.subprocessId}
+                  href={`#subprocess-${entry.subprocessId}`}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors group"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-300 w-5">{i + 1}</span>
+                    <span className="text-sm text-gray-700 group-hover:text-blue-600 transition-colors">
+                      {entry.subprocessName}
+                    </span>
+                  </div>
+                  {result && (
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      result.potential === 'ALTO'  ? 'bg-emerald-100 text-emerald-700' :
+                      result.potential === 'MÉDIO' ? 'bg-amber-100 text-amber-700' :
+                                                     'bg-red-100 text-red-700'
+                    }`}>
+                      {result.potential}
+                    </span>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </nav>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
@@ -1732,7 +1770,7 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
           : null;
 
         return (
-          <div key={entry.subprocessId} className="mb-10">
+          <section key={entry.subprocessId} id={`subprocess-${entry.subprocessId}`} className="mb-16 scroll-mt-8">
             {/* Section header */}
             <div className="mb-4 pb-2 border-b border-gray-100 flex items-start justify-between gap-2">
               <div>
@@ -1776,7 +1814,7 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
             {diagramNodes.length > 0 && (
               <BPMNEditor nodes={diagramNodes} onChange={() => {}} role="respondent" readOnly />
             )}
-          </div>
+          </section>
         );
       })}
     </div>
