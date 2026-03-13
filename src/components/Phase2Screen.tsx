@@ -23,6 +23,7 @@ import {
 } from '@/lib/phase2';
 import BPMNEditor from '@/components/BPMNEditor';
 import Tooltip from '@/components/Tooltip';
+import FadeTransition from '@/components/FadeTransition';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -951,7 +952,7 @@ function WizardView({
       </div>
 
       {/* ── Question body ──────────────────────────────────────────── */}
-      <div className="max-w-3xl mx-auto space-y-6 mb-12">
+      <div key={String(step)} className="max-w-3xl mx-auto space-y-6 mb-12 animate-slide-in">
 
         {/* Step 1: Identificação */}
         {step === 1 && (
@@ -1931,6 +1932,8 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
+      <FadeTransition transitionKey={view}>
+
       {view === 'selection' && (
         <SelectionView
           entries={entries}
@@ -2015,6 +2018,8 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           onBack={() => setView('selection')}
         />
       )}
+
+      </FadeTransition>
 
       {/* Modals — available from all views */}
       {showLibrary && (

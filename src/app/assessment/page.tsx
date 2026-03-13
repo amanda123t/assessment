@@ -22,6 +22,7 @@ import SubprocessExplorer from '@/components/SubprocessExplorer';
 import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
 import Questionnaire from '@/components/Questionnaire';
 import RankingScreen from '@/components/RankingScreen';
+import FadeTransition from '@/components/FadeTransition';
 
 // ── Page component ───────────────────────────────────────────────────────────
 
@@ -469,60 +470,64 @@ export default function AssessmentPage() {
 
           <main>
 
-            {state.step === 'explore' && (
+            <FadeTransition transitionKey={state.step}>
 
-              allAnswered ? (
-                <div className="max-w-4xl mx-auto px-6 py-20 text-center">
-                  <div className="bg-white rounded-xl border border-gray-200 p-10 inline-block">
-                    <p className="text-gray-500 text-base">
-                      All subprocesses in this diagnostic have already been answered.
-                    </p>
+              {state.step === 'explore' && (
+
+                allAnswered ? (
+                  <div className="max-w-4xl mx-auto px-6 py-20 text-center">
+                    <div className="bg-white rounded-xl border border-gray-200 p-10 inline-block">
+                      <p className="text-gray-500 text-base">
+                        All subprocesses in this diagnostic have already been answered.
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <SubprocessExplorer
-                  selectedIds={selectedIds}
-                  customSubprocesses={customSubprocesses}
-                  initialIndustry={state.industry ?? null}
-                  onToggle={toggleSubprocess}
-                  onToggleAll={toggleAllInProcess}
-                  onAddCustom={addCustomSubprocess}
-                  onRemoveCustom={removeCustomSubprocess}
-                  onBack={goBackToStart}
-                  lockedSubprocessIds={lockedSubprocessIds}
-                  initialCustomAreas={state.customAreas}
-                  onCustomAreasChange={handleCustomAreasChange}
-                  globalSelectedSubprocesses={state.globalSelectedSubprocesses}
-                  onClear={clearSelection}
+                ) : (
+                  <SubprocessExplorer
+                    selectedIds={selectedIds}
+                    customSubprocesses={customSubprocesses}
+                    initialIndustry={state.industry ?? null}
+                    onToggle={toggleSubprocess}
+                    onToggleAll={toggleAllInProcess}
+                    onAddCustom={addCustomSubprocess}
+                    onRemoveCustom={removeCustomSubprocess}
+                    onBack={goBackToStart}
+                    lockedSubprocessIds={lockedSubprocessIds}
+                    initialCustomAreas={state.customAreas}
+                    onCustomAreasChange={handleCustomAreasChange}
+                    globalSelectedSubprocesses={state.globalSelectedSubprocesses}
+                    onClear={clearSelection}
+                  />
+                )
+
+              )}
+
+              {state.step === 'questionnaire' && currentItem && (
+
+                <Questionnaire
+                  key={currentItem.subprocess.id}
+                  macroprocess={currentItem.macroprocess}
+                  process={currentItem.process}
+                  subprocess={currentItem.subprocess}
+                  currentIndex={state.currentSubprocessIndex}
+                  total={state.globalSelectedSubprocesses.length}
+                  onComplete={completeQuestionnaire}
+                  onBack={goBackInQuestionnaire}
                 />
-              )
 
-            )}
+              )}
 
-            {state.step === 'questionnaire' && currentItem && (
+              {state.step === 'ranking' && (
 
-              <Questionnaire
-                key={currentItem.subprocess.id}
-                macroprocess={currentItem.macroprocess}
-                process={currentItem.process}
-                subprocess={currentItem.subprocess}
-                currentIndex={state.currentSubprocessIndex}
-                total={state.globalSelectedSubprocesses.length}
-                onComplete={completeQuestionnaire}
-                onBack={goBackInQuestionnaire}
-              />
+                <RankingScreen
+                  assessments={state.assessments}
+                  onRestart={restart}
+                  diagnosticId={diagnosticId.current}
+                />
 
-            )}
+              )}
 
-            {state.step === 'ranking' && (
-
-              <RankingScreen
-                assessments={state.assessments}
-                onRestart={restart}
-                diagnosticId={diagnosticId.current}
-              />
-
-            )}
+            </FadeTransition>
 
           </main>
 

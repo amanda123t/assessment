@@ -196,7 +196,7 @@ export default function Questionnaire({
       </div>
 
       {/* ── Criterion card ───────────────────────────────────────────────── */}
-      <div key={criterion.key} className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+      <div key={criterion.key} className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm animate-slide-in">
         <div className="mb-5">
           <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">
             {criterion.label}
