@@ -802,6 +802,7 @@ interface WizardViewProps {
   initialData:    Partial<Phase2FormData>;
   totalEntries:   number;
   entryIndex:     number;
+  hasTriageData?: boolean;
   onComplete:     (finalData: Partial<Phase2FormData>) => void;
   onBack:         () => void;
   onError:        (msg: string) => void;
@@ -809,7 +810,7 @@ interface WizardViewProps {
 
 function WizardView({
   entry, diagnosticId, respondentName, initialData,
-  totalEntries, entryIndex, onComplete, onBack, onError,
+  totalEntries, entryIndex, hasTriageData = false, onComplete, onBack, onError,
 }: WizardViewProps) {
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState<Partial<Phase2FormData>>({ ...EMPTY_PHASE2_FORM, ...initialData });
@@ -876,7 +877,9 @@ function WizardView({
       }
       onComplete(data);
     } else {
-      setStep(((step as number) + 1) as WizardStep);
+      // Skip step 8 (Estabilidade) if triage data already provides it.
+      const next = (step as number) + 1;
+      setStep((hasTriageData && next === 8 ? 9 : next) as WizardStep);
     }
   };
 
@@ -889,7 +892,9 @@ function WizardView({
     if (step === 1 || step === 'done') {
       onBack();
     } else {
-      setStep(((step as number) - 1) as WizardStep);
+      // Skip step 8 (Estabilidade) when going back if triage data covers it.
+      const prev = (step as number) - 1;
+      setStep((hasTriageData && prev === 8 ? 7 : prev) as WizardStep);
     }
   };
 
@@ -928,7 +933,7 @@ function WizardView({
         {/* Per-step indicator */}
         <div className="flex items-center gap-3 mt-5">
           <span className="text-xs font-semibold text-blue-600 whitespace-nowrap">
-            Etapa {stepNum} de {TOTAL_STEPS} — {STEP_LABELS[stepNum - 1]}
+            Etapa {stepNum} de {TOTAL_STEPS} — {STEP_LABELS[stepNum - 1]}{hasTriageData && stepNum === 8 ? ' (preenchido pela triagem)' : ''}
           </span>
           <div className="flex gap-1.5">
             {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(n => (
