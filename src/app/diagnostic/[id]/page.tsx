@@ -516,6 +516,8 @@ export default function DiagnosticResumePage() {
             lockedSubprocessIds={lockedSubprocessIds}
             initialCustomAreas={customAreas}
             onCustomAreasChange={handleCustomAreasChange}
+            globalSelectedSubprocesses={groupSelectedItems}
+            onClear={() => setGroupSelectedItems([])}
           />
         </>
       )}

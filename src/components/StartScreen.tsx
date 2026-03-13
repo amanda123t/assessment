@@ -3,6 +3,7 @@
 import { ClipboardList, BarChart3, TrendingUp, FileDown } from 'lucide-react';
 import { INDUSTRIES } from '@/data/industryLibrary';
 import { CRITERIA } from '@/types';
+import ThemeToggle from '@/components/ThemeToggle';
 
 interface Props {
   onStart: () => void;
@@ -32,14 +33,15 @@ export default function StartScreen({
   const canStart = !!industry;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex flex-col">
+    <div className="min-h-screen bg-[var(--color-surface-secondary)] flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 px-6 py-4 shadow-sm">
-        <div className="max-w-5xl mx-auto flex items-center gap-2">
+      <header className="bg-[var(--color-surface)] border-b border-[var(--color-border-light)] px-6 py-4 shadow-sm">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-base font-bold text-gray-900 leading-none">OEA</h1>
-            <p className="text-xs text-gray-500">Operational Efficiency Assessment</p>
+            <h1 className="text-base font-bold text-[var(--color-text-primary)] leading-none">OEA</h1>
+            <p className="text-xs text-[var(--color-text-secondary)]">Operational Efficiency Assessment</p>
           </div>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -47,27 +49,27 @@ export default function StartScreen({
 
         {/* Hero — compact */}
         <div className="text-center mb-10 max-w-xl">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3 leading-tight">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-[var(--color-text-primary)] mb-3 leading-tight">
             Descubra onde sua operação pode{' '}
             <span className="text-blue-600">ganhar eficiência</span>
           </h2>
-          <p className="text-base text-gray-500">
+          <p className="text-base text-[var(--color-text-secondary)]">
             Avalie processos, identifique gargalos e priorize automações com maior retorno — em minutos.
           </p>
         </div>
 
         {/* Form card — focal point */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-8 w-full max-w-md mb-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-6 text-center">Comece seu diagnóstico</h3>
+        <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] shadow-lg p-8 w-full max-w-md mb-6">
+          <h3 className="text-lg font-bold text-[var(--color-text-primary)] mb-6 text-center">Comece seu diagnóstico</h3>
 
           <div className="space-y-4">
             {/* Industry */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Indústria</label>
+              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">Indústria</label>
               <select
                 value={industry ?? ''}
                 onChange={(e) => onIndustryChange(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-gray-700"
+                className="w-full border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-[var(--color-surface)] text-[var(--color-text-primary)]"
               >
                 <option value="" disabled>Selecione uma indústria...</option>
                 {INDUSTRIES.map((ind) => (
@@ -78,25 +80,25 @@ export default function StartScreen({
 
             {/* Company */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Empresa</label>
+              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">Empresa</label>
               <input
                 type="text"
                 placeholder="Nome da empresa"
                 value={company}
                 onChange={(e) => onCompanyChange(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-[var(--color-surface)] text-[var(--color-text-primary)]"
               />
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Seu e-mail</label>
+              <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">Seu e-mail</label>
               <input
                 type="email"
                 placeholder="voce@empresa.com"
                 value={email}
                 onChange={(e) => onEmailChange(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-[var(--color-surface)] text-[var(--color-text-primary)]"
               />
             </div>
           </div>
@@ -115,14 +117,14 @@ export default function StartScreen({
           <button
             onClick={onStartGroup}
             disabled={!canStart}
-            className="w-full mt-3 text-sm text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-40"
+            className="w-full mt-3 text-sm text-[var(--color-text-secondary)] hover:text-blue-600 transition-colors disabled:opacity-40"
           >
             ou iniciar em grupo com sua equipe →
           </button>
         </div>
 
         {/* Credibility line */}
-        <p className="text-xs text-gray-400 text-center mb-12">
+        <p className="text-xs text-[var(--color-text-tertiary)] text-center mb-12">
           Baseado no{' '}
           <a
             href="https://www.apqc.org/process-classification-framework"
@@ -138,17 +140,17 @@ export default function StartScreen({
         {/* Feature cards — secondary, below the fold */}
         <div className="max-w-3xl w-full grid grid-cols-2 md:grid-cols-4 gap-4">
           {features.map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div key={title} className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border-light)] p-4 shadow-sm hover:shadow-md transition-shadow">
               <Icon size={15} className="text-blue-400 mb-2" strokeWidth={1.75} />
-              <h3 className="font-semibold text-gray-700 text-xs mb-1">{title}</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
+              <h3 className="font-semibold text-[var(--color-text-secondary)] text-xs mb-1">{title}</h3>
+              <p className="text-xs text-[var(--color-text-tertiary)] leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
 
         {/* Criteria accordion */}
         <details className="max-w-md w-full mx-auto mt-8 text-center">
-          <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700 select-none">
+          <summary className="text-sm text-[var(--color-text-secondary)] cursor-pointer hover:text-[var(--color-text-primary)] select-none">
             Ver critérios de avaliação ({CRITERIA.length} critérios)
           </summary>
           <div className="flex flex-wrap gap-2 mt-3 justify-center">

@@ -37,6 +37,10 @@ interface Props {
   onCustomAreasChange?: (areas: CustomArea[]) => void;
   /** Industry id selected on the start screen — pre-selects the industry chip. */
   initialIndustry?: string | null;
+  /** Full list of selected subprocess items (with names) — used by the desktop sidebar. */
+  globalSelectedSubprocesses?: SelectedSubprocessItem[];
+  /** Clears all selections — used by the sidebar "Limpar" button. */
+  onClear?: () => void;
 }
 
 // ── Modal: create a custom subprocess for an existing library process ─────────
@@ -282,6 +286,8 @@ export default function SubprocessExplorer({
   initialCustomAreas,
   onCustomAreasChange,
   initialIndustry,
+  globalSelectedSubprocesses = [],
+  onClear,
 }: Props) {
   const [searchQuery, setSearchQuery]             = useState('');
   const [industryId, setIndustryId]               = useState<string | null>(initialIndustry ?? null);
@@ -406,7 +412,7 @@ export default function SubprocessExplorer({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10">
+    <div className="max-w-6xl mx-auto px-4 md:px-6 py-10">
       {/* Header */}
       <div className="mb-6">
         <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-600 transition-colors mb-4 block">
@@ -418,6 +424,9 @@ export default function SubprocessExplorer({
         </p>
       </div>
 
+      <div className="flex gap-6">
+      {/* Main column */}
+      <div className="flex-1 min-w-0">
 
       {/* Search */}
       <div className="sticky top-0 z-10 bg-gray-50 pb-3 pt-1">
@@ -746,6 +755,63 @@ export default function SubprocessExplorer({
           onClose={() => setShowNewAreaForm(false)}
         />
       )}
+
+      </div>{/* end main column */}
+
+      {/* Desktop sidebar — selected subprocesses */}
+      <aside className="hidden lg:block w-72 shrink-0">
+        <div className="sticky top-4 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+              Selecionados ({globalSelectedSubprocesses.length})
+            </span>
+            {globalSelectedSubprocesses.length > 0 && onClear && (
+              <button
+                onClick={onClear}
+                className="text-xs text-red-400 hover:text-red-600 font-medium transition-colors"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+
+          {globalSelectedSubprocesses.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-8 px-4">
+              Nenhum subprocesso selecionado ainda.
+            </p>
+          ) : (
+            <ul className="max-h-[calc(100vh-200px)] overflow-y-auto divide-y divide-gray-50">
+              {globalSelectedSubprocesses.map((item) => (
+                <li key={item.subprocess.id} className="flex items-start gap-2 px-4 py-2.5 group hover:bg-gray-50 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-800 leading-snug truncate">
+                      {item.subprocess.name}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">
+                      {item.process.name}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (item.isCustom) {
+                        onRemoveCustom(item.subprocess.id);
+                      } else {
+                        onToggle(item.subprocess, item.macroprocess, item.process);
+                      }
+                    }}
+                    className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0 mt-0.5 opacity-0 group-hover:opacity-100"
+                    title="Remover"
+                  >
+                    <X size={13} strokeWidth={2} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </aside>
+
+      </div>{/* end flex */}
     </div>
   );
 }
