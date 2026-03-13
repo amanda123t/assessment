@@ -44,6 +44,7 @@ export default function Phase2Page() {
   const [company,    setCompany]    = useState('');
   const [prioritized, setPrioritized] = useState<Phase2Entry[]>([]);
   const [savedForms, setSavedForms] = useState<Map<string, Partial<Phase2FormData>>>(new Map());
+  const [role,       setRole]       = useState<'respondent' | 'analyst'>('respondent');
 
   useEffect(() => {
     if (!id) { setStatus('not-found'); return; }
@@ -155,10 +156,35 @@ export default function Phase2Page() {
             <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
             <p className="text-xs text-gray-400">Fase 2 — Mapeamento Detalhado de Processos</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {company && (
               <span className="text-xs text-gray-500 font-medium">{company}</span>
             )}
+            {/* Role toggle */}
+            <div className="flex rounded-lg overflow-hidden border border-gray-200">
+              <button
+                type="button"
+                onClick={() => setRole('respondent')}
+                className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  role === 'respondent'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Respondente
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('analyst')}
+                className={`px-3 py-1.5 text-xs font-semibold transition-colors border-l border-gray-200 ${
+                  role === 'analyst'
+                    ? 'bg-purple-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Analista
+              </button>
+            </div>
             <Link
               href={`/diagnostic/${id}/vote`}
               className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors"
@@ -183,6 +209,7 @@ export default function Phase2Page() {
         diagnosticId={id}
         prioritized={prioritized}
         savedForms={savedForms}
+        role={role}
       />
 
     </div>
