@@ -9,6 +9,9 @@ import {
   submitVote,
   deleteAllVotesForAssessment,
   subscribeToVoteSummaries,
+  getOrCreateVoterToken,
+  getStoredVoterIdentity,
+  saveVoterIdentity,
   VoteSummary,
   ConsensusLevel,
 } from '@/lib/votes';
@@ -345,10 +348,13 @@ function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticI
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function VotingPanel({ assessmentId, assessments, diagnosticId }: Props) {
-  const [voterToken]                      = useState(() => crypto.randomUUID());
-  const [voterName, setVoterName]         = useState('');
-  const [voterArea, setVoterArea]         = useState('');
-  const [identityReady, setIdentityReady] = useState(false);
+  const [voterToken]                      = useState(() => getOrCreateVoterToken());
+  const [voterName, setVoterName]         = useState(() => getStoredVoterIdentity().name);
+  const [voterArea, setVoterArea]         = useState(() => getStoredVoterIdentity().area);
+  const [identityReady, setIdentityReady] = useState(() => {
+    const { name, area } = getStoredVoterIdentity();
+    return name.trim().length > 0 && area.trim().length > 0;
+  });
 
   const [selections, setSelections]           = useState<Map<string, number>>(new Map());
   const [summaries, setSummaries]             = useState<Map<string, VoteSummary>>(new Map());
@@ -388,6 +394,7 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
   const handleIdentityConfirm = useCallback((name: string, area: string) => {
     setVoterName(name);
     setVoterArea(area);
+    saveVoterIdentity(name, area);
     setIdentityReady(true);
   }, []);
 
