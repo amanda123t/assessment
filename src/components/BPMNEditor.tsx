@@ -2,7 +2,7 @@
 
 import '@xyflow/react/dist/style.css';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -47,6 +47,9 @@ function BPMNEditorInner({ nodes: bpmnNodes, onChange, role, readOnly = false }:
   const [nodes, setNodes, onNodesChange] = useNodesState(initNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initEdges);
 
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [editingLabel, setEditingLabel] = useState('');
+
   // ── Debounced sync-back ──────────────────────────────────────────────────────
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -90,15 +93,30 @@ function BPMNEditorInner({ nodes: bpmnNodes, onChange, role, readOnly = false }:
   const onNodeDoubleClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (readOnly) return;
     if (node.type === 'start' || node.type === 'end') return;
-    const current = (node.data.label as string) ?? '';
-    const next    = window.prompt('Novo nome:', current);
-    if (next === null) return; // cancelled
-    setNodes(nds =>
-      nds.map(n =>
-        n.id === node.id ? { ...n, data: { ...n.data, label: next.trim() || current } } : n,
-      ),
-    );
-  }, [readOnly, setNodes]);
+    setEditingNodeId(node.id);
+    setEditingLabel((node.data.label as string) ?? '');
+  }, [readOnly]);
+
+  const confirmEdit = useCallback(() => {
+    if (!editingNodeId) return;
+    const trimmed = editingLabel.trim();
+    if (trimmed) {
+      setNodes(nds =>
+        nds.map(n =>
+          n.id === editingNodeId
+            ? { ...n, data: { ...n.data, label: trimmed } }
+            : n
+        ),
+      );
+    }
+    setEditingNodeId(null);
+    setEditingLabel('');
+  }, [editingNodeId, editingLabel, setNodes]);
+
+  const cancelEdit = useCallback(() => {
+    setEditingNodeId(null);
+    setEditingLabel('');
+  }, []);
 
   // ── Add node helper ──────────────────────────────────────────────────────────
 
@@ -158,6 +176,7 @@ function BPMNEditorInner({ nodes: bpmnNodes, onChange, role, readOnly = false }:
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       onNodeDoubleClick={onNodeDoubleClick}
+      onPaneClick={() => { if (editingNodeId) confirmEdit(); }}
       nodeTypes={bpmnNodeTypes}
       defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
       nodesDraggable={!readOnly}
@@ -178,6 +197,32 @@ function BPMNEditorInner({ nodes: bpmnNodes, onChange, role, readOnly = false }:
         maskColor="rgba(248,250,252,0.7)"
         className="!border !border-gray-200 !rounded-lg !shadow-sm"
       />
+
+      {/* Inline node label editor */}
+      {editingNodeId && (
+        <Panel position="top-center">
+          <div className="bg-white border border-blue-300 rounded-xl shadow-lg p-3 flex gap-2 items-center">
+            <input
+              autoFocus
+              type="text"
+              value={editingLabel}
+              onChange={e => setEditingLabel(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') confirmEdit();
+                if (e.key === 'Escape') cancelEdit();
+              }}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="Nome da etapa"
+            />
+            <button onClick={confirmEdit} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700">
+              OK
+            </button>
+            <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600 px-2 py-2 text-sm">
+              ✕
+            </button>
+          </div>
+        </Panel>
+      )}
 
       {/* Toolbar — hidden in readOnly mode */}
       {!readOnly && (
