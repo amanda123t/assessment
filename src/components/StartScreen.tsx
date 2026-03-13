@@ -1,6 +1,6 @@
 'use client';
 
-import { ClipboardList, BarChart3, TrendingUp, FileDown, Users } from 'lucide-react';
+import { ClipboardList, BarChart3, TrendingUp, FileDown } from 'lucide-react';
 import { INDUSTRIES } from '@/data/industryLibrary';
 import { CRITERIA } from '@/types';
 
@@ -23,7 +23,6 @@ const features = [
   { icon: FileDown,      title: 'Relatório pronto para usar',  desc: 'Exporte em PDF e apresente o diagnóstico para liderança sem retrabalho' },
 ];
 
-
 export default function StartScreen({
   onStart, onStartGroup,
   company, onCompanyChange,
@@ -44,49 +43,31 @@ export default function StartScreen({
         </div>
       </header>
 
-      {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-16">
-        <div className="max-w-3xl w-full text-center">
-          {/* 1. Title */}
-          <h2 className="text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+
+        {/* Hero — compact */}
+        <div className="text-center mb-10 max-w-xl">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3 leading-tight">
             Descubra onde sua operação pode{' '}
             <span className="text-blue-600">ganhar eficiência</span>
           </h2>
-
-          {/* 2. Subtitle */}
-          <p className="text-lg text-gray-500 mb-3 max-w-xl mx-auto">
-            Avalie seus processos, identifique gargalos operacionais e priorize automações com maior retorno.
+          <p className="text-base text-gray-500">
+            Avalie processos, identifique gargalos e priorize automações com maior retorno — em minutos.
           </p>
+        </div>
 
-          {/* 3. Credibility line */}
-          <p className="text-sm text-gray-500 mb-4">
-            Diagnóstico rápido &bull; baseado em benchmarks operacionais &bull; relatório exportável
-          </p>
+        {/* Form card — focal point */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-8 w-full max-w-md mb-6">
+          <h3 className="text-lg font-bold text-gray-900 mb-6 text-center">Comece seu diagnóstico</h3>
 
-          {/* 4. APQC reference */}
-          <p className="text-xs text-gray-500 mb-8 max-w-md mx-auto">
-            Biblioteca com processos de referência por indústria. Baseado no{' '}
-            <a
-              href="https://www.apqc.org/process-classification-framework"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              Process Classification Framework (PCF) do APQC
-            </a>
-            .
-          </p>
-
-          <div className="flex flex-col items-center gap-3 mb-2">
-            {/* 3. Industry selector (before email) */}
-            <div className="w-72">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Selecione sua indústria
-              </p>
+          <div className="space-y-4">
+            {/* Industry */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Indústria</label>
               <select
                 value={industry ?? ''}
                 onChange={(e) => onIndustryChange(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-gray-700"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-gray-700"
               >
                 <option value="" disabled>Selecione uma indústria...</option>
                 {INDUSTRIES.map((ind) => (
@@ -95,71 +76,90 @@ export default function StartScreen({
               </select>
             </div>
 
-            {/* 4. Email field */}
-            <input
-              type="text"
-              placeholder="Nome da empresa"
-              value={company}
-              onChange={(e) => onCompanyChange(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400 mt-1"
-            />
-            <input
-              type="email"
-              placeholder="Seu email"
-              value={email}
-              onChange={(e) => onEmailChange(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-3 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
+            {/* Company */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Empresa</label>
+              <input
+                type="text"
+                placeholder="Nome da empresa"
+                value={company}
+                onChange={(e) => onCompanyChange(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
 
-            {/* 5. Action buttons */}
-            <div className="flex gap-3 mt-1 w-72">
-              <button
-                onClick={onStart}
-                disabled={!canStart}
-                title={!canStart ? 'Selecione uma indústria para iniciar' : undefined}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400 text-white font-semibold px-4 py-3 rounded-xl text-sm shadow-md hover:shadow-lg transition-all duration-200"
-              >
-                Responder individual
-              </button>
-              <button
-                onClick={onStartGroup}
-                disabled={!canStart}
-                title={!canStart ? 'Selecione uma indústria para iniciar' : undefined}
-                className="flex-1 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400 text-gray-800 font-semibold px-4 py-3 rounded-xl text-sm shadow-md hover:shadow-lg border border-gray-200 transition-all duration-200 flex items-center justify-center gap-1.5"
-              >
-                <Users size={14} strokeWidth={2} />
-                Em grupo
-              </button>
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Seu e-mail</label>
+              <input
+                type="email"
+                placeholder="voce@empresa.com"
+                value={email}
+                onChange={(e) => onEmailChange(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-1">Sem cadastro inicial</p>
 
+          {/* Primary CTA */}
+          <button
+            onClick={onStart}
+            disabled={!canStart}
+            title={!canStart ? 'Selecione uma indústria para iniciar' : undefined}
+            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400 text-white font-semibold py-4 rounded-xl text-base shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            Começar diagnóstico
+          </button>
+
+          {/* Secondary CTA */}
+          <button
+            onClick={onStartGroup}
+            disabled={!canStart}
+            className="w-full mt-3 text-sm text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-40"
+          >
+            ou iniciar em grupo com sua equipe →
+          </button>
         </div>
 
-        {/* Feature cards */}
-        <div className="max-w-4xl w-full mt-16 grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Credibility line */}
+        <p className="text-xs text-gray-400 text-center mb-12">
+          Baseado no{' '}
+          <a
+            href="https://www.apqc.org/process-classification-framework"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline hover:text-blue-700"
+          >
+            APQC Process Classification Framework
+          </a>
+          {' '}· Sem cadastro necessário
+        </p>
+
+        {/* Feature cards — secondary, below the fold */}
+        <div className="max-w-3xl w-full grid grid-cols-2 md:grid-cols-4 gap-4">
           {features.map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-              <Icon size={16} className="text-blue-500 mb-2" strokeWidth={1.75} />
-              <h3 className="font-semibold text-gray-800 text-sm mb-1">{title}</h3>
-              <p className="text-xs text-gray-500">{desc}</p>
+            <div key={title} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+              <Icon size={15} className="text-blue-400 mb-2" strokeWidth={1.75} />
+              <h3 className="font-semibold text-gray-700 text-xs mb-1">{title}</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
 
-        {/* Criteria */}
-        <div className="max-w-4xl w-full mt-8 bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">
-            Critérios de Avaliação (pontuados de 1 a 4)
-          </h3>
-          <div className="flex flex-wrap gap-2">
+        {/* Criteria accordion */}
+        <details className="max-w-md w-full mx-auto mt-8 text-center">
+          <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700 select-none">
+            Ver critérios de avaliação ({CRITERIA.length} critérios)
+          </summary>
+          <div className="flex flex-wrap gap-2 mt-3 justify-center">
             {CRITERIA.map((c) => (
               <span key={c.key} className="bg-blue-50 text-blue-700 text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-100">
                 {c.label}
               </span>
             ))}
           </div>
-        </div>
+        </details>
+
       </main>
     </div>
   );
