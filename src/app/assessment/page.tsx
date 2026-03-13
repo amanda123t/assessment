@@ -8,7 +8,7 @@ import {
 } from '@/types';
 import { createAssessment } from '@/lib/assessmentEngine';
 import {
-  assessmentReducer, INITIAL_FULL_STATE,
+  assessmentReducer, INITIAL_FULL_STATE, MAX_CUSTOM,
 } from '@/lib/assessmentReducer';
 
 import { db } from '@/lib/firebase';
@@ -172,8 +172,13 @@ export default function AssessmentPage() {
   }, []);
 
   const addCustomSubprocess = useCallback((item: SelectedSubprocessItem) => {
+    const customCount = state.globalSelectedSubprocesses.filter(i => i.isCustom).length;
+    if (customCount >= MAX_CUSTOM) {
+      showToast(`Limite de ${MAX_CUSTOM} subprocessos personalizados atingido.`);
+      return;
+    }
     dispatch({ type: 'ADD_CUSTOM_SUBPROCESS', payload: item });
-  }, []);
+  }, [state.globalSelectedSubprocesses, showToast]);
 
   const removeCustomSubprocess = useCallback((subprocessId: string) => {
     dispatch({ type: 'REMOVE_CUSTOM_SUBPROCESS', payload: subprocessId });

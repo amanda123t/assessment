@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Macroprocess, Process, Subprocess, SelectedSubprocessItem, CustomArea, CustomAreaProcess, CustomAreaSubprocess } from '@/types';
 import { getMacroprocessesForIndustry } from '@/data/industryLibrary';
+import { MAX_CUSTOM } from '@/lib/assessmentReducer';
 
 const MACRO_ICONS: Record<string, LucideIcon> = {
   'finance':         DollarSign,
@@ -20,7 +21,6 @@ const MACRO_ICONS: Record<string, LucideIcon> = {
   'governance':      ShieldCheck,
 };
 
-const MAX_CUSTOM = 3;
 
 interface Props {
   selectedIds: Set<string>;
@@ -512,8 +512,9 @@ export default function SubprocessExplorer({
                               <button
                                 onClick={() => !atLimit && setShowFormFor({ macro, proc })}
                                 disabled={atLimit}
+                                title={atLimit ? `Limite de ${MAX_CUSTOM} subprocessos personalizados atingido` : undefined}
                                 className={`flex items-center gap-1.5 text-xs font-medium transition-colors
-                                  ${atLimit ? 'text-gray-300 cursor-not-allowed' : 'text-blue-500 hover:text-blue-700'}`}
+                                  ${atLimit ? 'text-gray-300 opacity-50 cursor-not-allowed' : 'text-blue-500 hover:text-blue-700'}`}
                               >
                                 <Plus size={12} strokeWidth={2.5} />
                                 Adicionar subprocesso personalizado

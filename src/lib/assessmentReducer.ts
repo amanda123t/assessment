@@ -15,6 +15,10 @@ import {
   addAssessment, advanceIndex, isAssessmentComplete,
 } from '@/lib/assessmentEngine';
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+export const MAX_CUSTOM = 10;
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 export interface FullAssessmentState {
@@ -172,7 +176,7 @@ export function assessmentReducer(
 
     case 'ADD_CUSTOM_SUBPROCESS': {
       const customCount = state.globalSelectedSubprocesses.filter(i => i.isCustom).length;
-      if (customCount >= 3) return state;
+      if (customCount >= MAX_CUSTOM) return state;
       return {
         ...state,
         globalSelectedSubprocesses: [...state.globalSelectedSubprocesses, action.payload],
