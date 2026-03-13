@@ -10,12 +10,12 @@ interface Props {
 
 export default function SelectedSubprocessesPanel({ count, onStart, onClear }: Props) {
   return (
-    <div className="bg-white border-b border-gray-200 shadow-sm">
+    <div className="bg-[var(--color-surface)] border-b border-[var(--color-border)] shadow-sm">
       <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
         {/* Label */}
         <div className="flex items-center gap-2 min-w-0">
           <ListChecks size={16} className="text-blue-600 flex-shrink-0" strokeWidth={2} />
-          <span className="text-sm font-semibold text-gray-800 truncate">
+          <span className="text-sm font-semibold text-[var(--color-text-primary)] truncate">
             Subprocessos selecionados{' '}
             <span
               className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold ml-1

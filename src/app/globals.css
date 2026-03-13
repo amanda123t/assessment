@@ -39,6 +39,36 @@ html {
   --foreground: #171717;
 }
 
+/* ── Dark mode — system preference ──────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --color-primary:           #3b82f6;
+    --color-surface:           #1f2937;
+    --color-surface-secondary: #111827;
+    --color-border:            #374151;
+    --color-border-light:      #1f2937;
+    --color-text-primary:      #f9fafb;
+    --color-text-secondary:    #9ca3af;
+    --color-text-tertiary:     #6b7280;
+    --background:              #111827;
+    --foreground:              #f9fafb;
+  }
+}
+
+/* ── Dark mode — manual override (html.dark) ─────────────────────────────────── */
+html.dark {
+  --color-primary:           #3b82f6;
+  --color-surface:           #1f2937;
+  --color-surface-secondary: #111827;
+  --color-border:            #374151;
+  --color-border-light:      #1f2937;
+  --color-text-primary:      #f9fafb;
+  --color-text-secondary:    #9ca3af;
+  --color-text-tertiary:     #6b7280;
+  --background:              #111827;
+  --foreground:              #f9fafb;
+}
+
 body {
   background: var(--color-surface-secondary);
   color: var(--color-text-primary);

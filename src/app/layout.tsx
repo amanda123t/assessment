@@ -20,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={inter.variable}>
-      <body className="antialiased bg-gray-50 font-sans">
+    <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
+      <body className="antialiased font-sans">
         <PasswordGate>{children}</PasswordGate>
       </body>
     </html>

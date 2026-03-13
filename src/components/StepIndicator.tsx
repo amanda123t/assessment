@@ -1,6 +1,7 @@
 'use client';
 
 import { AssessmentState } from '@/types';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const STEPS = [
   { key: 'explore',       label: 'Seleção' },
@@ -20,9 +21,9 @@ export default function StepIndicator({ step }: Props) {
   const currentIndex = STEP_ORDER.indexOf(step);
 
   return (
-    <div className="w-full bg-white border-b border-gray-100 px-6 py-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-center max-w-sm mx-auto">
+    <div className="w-full bg-[var(--color-surface)] border-b border-[var(--color-border-light)] px-6 py-4">
+      <div className="max-w-4xl mx-auto flex items-center">
+        <div className="flex items-center justify-center max-w-sm mx-auto flex-1">
           {STEPS.map((s, idx) => {
             const isCompleted = idx < currentIndex;
             const isActive = idx === currentIndex;
@@ -35,7 +36,7 @@ export default function StepIndicator({ step }: Props) {
                       w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all
                       ${isCompleted ? 'bg-blue-600 text-white' : ''}
                       ${isActive ? 'bg-blue-600 text-white ring-4 ring-blue-100' : ''}
-                      ${!isCompleted && !isActive ? 'bg-gray-100 text-gray-500' : ''}
+                      ${!isCompleted && !isActive ? 'bg-[var(--color-border-light)] text-[var(--color-text-secondary)]' : ''}
                     `}
                   >
                     {isCompleted ? (
@@ -48,7 +49,7 @@ export default function StepIndicator({ step }: Props) {
                   </div>
                   <span
                     className={`mt-1.5 text-xs font-medium whitespace-nowrap
-                      ${isActive ? 'text-blue-600' : isCompleted ? 'text-blue-400' : 'text-gray-500'}
+                      ${isActive ? 'text-blue-600' : isCompleted ? 'text-blue-400' : 'text-[var(--color-text-tertiary)]'}
                     `}
                   >
                     {s.label}
@@ -57,7 +58,7 @@ export default function StepIndicator({ step }: Props) {
                 {idx < STEPS.length - 1 && (
                   <div
                     className={`flex-1 h-0.5 mx-2 mb-4 transition-all ${
-                      isCompleted ? 'bg-blue-600' : 'bg-gray-200'
+                      isCompleted ? 'bg-blue-600' : 'bg-[var(--color-border)]'
                     }`}
                   />
                 )}
@@ -65,6 +66,7 @@ export default function StepIndicator({ step }: Props) {
             );
           })}
         </div>
+        <ThemeToggle />
       </div>
     </div>
   );
