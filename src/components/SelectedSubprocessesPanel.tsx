@@ -34,7 +34,7 @@ export default function SelectedSubprocessesPanel({ count, onStart, onClear }: P
               className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-600 transition-colors px-3 py-2.5 rounded-lg hover:bg-red-50"
             >
               <Trash2 size={13} strokeWidth={2} />
-              Limpar seleção
+              Remover todos ({count})
             </button>
           )}
 
@@ -44,7 +44,7 @@ export default function SelectedSubprocessesPanel({ count, onStart, onClear }: P
             className="flex items-center gap-1.5 disabled:bg-gray-200 disabled:cursor-not-allowed text-white disabled:text-gray-400 font-semibold px-4 py-2.5 rounded-lg transition-colors text-xs bg-blue-600 hover:bg-blue-700"
           >
             <PlayCircle size={14} strokeWidth={2} />
-            Iniciar avaliação
+            Avaliar {count} subprocesso{count !== 1 ? 's' : ''} selecionado{count !== 1 ? 's' : ''}
           </button>
         </div>
       </div>
