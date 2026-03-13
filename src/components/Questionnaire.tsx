@@ -169,6 +169,9 @@ export default function Questionnaire({
               <div className="mb-4">
                 <h3 className="font-semibold text-gray-800 text-sm">{criterion.label}</h3>
                 <p className="text-xs text-gray-500 mt-0.5">{criterion.description}</p>
+                {criterion.example && (
+                  <p className="text-xs text-blue-500 mt-1 italic">{criterion.example}</p>
+                )}
               </div>
 
               {/* Range buttons */}
