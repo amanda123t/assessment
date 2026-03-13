@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
 import {
   Plus, ChevronDown, ChevronUp, Save, CheckCircle,
-  Search, X, Tag, Sparkles, ArrowRight, ChevronLeft,
+  Search, X, Tag, Sparkles, ArrowRight, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { getAllMacroprocesses } from '@/data/industryLibrary';
 import {
@@ -31,6 +31,8 @@ interface Props {
   prioritized:  Phase2Entry[];
   savedForms:   Map<string, Partial<Phase2FormData>>;
 }
+
+type Phase2View = 'selection' | 'wizard' | 'report';
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 'done';
 
@@ -929,14 +931,195 @@ function ManualAddModal({ onAdd, onClose }: ManualAddProps) {
   );
 }
 
+// ── Selection view ────────────────────────────────────────────────────────────
+
+function getEntryStatus(
+  entry: Phase2Entry,
+  savedForms: Map<string, Partial<Phase2FormData>>,
+): 'done' | 'in-progress' | 'pending' {
+  const data = savedForms.get(entry.subprocessId);
+  if (!data) return 'pending';
+  if (data.gargalo) return 'done';
+  if (data.departamento || data.comoComeca) return 'in-progress';
+  return 'pending';
+}
+
+interface SelectionViewProps {
+  entries:        Phase2Entry[];
+  savedForms:     Map<string, Partial<Phase2FormData>>;
+  respondentName: string;
+  nameConfirmed:  boolean;
+  onRespondentChange: (name: string) => void;
+  onNameConfirm:  () => void;
+  onSelectEntry:  (index: number) => void;
+  onViewReport:   () => void;
+  onShowLibrary:  () => void;
+  onShowManual:   () => void;
+}
+
+function SelectionView({
+  entries, savedForms, respondentName, nameConfirmed,
+  onRespondentChange, onNameConfirm, onSelectEntry, onViewReport,
+  onShowLibrary, onShowManual,
+}: SelectionViewProps) {
+  const doneCount  = entries.filter(e => getEntryStatus(e, savedForms) === 'done').length;
+  const total      = entries.length;
+  const progressPct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+  return (
+    <div>
+      {/* Respondent identification */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
+        <h3 className="text-sm font-bold text-gray-800 mb-3">Identificação do respondente</h3>
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={respondentName}
+            onChange={e => onRespondentChange(e.target.value)}
+            placeholder="Digite seu nome"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <button
+            type="button"
+            disabled={!respondentName.trim()}
+            onClick={onNameConfirm}
+            className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold transition-colors"
+          >
+            Confirmar
+          </button>
+        </div>
+        {nameConfirmed && respondentName.trim() && (
+          <p className="text-xs text-emerald-600 mt-2 font-medium">✓ Respondendo como {respondentName.trim()}</p>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      {total > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-gray-500">
+              <span className="font-semibold text-gray-800">{doneCount}</span> de {total} subprocessos mapeados
+            </span>
+            <span className="text-xs text-gray-400">{progressPct}%</span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
+            <div
+              className="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Subprocess list */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+        {entries.length === 0 ? (
+          <div className="text-center py-10 text-sm text-gray-400">
+            Nenhum subprocesso ainda. Adicione da biblioteca ou crie manualmente.
+          </div>
+        ) : (
+          entries.map((entry, index) => {
+            const status = getEntryStatus(entry, savedForms);
+            return (
+              <button
+                key={entry.subprocessId}
+                type="button"
+                onClick={() => onSelectEntry(index)}
+                className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors text-left"
+              >
+                {/* Left: status icon + names */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="shrink-0">
+                    {status === 'done' ? (
+                      <CheckCircle size={16} className="text-emerald-500" strokeWidth={2} />
+                    ) : status === 'in-progress' ? (
+                      <div className="w-4 h-4 rounded-full border-2 border-blue-400 flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-blue-400" />
+                      </div>
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-sm font-semibold text-gray-800 truncate">
+                      {entry.subprocessName}
+                    </span>
+                    <span className="block text-xs text-gray-400 mt-0.5 truncate">
+                      {entry.processName}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right: vote badge + status badge + chevron */}
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                  {entry.voteAverage !== undefined && (
+                    <span className="text-[10px] font-semibold text-violet-600 whitespace-nowrap">
+                      ★ {entry.voteAverage.toFixed(1)}
+                    </span>
+                  )}
+                  {status === 'done' ? (
+                    <span className="inline-flex items-center bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                      Concluído
+                    </span>
+                  ) : status === 'in-progress' ? (
+                    <span className="inline-flex items-center bg-yellow-100 border border-yellow-200 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                      Em progresso
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center bg-gray-100 border border-gray-200 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                      Pendente
+                    </span>
+                  )}
+                  <ChevronRight size={14} className="text-gray-300" strokeWidth={2} />
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onShowLibrary}
+          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+        >
+          <Plus size={14} strokeWidth={2} />
+          Adicionar da biblioteca
+        </button>
+        <button
+          type="button"
+          onClick={onShowManual}
+          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+        >
+          <Plus size={14} strokeWidth={2} />
+          Criar manualmente
+        </button>
+        <button
+          type="button"
+          disabled={doneCount === 0}
+          onClick={onViewReport}
+          className="inline-flex items-center gap-2 border border-blue-600 rounded-lg px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ml-auto"
+        >
+          <Sparkles size={14} strokeWidth={2} />
+          Ver Relatório
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: Props) {
-  const [respondentName, setRespondentName] = useState('');
-  const [nameConfirmed,  setNameConfirmed]  = useState(false);
-  const [entries,        setEntries]        = useState<Phase2Entry[]>(prioritized);
-  const [showLibrary,    setShowLibrary]    = useState(false);
-  const [showManual,     setShowManual]     = useState(false);
+  const [respondentName,    setRespondentName]    = useState('');
+  const [nameConfirmed,     setNameConfirmed]     = useState(false);
+  const [entries,           setEntries]           = useState<Phase2Entry[]>(prioritized);
+  const [showLibrary,       setShowLibrary]       = useState(false);
+  const [showManual,        setShowManual]        = useState(false);
+  const [view,              setView]              = useState<Phase2View>('selection');
+  const [activeEntryIndex,  setActiveEntryIndex]  = useState<number | null>(null);
 
   const { toasts, showToast, dismissToast } = useToast();
 
@@ -959,75 +1142,34 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms }: 
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-8">
+    <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-      {/* Respondent name */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
-        <h3 className="text-sm font-bold text-gray-800 mb-3">Identificação do respondente</h3>
-        <div className="flex gap-3">
-          <input
-            type="text"
-            value={respondentName}
-            onChange={e => { setRespondentName(e.target.value); setNameConfirmed(false); }}
-            placeholder="Digite seu nome"
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <button
-            type="button"
-            disabled={!respondentName.trim()}
-            onClick={() => setNameConfirmed(true)}
-            className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold transition-colors"
-          >
-            Confirmar
-          </button>
-        </div>
-        {nameConfirmed && respondentName.trim() && (
-          <p className="text-xs text-emerald-600 mt-2 font-medium">✓ Respondendo como {respondentName.trim()}</p>
-        )}
-      </div>
+      {view === 'selection' && (
+        <SelectionView
+          entries={entries}
+          savedForms={savedForms}
+          respondentName={respondentName}
+          nameConfirmed={nameConfirmed}
+          onRespondentChange={name => { setRespondentName(name); setNameConfirmed(false); }}
+          onNameConfirm={() => setNameConfirmed(true)}
+          onSelectEntry={index => { setActiveEntryIndex(index); setView('wizard'); }}
+          onViewReport={() => setView('report')}
+          onShowLibrary={() => setShowLibrary(true)}
+          onShowManual={() => setShowManual(true)}
+        />
+      )}
 
-      {/* Subprocess wizard cards */}
-      <div className="space-y-3 mb-6">
-        {entries.map(entry => (
-          <SubprocessCard
-            key={entry.subprocessId}
-            entry={entry}
-            diagnosticId={diagnosticId}
-            respondentName={respondentName}
-            initialData={savedForms.get(entry.subprocessId) ?? {}}
-            onError={showToast}
-          />
-        ))}
-        {entries.length === 0 && (
-          <div className="text-center py-10 text-sm text-gray-400">
-            Nenhum subprocesso ainda. Adicione da biblioteca ou crie manualmente.
-          </div>
-        )}
-      </div>
+      {view === 'wizard' && activeEntryIndex !== null && (
+        <div>Wizard (próximo prompt)</div>
+      )}
 
-      {/* Add actions */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        <button
-          type="button"
-          onClick={() => setShowLibrary(true)}
-          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-        >
-          <Plus size={14} strokeWidth={2} />
-          Adicionar da biblioteca
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowManual(true)}
-          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-        >
-          <Plus size={14} strokeWidth={2} />
-          Criar processo manualmente
-        </button>
-      </div>
+      {view === 'report' && (
+        <div>Relatório (próximo prompt)</div>
+      )}
 
-      {/* Modals */}
+      {/* Modals — available from all views */}
       {showLibrary && (
         <LibraryPicker
           existing={existingIds}
