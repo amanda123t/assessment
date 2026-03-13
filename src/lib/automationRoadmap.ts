@@ -15,12 +15,16 @@ export interface RoadmapItem {
   estimatedSavings: number;
   /** Automatable hours per year (mirrors SubprocessAssessment.automationSavingsHours). */
   savingsHours: number;
-  /** automationScore × log(annualHours + 1) — composite priority metric. */
+  /** automationScore × log(annualHours + 1) × voteBoost — composite priority metric. */
   priorityScore: number;
   roadmapCategory: RoadmapCategory;
   timeline: '0–3 meses' | '3–6 meses' | '6–12 meses';
   /** Technology recommendation derived from questionnaire scores. */
   suggestedTechnology: string;
+  /** Mean stakeholder priority vote (1–5). Present only when votes exist. */
+  voteAverage?: number;
+  /** Number of stakeholder votes cast for this subprocess. */
+  voteCount?: number;
 }
 
 /**
@@ -86,20 +90,39 @@ function computeMedian(values: number[]): number {
  * Phase 2 – Strategic Automations:   high impact + medium automation (40–59)
  * Phase 3 – Complex Transformations: high impact + low automation (<40)
  * Phase 4 – Low Priority:            low impact (< median), regardless of automation
+ *
+ * Vote promotion: when voteAverage ≥ 4.0 and voteCount ≥ 3, the item is
+ * promoted one phase up (strategic → quick-wins, transformation → strategic).
  */
 function classifyPhase(
   automationScore: number,
   impactScore: number,
   medianImpactScore: number,
+  voteAverage?: number,
+  voteCount?: number,
 ): Pick<RoadmapItem, 'roadmapCategory' | 'timeline'> {
-  const highImpact = impactScore >= medianImpactScore;
-  const highAuto   = automationScore >= 60;
-  const medAuto    = automationScore >= 40;
+  const highImpact  = impactScore >= medianImpactScore;
+  const highAuto    = automationScore >= 60;
+  const medAuto     = automationScore >= 40;
+  const voteBoost   = (voteAverage ?? 0) >= 4.0 && (voteCount ?? 0) >= 3;
 
-  if (highAuto && highImpact)  return { roadmapCategory: 'quick-wins',    timeline: '0–3 meses' };
-  if (highImpact && medAuto)   return { roadmapCategory: 'strategic',      timeline: '3–6 meses' };
-  if (highImpact)              return { roadmapCategory: 'transformation', timeline: '6–12 meses' };
-  return                              { roadmapCategory: 'low-priority',   timeline: '6–12 meses' };
+  let category: RoadmapCategory;
+  if (highAuto && highImpact)  category = 'quick-wins';
+  else if (highImpact && medAuto) category = 'strategic';
+  else if (highImpact)         category = 'transformation';
+  else                         category = 'low-priority';
+
+  // Promote one phase when there is strong stakeholder consensus for urgency
+  if (voteBoost) {
+    if (category === 'strategic')      category = 'quick-wins';
+    else if (category === 'transformation') category = 'strategic';
+  }
+
+  const timeline: RoadmapItem['timeline'] =
+    category === 'quick-wins' ? '0–3 meses' :
+    category === 'strategic'  ? '3–6 meses' : '6–12 meses';
+
+  return { roadmapCategory: category, timeline };
 }
 
 const CATEGORY_ORDER: Record<RoadmapCategory, number> = {
@@ -109,32 +132,47 @@ const CATEGORY_ORDER: Record<RoadmapCategory, number> = {
   'low-priority':  3,
 };
 
-/** Build the full automation roadmap sorted by phase then by priorityScore descending. */
-export function buildAutomationRoadmap(assessments: SubprocessAssessment[]): RoadmapItem[] {
+/**
+ * Build the full automation roadmap sorted by phase then by priorityScore descending.
+ *
+ * @param voteSummaries  Optional map of subprocessId → { average, count } from stakeholder votes.
+ *   When provided:
+ *   - priorityScore gains a vote boost: score × log(hours+1) × (1 + voteAverage/5)
+ *   - Items with voteAverage ≥ 4.0 and count ≥ 3 are promoted one phase
+ *   - voteAverage and voteCount are attached to each RoadmapItem for display
+ *   Without votes the function behaves exactly as before.
+ */
+export function buildAutomationRoadmap(
+  assessments: SubprocessAssessment[],
+  voteSummaries?: Map<string, { average: number; count: number }>,
+): RoadmapItem[] {
   if (assessments.length === 0) return [];
 
   // Compute log-based impact and priority scores for each assessment
   const withScores = assessments.map((a) => {
-    const impactScore    = Math.log(a.annualHours + 1);
-    const priorityScore  = a.automationScore * impactScore;
-    return { assessment: a, impactScore, priorityScore };
+    const impactScore = Math.log(a.annualHours + 1);
+    const vote        = voteSummaries?.get(a.subprocessId);
+    const voteBoostFactor = vote && vote.count > 0 ? (1 + vote.average / 5) : 1;
+    const priorityScore   = a.automationScore * impactScore * voteBoostFactor;
+    return { assessment: a, impactScore, priorityScore, vote };
   });
 
   const medianImpactScore = computeMedian(withScores.map((x) => x.impactScore));
 
-  const items: RoadmapItem[] = withScores.map(({ assessment: a, impactScore, priorityScore }) => ({
-    subprocessId:       a.subprocessId,
-    subprocessName:     a.subprocessName,
-    macroprocessName:   a.macroprocessName,
-    processName:        a.processName,
-    automationScore:    a.automationScore,
+  const items: RoadmapItem[] = withScores.map(({ assessment: a, impactScore, priorityScore, vote }) => ({
+    subprocessId:        a.subprocessId,
+    subprocessName:      a.subprocessName,
+    macroprocessName:    a.macroprocessName,
+    processName:         a.processName,
+    automationScore:     a.automationScore,
     impactScore,
-    effortScore:        calculateEffortScore(a),
-    estimatedSavings:   a.financialImpact,
-    savingsHours:       a.automationSavingsHours,
+    effortScore:         calculateEffortScore(a),
+    estimatedSavings:    a.financialImpact,
+    savingsHours:        a.automationSavingsHours,
     priorityScore,
     suggestedTechnology: suggestAutomationTechnology(a),
-    ...classifyPhase(a.automationScore, impactScore, medianImpactScore),
+    ...(vote && vote.count > 0 ? { voteAverage: vote.average, voteCount: vote.count } : {}),
+    ...classifyPhase(a.automationScore, impactScore, medianImpactScore, vote?.average, vote?.count),
   }));
 
   return items.sort((a, b) => {
