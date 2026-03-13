@@ -468,7 +468,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
           Oportunidades de Eficiência Operacional
         </h2>
         {savedIdentification && (
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
             {savedIdentification.company       && <span>Empresa: <span className="font-medium text-gray-600">{savedIdentification.company}</span></span>}
             {savedIdentification.area          && <span>Área: <span className="font-medium text-gray-600">{savedIdentification.area}</span></span>}
             {savedIdentification.respondentName && <span>Respondente: <span className="font-medium text-gray-600">{savedIdentification.respondentName}</span></span>}
@@ -494,7 +494,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
             <p className="text-3xl font-extrabold text-gray-900">{fmt(dispSavingsHours)}</p>
             <p className="text-xs text-gray-500 mt-0.5 mb-2">horas automatizáveis / ano</p>
             <div className="space-y-0.5 mb-3">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-500">
                 ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsHorasMes)} horas</span> / mês
               </p>
             </div>
@@ -510,7 +510,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
             </div>
             <p className="text-2xl font-extrabold text-gray-900">{fmtCurrency(dispFinancialImpact)}</p>
             <p className="text-xs text-gray-500 mt-0.5 mb-3">estimativa anual</p>
-            <p className="text-xs text-gray-400 leading-relaxed">
+            <p className="text-xs text-gray-500 leading-relaxed">
               Estimativa baseada em custo administrativo de R${dispHourlyCost}/h. Resultados reais variam conforme a estrutura de custos da organização.
             </p>
           </div>
@@ -525,7 +525,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
             </div>
             <p className="text-3xl font-extrabold text-emerald-600">≈ {fmtD(dispFteEquivalent)} FTE</p>
             <p className="text-xs text-gray-500 mt-0.5 mb-3">liberáveis com automação</p>
-            <p className="text-xs text-gray-400 leading-relaxed">
+            <p className="text-xs text-gray-500 leading-relaxed">
               Equivalente estimado considerando 1 FTE = 1.760 horas/ano. Representa o esforço operacional que pode ser eliminado ou realocado — não necessariamente redução de headcount.
             </p>
           </div>
@@ -554,9 +554,9 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                 <div key={item.subprocessId} className="bg-white rounded-xl border border-gray-100 p-4">
                   <div className="flex items-start justify-between mb-2 gap-2">
                     <div className="min-w-0">
-                      <span className="text-xs font-bold text-gray-400">#{item.rank}</span>
+                      <span className="text-xs font-bold text-gray-500">#{item.rank}</span>
                       <h4 className="text-sm font-semibold text-gray-900 mt-0.5 leading-snug">{item.subprocessName}</h4>
-                      <p className="text-xs text-gray-400 truncate">{item.processName}</p>
+                      <p className="text-xs text-gray-500 truncate">{item.processName}</p>
                     </div>
                     <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${potential.color}`}>
                       {potential.label}
@@ -565,15 +565,15 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                   <div className="grid grid-cols-3 gap-2 mt-3">
                     <div className="text-center">
                       <p className="text-lg font-bold text-gray-900">{fmt(dispSavings)}</p>
-                      <p className="text-[10px] text-gray-400">horas/ano</p>
+                      <p className="text-[11px] text-gray-500">horas/ano</p>
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-bold text-gray-900">{item.automationScore}</p>
-                      <p className="text-[10px] text-gray-400">automation</p>
+                      <p className="text-[11px] text-gray-500">automation</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-lg font-bold text-gray-900">{normalizeScore(item.totalScore)}<span className="text-xs font-normal text-gray-400">/100</span></p>
-                      <p className="text-[10px] text-gray-400">score</p>
+                      <p className="text-lg font-bold text-gray-900">{normalizeScore(item.totalScore)}<span className="text-xs font-normal text-gray-500">/100</span></p>
+                      <p className="text-[11px] text-gray-500">score</p>
                     </div>
                   </div>
                 </div>
@@ -625,18 +625,18 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                     <tr key={item.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
 
                       {/* Rank */}
-                      <td className="px-3 py-2.5 text-center font-bold text-gray-400 text-xs">{item.rank}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-gray-500 text-xs">{item.rank}</td>
 
                       {/* Name + calculation inputs */}
                       <td className="px-3 py-2.5 text-gray-900 text-xs">
                         <div className="font-medium">{item.subprocessName}</div>
-                        <div className="mt-1 text-[10px] text-gray-400 space-y-0.5">
+                        <div className="mt-1 text-[11px] text-gray-500 space-y-0.5">
                           <div className="flex flex-wrap gap-x-2">
                             <span>Vol: <span className="text-gray-500">{fmt(spVolume)}/mês</span></span>
                             <span>· Tempo: <span className="text-gray-500">{spTime} min</span></span>
                             <span>· Pessoas: <span className={`${isSpPeople ? 'text-blue-500' : 'text-gray-500'}`}>{fmtD(spPeople)}</span></span>
                           </div>
-                          <div className="flex flex-wrap gap-x-2 text-gray-400">
+                          <div className="flex flex-wrap gap-x-2 text-gray-500">
                             <span>≈ {fmtD(spHorasMes)} h/mês</span>
                             <span>· ≈ {fmt(spAnnual)} h/ano</span>
                             <span>· ≈ {fmtD(spFte)} FTE</span>
@@ -661,7 +661,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
                       {/* Pontuação */}
                       <td className="px-3 py-2.5 text-center font-semibold text-gray-800 text-xs">
-                        {normalizeScore(item.totalScore)}<span className="text-gray-400 font-normal">/100</span>
+                        {normalizeScore(item.totalScore)}<span className="text-gray-500 font-normal">/100</span>
                       </td>
 
                       {/* Potencial */}
@@ -711,7 +711,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                             className="w-20 border border-blue-300 rounded px-2 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         ) : (
-                          <span className={`text-xs ${isSpCost ? 'font-bold text-blue-700' : 'text-gray-400'}`}>
+                          <span className={`text-xs ${isSpCost ? 'font-bold text-blue-700' : 'text-gray-500'}`}>
                             {viewCost ? `R$${viewCost}` : `R$${DEFAULT_HOURLY_COST}`}
                           </span>
                         )}
@@ -825,7 +825,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                 <Zap size={16} className="text-blue-600" strokeWidth={1.75} />
                 Plano de Automação por Fases
               </h3>
-              <p className="text-xs text-gray-400 mb-5">
+              <p className="text-xs text-gray-500 mb-5">
                 Gerado automaticamente com base na matriz de impacto e facilidade de automação.
               </p>
 
@@ -848,14 +848,14 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                     <p className="text-xs text-gray-500 mb-3 pl-7">{phase.desc}</p>
 
                     {phase.items.length === 0 ? (
-                      <p className="text-xs text-gray-400 italic pl-7">Nenhum subprocesso nesta fase.</p>
+                      <p className="text-xs text-gray-500 italic pl-7">Nenhum subprocesso nesta fase.</p>
                     ) : (
                       <div className="space-y-2">
                         {/* Column headers */}
                         <div className="grid grid-cols-12 gap-2 px-3 pb-1 border-b border-black/5">
-                          <span className="col-span-5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Subprocesso</span>
-                          <span className="col-span-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wide text-center">Horas econ./ano</span>
-                          <span className="col-span-4 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Tecnologia sugerida</span>
+                          <span className="col-span-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Subprocesso</span>
+                          <span className="col-span-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wide text-center">Horas econ./ano</span>
+                          <span className="col-span-4 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Tecnologia sugerida</span>
                         </div>
                         {phase.items.map((item) => (
                           <div
@@ -872,7 +872,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[10px] text-gray-400 truncate">{item.processName}</p>
+                              <p className="text-[11px] text-gray-500 truncate">{item.processName}</p>
                             </div>
 
                             {/* Savings hours */}
@@ -880,7 +880,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                               <span className="text-sm font-bold text-gray-700">
                                 {item.savingsHours.toLocaleString('pt-BR')}
                               </span>
-                              <span className="text-[10px] text-gray-400 ml-0.5">h</span>
+                              <span className="text-[11px] text-gray-500 ml-0.5">h</span>
                             </div>
 
                             {/* Technology badge */}
@@ -945,7 +945,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                 <Target size={16} className="text-blue-600" strokeWidth={1.75} />
                 Matriz de Priorização de Automação
               </h3>
-              <p className="text-xs text-gray-400 mb-4">
+              <p className="text-xs text-gray-500 mb-4">
                 Eixo X: potencial de automação · Eixo Y: impacto operacional (horas anuais) · limiar Y = mediana do dataset
               </p>
               <div className="grid grid-cols-2 gap-4">
@@ -954,9 +954,9 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                   return (
                     <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
                       <div className={`text-xs font-bold uppercase tracking-wide mb-1 ${title}`}>{label}</div>
-                      <p className="text-xs text-gray-400 mb-3 leading-snug">{desc}</p>
+                      <p className="text-xs text-gray-500 mb-3 leading-snug">{desc}</p>
                       {items.length === 0 ? (
-                        <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
+                        <p className="text-xs text-gray-500 italic">Nenhum processo nesta categoria</p>
                       ) : (
                         <ul className="space-y-2">
                           {items.map(r => (

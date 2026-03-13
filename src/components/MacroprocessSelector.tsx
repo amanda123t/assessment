@@ -29,7 +29,7 @@ export default function MacroprocessSelector({ onSelect, onBack }: Props) {
       <div className="mb-8">
         <button
           onClick={onBack}
-          className="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4 block"
+          className="text-sm text-gray-500 hover:text-gray-600 transition-colors mb-4 block"
         >
           ← Voltar ao início
         </button>
@@ -56,7 +56,7 @@ export default function MacroprocessSelector({ onSelect, onBack }: Props) {
               <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors text-sm">
                 {macro.name}
               </h3>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {macro.processes.length} processo{macro.processes.length !== 1 ? 's' : ''}
               </p>
             </button>

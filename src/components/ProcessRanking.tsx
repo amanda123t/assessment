@@ -18,7 +18,7 @@ export default function ProcessRanking({ ranked }: Props) {
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-8">
       <div className="px-6 py-4 border-b border-gray-100">
         <h3 className="font-semibold text-gray-800">Ranking de Processos</h3>
-        <p className="text-xs text-gray-400 mt-0.5">
+        <p className="text-xs text-gray-500 mt-0.5">
           Subprocessos ordenados por score total — do maior para o menor
         </p>
       </div>
@@ -49,13 +49,13 @@ export default function ProcessRanking({ ranked }: Props) {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <p className="text-xs text-gray-400">{item.macroprocessName}</p>
+                  <p className="text-xs text-gray-500">{item.macroprocessName}</p>
                   <p className="font-medium text-gray-800">{item.processName}</p>
                 </td>
                 <td className="px-4 py-3 text-gray-700">{item.subprocessName}</td>
                 <td className="px-4 py-3 text-center">
                   <span className="font-extrabold text-gray-900">{normalizeScore(item.totalScore)}</span>
-                  <span className="text-xs text-gray-400">/100</span>
+                  <span className="text-xs text-gray-500">/100</span>
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${className}`}>

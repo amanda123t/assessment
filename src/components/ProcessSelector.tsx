@@ -14,7 +14,7 @@ export default function ProcessSelector({ macroprocess, onSelect, onBack }: Prop
       <div className="mb-8">
         <button
           onClick={onBack}
-          className="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4 block"
+          className="text-sm text-gray-500 hover:text-gray-600 transition-colors mb-4 block"
         >
           ← Voltar para macroprocessos
         </button>
@@ -43,7 +43,7 @@ export default function ProcessSelector({ macroprocess, onSelect, onBack }: Prop
                 </span>
               ))}
             </div>
-            <p className="text-xs text-gray-400 mt-3">
+            <p className="text-xs text-gray-500 mt-3">
               {process.subprocesses.length} subprocesso{process.subprocesses.length !== 1 ? 's' : ''}
             </p>
           </button>

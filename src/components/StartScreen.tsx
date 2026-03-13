@@ -59,7 +59,7 @@ export default function StartScreen({
           </p>
 
           {/* 3. Credibility line */}
-          <p className="text-sm text-gray-400 mb-4">
+          <p className="text-sm text-gray-500 mb-4">
             Diagnóstico rápido &bull; baseado em benchmarks operacionais &bull; relatório exportável
           </p>
 
@@ -132,7 +132,7 @@ export default function StartScreen({
               </button>
             </div>
           </div>
-          <p className="text-xs text-gray-400 mt-1">Sem cadastro inicial</p>
+          <p className="text-xs text-gray-500 mt-1">Sem cadastro inicial</p>
 
         </div>
 

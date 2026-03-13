@@ -84,7 +84,7 @@ function CustomForm({
         <div className="flex items-start justify-between mb-5">
           <div>
             <h3 className="text-base font-bold text-gray-900">Novo subprocesso</h3>
-            <p className="text-xs text-gray-400 mt-0.5">{macroprocess.name} › {process.name}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{macroprocess.name} › {process.name}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 flex-shrink-0">
             <X size={16} strokeWidth={1.75} />
@@ -105,7 +105,7 @@ function CustomForm({
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-              Descrição <span className="text-gray-400 font-normal">(opcional)</span>
+              Descrição <span className="text-gray-500 font-normal">(opcional)</span>
             </label>
             <textarea
               value={description} onChange={(e) => setDescription(e.target.value)}
@@ -182,7 +182,7 @@ function NewAreaForm({
         <div className="flex items-start justify-between mb-5">
           <div>
             <h3 className="text-base font-bold text-gray-900">Nova área personalizada</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Crie uma área com seus próprios processos e subprocessos</p>
+            <p className="text-xs text-gray-500 mt-0.5">Crie uma área com seus próprios processos e subprocessos</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 flex-shrink-0">
             <X size={16} strokeWidth={1.75} />
@@ -220,7 +220,7 @@ function NewAreaForm({
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">
               Subprocessos <span className="text-red-400">*</span>
-              <span className="text-gray-400 font-normal ml-1">(adicione ao menos 1)</span>
+              <span className="text-gray-500 font-normal ml-1">(adicione ao menos 1)</span>
             </label>
             <div className="flex gap-2 mb-2">
               <input
@@ -388,7 +388,7 @@ export default function SubprocessExplorer({
     <div className="max-w-4xl mx-auto px-6 py-10">
       {/* Header */}
       <div className="mb-6">
-        <button onClick={onBack} className="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4 block">
+        <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-600 transition-colors mb-4 block">
           ← Voltar
         </button>
         <h2 className="text-2xl font-bold text-gray-900">Selecione os Subprocessos</h2>
@@ -424,7 +424,7 @@ export default function SubprocessExplorer({
                 {selectedInMacro > 0 && (
                   <span className="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full mr-2">{selectedInMacro}</span>
                 )}
-                <span className="text-xs text-gray-400 flex-shrink-0">
+                <span className="text-xs text-gray-500 flex-shrink-0">
                   {macro.processes.length} processo{macro.processes.length !== 1 ? 's' : ''}
                 </span>
               </button>
@@ -458,7 +458,7 @@ export default function SubprocessExplorer({
                           {totalSelectedInProc > 0 && (
                             <span className="text-xs text-blue-600 font-semibold mr-2">{totalSelectedInProc}/{totalInProc}</span>
                           )}
-                          <span className="text-xs text-gray-400 flex-shrink-0">
+                          <span className="text-xs text-gray-500 flex-shrink-0">
                             {totalInProc} subprocesso{totalInProc !== 1 ? 's' : ''}
                           </span>
                         </button>
@@ -518,7 +518,7 @@ export default function SubprocessExplorer({
                               >
                                 <Plus size={12} strokeWidth={2.5} />
                                 Adicionar subprocesso personalizado
-                                <span className={`ml-0.5 font-normal ${atLimit ? 'text-gray-300' : 'text-gray-400'}`}>
+                                <span className={`ml-0.5 font-normal ${atLimit ? 'text-gray-300' : 'text-gray-500'}`}>
                                   ({customSubprocesses.length}/{MAX_CUSTOM})
                                 </span>
                               </button>
@@ -580,7 +580,7 @@ export default function SubprocessExplorer({
                           {selectedInProc > 0 && (
                             <span className="text-xs text-blue-600 font-semibold mr-2">{selectedInProc}/{visibleSps.length}</span>
                           )}
-                          <span className="text-xs text-gray-400 flex-shrink-0">
+                          <span className="text-xs text-gray-500 flex-shrink-0">
                             {visibleSps.length} subprocesso{visibleSps.length !== 1 ? 's' : ''}
                           </span>
                         </button>

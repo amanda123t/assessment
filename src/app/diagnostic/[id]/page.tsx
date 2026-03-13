@@ -356,7 +356,7 @@ export default function DiagnosticResumePage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-10 max-w-md w-full text-center">
           <p className="text-gray-700 font-medium mb-1">Diagnóstico não encontrado.</p>
-          <p className="text-sm text-gray-400 mb-6">
+          <p className="text-sm text-gray-500 mb-6">
             Verifique o link ou inicie um novo diagnóstico.
           </p>
           <button
@@ -379,7 +379,7 @@ export default function DiagnosticResumePage() {
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
-            <p className="text-xs text-gray-400">Operational Efficiency Assessment</p>
+            <p className="text-xs text-gray-500">Operational Efficiency Assessment</p>
           </div>
           <div className="flex items-center gap-4">
             {company && (

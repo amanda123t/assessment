@@ -139,7 +139,7 @@ export default function Phase2Page() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-10 max-w-md w-full text-center">
           <p className="text-gray-700 font-medium mb-1">Diagnóstico não encontrado.</p>
-          <p className="text-sm text-gray-400">Verifique o link compartilhado.</p>
+          <p className="text-sm text-gray-500">Verifique o link compartilhado.</p>
         </div>
       </div>
     );
@@ -154,7 +154,7 @@ export default function Phase2Page() {
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
-            <p className="text-xs text-gray-400">Fase 2 — Mapeamento Detalhado de Processos</p>
+            <p className="text-xs text-gray-500">Fase 2 — Mapeamento Detalhado de Processos</p>
           </div>
           <div className="flex items-center gap-3">
             {company && (

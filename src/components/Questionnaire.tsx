@@ -130,7 +130,7 @@ export default function Questionnaire({
       <div className="mb-8">
         <button
           onClick={onBack}
-          className="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-5 block"
+          className="text-sm text-gray-500 hover:text-gray-600 transition-colors mb-5 block"
         >
           ← Voltar
         </button>
@@ -146,7 +146,7 @@ export default function Questionnaire({
           />
         </div>
 
-        <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">
+        <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
           {macroprocess.name} › {process.name}
         </p>
 
@@ -198,7 +198,7 @@ export default function Questionnaire({
               {/* Optional real-value input — auto-selects matching range on input */}
               {realInputCfg && (
                 <div className="mt-3 flex items-center gap-3">
-                  <label className="text-xs text-gray-400 whitespace-nowrap">
+                  <label className="text-xs text-gray-500 whitespace-nowrap">
                     {realInputCfg.label}
                   </label>
                   <input

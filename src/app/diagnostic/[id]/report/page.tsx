@@ -74,7 +74,7 @@ export default function SharedReportPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-10 max-w-md w-full text-center">
           <p className="text-gray-700 font-medium mb-1">Relatório não encontrado.</p>
-          <p className="text-sm text-gray-400">Verifique o link compartilhado.</p>
+          <p className="text-sm text-gray-500">Verifique o link compartilhado.</p>
         </div>
       </div>
     );
@@ -90,7 +90,7 @@ export default function SharedReportPage() {
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-sm font-bold text-gray-900 leading-none">OEA</h1>
-            <p className="text-xs text-gray-400">Relatório Compartilhado</p>
+            <p className="text-xs text-gray-500">Relatório Compartilhado</p>
           </div>
           {company && (
             <span className="text-xs text-gray-500 font-medium">{company}</span>
@@ -100,7 +100,7 @@ export default function SharedReportPage() {
 
       {assessments.length === 0 ? (
         <div className="max-w-5xl mx-auto px-6 py-16 text-center">
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-500">
             Este diagnóstico ainda não possui respostas registradas.
           </p>
         </div>

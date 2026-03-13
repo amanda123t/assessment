@@ -35,7 +35,7 @@ export default function SubprocessSelector({
       <div className="mb-8">
         <button
           onClick={onBack}
-          className="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4 block"
+          className="text-sm text-gray-500 hover:text-gray-600 transition-colors mb-4 block"
         >
           ← Voltar para processos
         </button>

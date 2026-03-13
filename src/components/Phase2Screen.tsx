@@ -376,7 +376,7 @@ function SequenceBuilder({
         </button>
       </div>
       {value.length === 0 && (
-        <p className="text-[10px] text-gray-400 mt-1">Adicione as etapas na ordem em que acontecem no processo.</p>
+        <p className="text-[11px] text-gray-500 mt-1">Adicione as etapas na ordem em que acontecem no processo.</p>
       )}
     </div>
   );
@@ -460,11 +460,11 @@ function LibraryPicker({ existing, onAdd, onClose }: LibraryPickerProps) {
               className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
             >
               <div className="text-xs font-medium text-gray-800">{r.subprocessName}</div>
-              <div className="text-[10px] text-gray-400">{r.processName} · {r.macroName}</div>
+              <div className="text-[11px] text-gray-500">{r.processName} · {r.macroName}</div>
             </button>
           ))}
           {results.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-8">Nenhum subprocesso encontrado.</p>
+            <p className="text-xs text-gray-500 text-center py-8">Nenhum subprocesso encontrado.</p>
           )}
         </div>
       </div>
@@ -599,14 +599,14 @@ function SelectionView({
       <div>
         <div className="mb-5">
           <h2 className="text-lg font-bold text-gray-900">Revisão do Analista</h2>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             {analystEntries.length} subprocesso{analystEntries.length !== 1 ? 's' : ''} aguardando revisão ou finalizados.
           </p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
           {analystEntries.length === 0 ? (
-            <div className="text-center py-12 text-sm text-gray-400">
+            <div className="text-center py-12 text-sm text-gray-500">
               Nenhum subprocesso validado pelo respondente ainda.
             </div>
           ) : analystEntries.map(entry => {
@@ -634,7 +634,7 @@ function SelectionView({
               >
                 <div className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-gray-800 truncate">{entry.subprocessName}</span>
-                  <span className="block text-xs text-gray-400 mt-0.5 truncate">
+                  <span className="block text-xs text-gray-500 mt-0.5 truncate">
                     {entry.processName} · Validado por {validatedBy} em {validatedAt}
                   </span>
                 </div>
@@ -696,7 +696,7 @@ function SelectionView({
             <span className="text-xs text-gray-500">
               <span className="font-semibold text-gray-800">{doneCount}</span> de {total} subprocessos mapeados
             </span>
-            <span className="text-xs text-gray-400">{progressPct}%</span>
+            <span className="text-xs text-gray-500">{progressPct}%</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-1.5">
             <div
@@ -710,7 +710,7 @@ function SelectionView({
       {/* Subprocess list */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
         {entries.length === 0 ? (
-          <div className="text-center py-10 text-sm text-gray-400">
+          <div className="text-center py-10 text-sm text-gray-500">
             Nenhum subprocesso ainda. Adicione da biblioteca ou crie manualmente.
           </div>
         ) : entries.map((entry, index) => {
@@ -738,7 +738,7 @@ function SelectionView({
                   <span className="block text-sm font-semibold text-gray-800 truncate">
                     {entry.subprocessName}
                   </span>
-                  <span className="block text-xs text-gray-400 mt-0.5 truncate">
+                  <span className="block text-xs text-gray-500 mt-0.5 truncate">
                     {entry.processName}
                   </span>
                 </div>
@@ -915,7 +915,7 @@ function WizardView({
 
         {/* Global progress across subprocesses */}
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">
+          <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">
             Subprocesso {entryIndex + 1} de {totalEntries}
           </span>
           <div className="flex-1 bg-gray-100 rounded-full h-1.5">
@@ -928,7 +928,7 @@ function WizardView({
 
         {/* Subprocess title */}
         <h2 className="text-xl font-bold text-gray-900">{entry.subprocessName}</h2>
-        <p className="text-sm text-gray-400 mt-0.5">{entry.processName}</p>
+        <p className="text-sm text-gray-500 mt-0.5">{entry.processName}</p>
 
         {/* Per-step indicator */}
         <div className="flex items-center gap-3 mt-5">
@@ -1365,10 +1365,10 @@ function ValidationView({
         </button>
       </div>
       <div className="mb-1">
-        <span className="text-[10px] font-bold tracking-widest text-blue-500 uppercase">Validação do Fluxo</span>
+        <span className="text-[11px] font-bold tracking-widest text-blue-500 uppercase">Validação do Fluxo</span>
       </div>
       <h2 className="text-lg font-bold text-gray-900 mb-0.5">{entry.subprocessName}</h2>
-      <p className="text-sm text-gray-400 mb-5">{entry.processName}</p>
+      <p className="text-sm text-gray-500 mb-5">{entry.processName}</p>
 
       {/* Return reason banner */}
       {returnReason && (
@@ -1384,7 +1384,7 @@ function ValidationView({
 
       {/* BPMN Editor */}
       {loading ? (
-        <div className="h-[500px] rounded-xl border border-gray-200 flex items-center justify-center text-sm text-gray-400">
+        <div className="h-[500px] rounded-xl border border-gray-200 flex items-center justify-center text-sm text-gray-500">
           Carregando fluxo…
         </div>
       ) : (
@@ -1529,10 +1529,10 @@ function AnalystReviewView({ entry, diagnosticId, bpmn, onFinalize, onReturn, on
         </button>
       </div>
       <div className="mb-1">
-        <span className="text-[10px] font-bold tracking-widest text-purple-500 uppercase">Revisão do Analista</span>
+        <span className="text-[11px] font-bold tracking-widest text-purple-500 uppercase">Revisão do Analista</span>
       </div>
       <h2 className="text-lg font-bold text-gray-900 mb-0.5">{entry.subprocessName}</h2>
-      <p className="text-sm text-gray-400 mb-4">{entry.processName}</p>
+      <p className="text-sm text-gray-500 mb-4">{entry.processName}</p>
 
       {/* Validation info */}
       <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 mb-5 text-sm text-gray-600">
@@ -1563,11 +1563,11 @@ function AnalystReviewView({ entry, diagnosticId, bpmn, onFinalize, onReturn, on
           <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Análise automática</p>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className={`rounded-lg p-3 ${potentialColor(analysis.potential)}`}>
-              <div className="text-[10px] font-semibold uppercase opacity-70 mb-0.5">Potencial</div>
+              <div className="text-[11px] font-semibold uppercase opacity-70 mb-0.5">Potencial</div>
               <div className="text-base font-bold">{analysis.potential}</div>
             </div>
             <div className={`rounded-lg p-3 ${complexityColor(analysis.complexidade)}`}>
-              <div className="text-[10px] font-semibold uppercase opacity-70 mb-0.5">Complexidade</div>
+              <div className="text-[11px] font-semibold uppercase opacity-70 mb-0.5">Complexidade</div>
               <div className="text-base font-bold">{analysis.complexidade}</div>
             </div>
           </div>
@@ -1716,7 +1716,7 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
 
       {/* Per-subprocess sections */}
       {analyses.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-12">Nenhum subprocesso concluído com análise disponível.</p>
+        <p className="text-sm text-gray-500 text-center py-12">Nenhum subprocesso concluído com análise disponível.</p>
       ) : analyses.map(({ entry, analysis }) => {
         const bpmn          = bpmnMap.get(entry.subprocessId);
         const usePersistedNodes =
@@ -1734,7 +1734,7 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
             <div className="mb-4 pb-2 border-b border-gray-100 flex items-start justify-between gap-2">
               <div>
                 <h3 className="text-base font-bold text-gray-900">{entry.subprocessName}</h3>
-                <p className="text-sm text-gray-400 mt-0.5">{entry.processName}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{entry.processName}</p>
               </div>
               {bpmnBadge && (
                 <span className={`shrink-0 inline-flex items-center border text-[10px] font-bold px-2.5 py-1 rounded-full ${bpmnBadge.cls}`}>
@@ -1746,11 +1746,11 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
             {/* Potential + complexity */}
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className={`rounded-xl p-4 ${potentialColor(analysis.potential)}`}>
-                <div className="text-[10px] font-semibold uppercase tracking-wider mb-1 opacity-70">Potencial de automação</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1 opacity-70">Potencial de automação</div>
                 <div className="text-xl font-bold">{analysis.potential}</div>
               </div>
               <div className={`rounded-xl p-4 ${complexityColor(analysis.complexidade)}`}>
-                <div className="text-[10px] font-semibold uppercase tracking-wider mb-1 opacity-70">Complexidade</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wider mb-1 opacity-70">Complexidade</div>
                 <div className="text-xl font-bold">{analysis.complexidade}</div>
               </div>
             </div>
@@ -1959,7 +1959,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
               Voltar à lista
             </button>
             <h2 className="text-lg font-bold text-gray-900 mb-0.5">{entries[activeEntryIndex].subprocessName}</h2>
-            <p className="text-sm text-gray-400 mb-5">{entries[activeEntryIndex].processName}</p>
+            <p className="text-sm text-gray-500 mb-5">{entries[activeEntryIndex].processName}</p>
             <div className="inline-flex items-center bg-emerald-200 border border-emerald-300 text-emerald-900 text-xs font-bold px-3 py-1 rounded-full mb-4">
               ✓✓ Finalizado pelo analista
             </div>

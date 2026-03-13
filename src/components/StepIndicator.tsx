@@ -35,7 +35,7 @@ export default function StepIndicator({ step }: Props) {
                       w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all
                       ${isCompleted ? 'bg-blue-600 text-white' : ''}
                       ${isActive ? 'bg-blue-600 text-white ring-4 ring-blue-100' : ''}
-                      ${!isCompleted && !isActive ? 'bg-gray-100 text-gray-400' : ''}
+                      ${!isCompleted && !isActive ? 'bg-gray-100 text-gray-500' : ''}
                     `}
                   >
                     {isCompleted ? (
@@ -48,7 +48,7 @@ export default function StepIndicator({ step }: Props) {
                   </div>
                   <span
                     className={`mt-1.5 text-xs font-medium whitespace-nowrap
-                      ${isActive ? 'text-blue-600' : isCompleted ? 'text-blue-400' : 'text-gray-400'}
+                      ${isActive ? 'text-blue-600' : isCompleted ? 'text-blue-400' : 'text-gray-500'}
                     `}
                   >
                     {s.label}
