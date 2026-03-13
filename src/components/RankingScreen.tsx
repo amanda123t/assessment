@@ -69,7 +69,7 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
     }
   }
 
-  const highRework = ranked.filter((r) => r.scores.reworkOrErrors >= 3).length;
+  const highRework = ranked.filter((r) => r.scores.reworkRate >= 3).length;
   if (highRework >= 2) {
     pool.push({
       weight: 9,
@@ -88,7 +88,7 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
     });
   }
 
-  const heavyManual = ranked.filter((r) => r.scores.systemsOrSpreadsheets >= 3).length;
+  const heavyManual = ranked.filter((r) => r.scores.digitization >= 3).length;
   const manualPct = Math.round((heavyManual / n) * 100);
   if (manualPct >= 40) {
     pool.push({
