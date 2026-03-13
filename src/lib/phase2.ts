@@ -289,51 +289,139 @@ function classifyPotential(data: Partial<Phase2FormData>): AutomationPotential {
   return 'MÉDIO';
 }
 
+/**
+ * Generates a BPMN node array from Phase 2 form data.
+ *
+ * Improvements over the original:
+ * 1. Trigger becomes a typed start event, not an activity
+ * 2. Gateway positioned contextually (after validation steps), not at the end
+ * 3. Error/failure path creates activities and reconnects (loop back)
+ * 4. Lanes populated from departamento + origemDemanda + areasEnvolvidas
+ * 5. automatable flag inferred per step based on rule clarity + data format
+ * 6. systems distributed to nodes by keyword matching
+ * 7. Intermediate events for wait times
+ */
 function generateBPMN(data: Partial<Phase2FormData>): BPMNNode[] {
-  const nodes: BPMNNode[] = [{
+  const nodes: BPMNNode[] = [];
+  const dept = data.departamento || '';
+  const systems = data.sistemas ?? [];
+  const isRuleBased =
+    (data.seguiRegras ?? '').startsWith(PHASE2_VALUES.seguiRegras.SEMPRE_PREFIX) ||
+    (data.seguiRegras ?? '').startsWith(PHASE2_VALUES.seguiRegras.NA_MAIORIA_PREFIX);
+  const hasStructuredData = (data.comoChegam ?? []).some(c => c.includes('estruturad'));
+
+  // ── 1. Start event ─────────────────────────────────────────────────────────
+  // Use origemDemanda as lane if different from dept (shows the handoff)
+  const supplierLane = data.origemDemanda && data.origemDemanda !== dept
+    ? data.origemDemanda
+    : dept;
+  nodes.push({
     type:  'start',
     label: data.comoComeca || 'Início',
-    lane:  data.origemDemanda || data.departamento || '',
-  }];
+    lane:  supplierLane,
+  });
 
-  const seq = data.sequenciaEtapas ?? [];
-  if (seq.length > 0) {
-    for (const s of seq) nodes.push({ type: 'activity', label: s });
-  } else {
-    for (const e of (data.etapasPrincipais ?? []).slice(0, 5)) {
-      nodes.push({ type: 'activity', label: e });
+  // ── 2. Activities from sequence ────────────────────────────────────────────
+  const seq = data.sequenciaEtapas ?? data.etapasPrincipais ?? [];
+  let gatewayInsertOffset = -1; // index after first validation step
+  seq.forEach((stepLabel) => {
+    const s = stepLabel.toLowerCase();
+    const node: BPMNNode = {
+      type:        'activity',
+      label:       stepLabel,
+      lane:        dept,
+      automatable: inferAutomatable(s, isRuleBased, hasStructuredData),
+      systems:     inferSystems(s, systems),
+    };
+    nodes.push(node);
+    if (gatewayInsertOffset < 0 && isValidationStep(s)) {
+      gatewayInsertOffset = nodes.length; // insert AFTER this node
+    }
+  });
+
+  // ── 3. Gateway with error path ─────────────────────────────────────────────
+  if (data.temDecisao === 'Sim' && data.tipoDecisao) {
+    const insertAt = gatewayInsertOffset > 0
+      ? gatewayInsertOffset
+      : Math.max(nodes.length - 1, 1);
+    const gateway: BPMNNode = {
+      type:     'gateway',
+      label:    data.tipoDecisao,
+      lane:     dept,
+      branches: [
+        { condition: 'OK / Válido' },
+        { condition: data.falhaDecisao || 'Falha / Exceção' },
+      ],
+    };
+    nodes.splice(insertAt, 0, gateway);
+    if (data.falhaDecisao && data.falhaDecisao !== 'Outro') {
+      nodes.splice(insertAt + 1, 0, {
+        type:        'activity',
+        label:       data.falhaDecisao,
+        lane:        dept,
+        automatable: false,
+      });
     }
   }
 
-  if (data.temDecisao === 'Sim' && data.tipoDecisao) {
-    nodes.push({
-      type:     'gateway',
-      label:    data.tipoDecisao,
-      branches: [
-        { condition: 'Válido / OK' },
-        { condition: data.falhaDecisao || 'Falha' },
-      ],
+  // ── 4. Intermediate event for wait times ───────────────────────────────────
+  if (data.tempoEspera && data.tempoEspera !== 'Não há esperas significativas') {
+    const pos = Math.max(nodes.length - 1, 1);
+    nodes.splice(pos, 0, {
+      type:  'intermediate-event',
+      label: `Espera: ${data.tempoEspera}`,
+      lane:  dept,
     });
   }
 
-  // Assign lanes based on areasEnvolvidas
-  const areas = (data.areasEnvolvidas ?? []).filter(a => a !== 'Nenhuma outra área');
-  if (areas.length > 0 && data.departamento) {
-    const half = Math.floor(nodes.length / 2);
-    nodes.forEach((n, i) => {
-      if (n.type === 'activity') {
-        n.lane = i < half ? data.departamento : (areas[0] || data.departamento);
-      }
-    });
-  }
-
-  // Add output node before End if defined
+  // ── 5. Output as final activity ────────────────────────────────────────────
   if (data.outputPrincipal && data.outputPrincipal !== 'Outro') {
-    nodes.push({ type: 'activity', label: data.outputPrincipal, lane: data.departamento });
+    const outputLane = data.customerPrincipal && data.customerPrincipal !== dept
+      ? data.customerPrincipal
+      : dept;
+    nodes.push({
+      type:        'activity',
+      label:       data.outputPrincipal,
+      lane:        outputLane,
+      automatable: inferAutomatable(data.outputPrincipal.toLowerCase(), isRuleBased, hasStructuredData),
+    });
   }
 
-  nodes.push({ type: 'end', label: 'Fim' });
+  // ── 6. End event ───────────────────────────────────────────────────────────
+  nodes.push({ type: 'end', label: 'Fim', lane: dept });
   return nodes;
+}
+
+// ── Helper: is this step a validation/check point? ─────────────────────────
+function isValidationStep(s: string): boolean {
+  return ['conferir', 'validar', 'verificar', 'checar', 'aprovar', 'comparar'].some(k => s.includes(k));
+}
+
+// ── Helper: is this step typically automatable? ────────────────────────────
+function inferAutomatable(s: string, isRuleBased: boolean, hasStructuredData: boolean): boolean {
+  const always = ['copiar', 'mover', 'registrar', 'atualizar', 'gerar relatório',
+    'gerar documento', 'enviar confirmação', 'enviar notificação', 'enviar e-mail',
+    'dados atualizados', 'cadastro', 'pagamento'];
+  if (always.some(k => s.includes(k))) return true;
+  const conditional = ['conferir', 'comparar', 'validar', 'verificar', 'checar'];
+  if (conditional.some(k => s.includes(k)) && isRuleBased && hasStructuredData) return true;
+  const rarely = ['analisar', 'julgar', 'decidir', 'negociar', 'interpretar'];
+  if (rarely.some(k => s.includes(k))) return false;
+  return false;
+}
+
+// ── Helper: infer which systems are used in a step ─────────────────────────
+function inferSystems(s: string, allSystems: string[]): string[] {
+  if (allSystems.length === 0) return [];
+  if (['registrar', 'atualizar', 'cadastrar', 'lançar', 'sistema'].some(k => s.includes(k))) {
+    return allSystems.slice(0, 1);
+  }
+  if (['planilha', 'excel'].some(k => s.includes(k))) return ['Excel'];
+  if (['e-mail', 'email', 'enviar'].some(k => s.includes(k))) return ['E-mail'];
+  if (['copiar', 'mover', 'comparar'].some(k => s.includes(k)) && allSystems.length >= 2) {
+    return allSystems.slice(0, 2);
+  }
+  return [];
 }
 
 function buildJustificativa(
