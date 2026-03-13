@@ -58,7 +58,8 @@ export interface Phase2SubprocessData {
   departamento: string;
 
   // Block 1 — Como começa
-  comoComeca: string;
+  comoComeca:    string;
+  origemDemanda?: string;   // SIPOC Supplier — quem origina a demanda
 
   // Block 2 — Etapas principais
   etapasPrincipais: string[];
@@ -111,6 +112,7 @@ export const EMPTY_PHASE2_FORM: Phase2FormData = {
   respondentName:      '',
   departamento:        '',
   comoComeca:          '',
+  origemDemanda:       '',
   etapasPrincipais:    [],
   sequenciaEtapas:     [],
   temDecisao:          '',
@@ -288,11 +290,11 @@ function classifyPotential(data: Partial<Phase2FormData>): AutomationPotential {
 }
 
 function generateBPMN(data: Partial<Phase2FormData>): BPMNNode[] {
-  const nodes: BPMNNode[] = [{ type: 'start', label: 'Início' }];
-
-  if (data.comoComeca) {
-    nodes.push({ type: 'activity', label: data.comoComeca });
-  }
+  const nodes: BPMNNode[] = [{
+    type:  'start',
+    label: data.comoComeca || 'Início',
+    lane:  data.origemDemanda || data.departamento || '',
+  }];
 
   const seq = data.sequenciaEtapas ?? [];
   if (seq.length > 0) {
@@ -375,6 +377,13 @@ function buildJustificativa(
 
   if (types.length > 0)
     parts.push(`a tecnologia indicada é ${types.join(' + ')}`);
+
+  if (data.origemDemanda) {
+    if (data.origemDemanda === 'Cliente externo')
+      parts.push('a demanda é originada por cliente externo');
+    else if (data.origemDemanda === 'Sistema automático (scheduler, trigger)')
+      parts.push('o processo já é disparado automaticamente');
+  }
 
   if (data.tempoEspera && data.tempoEspera !== 'Não há esperas significativas')
     parts.push('há tempos de espera que podem ser reduzidos com automação de notificações e escalações');
