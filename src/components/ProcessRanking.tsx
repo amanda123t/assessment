@@ -7,8 +7,8 @@ interface Props {
 }
 
 function getPriority(score: number): { label: string; className: string } {
-  if (score >= 20) return { label: 'Alta',  className: 'bg-red-100 text-red-700 border-red-200' };
-  if (score >= 14) return { label: 'Média', className: 'bg-orange-100 text-orange-700 border-orange-200' };
+  if (score >= 18) return { label: 'Alta',  className: 'bg-red-100 text-red-700 border-red-200' };
+  if (score >= 12) return { label: 'Média', className: 'bg-orange-100 text-orange-700 border-orange-200' };
   return              { label: 'Baixa', className: 'bg-gray-100 text-gray-600 border-gray-200' };
 }
 
@@ -54,7 +54,7 @@ export default function ProcessRanking({ ranked }: Props) {
                 <td className="px-4 py-3 text-gray-700">{item.subprocessName}</td>
                 <td className="px-4 py-3 text-center">
                   <span className="font-extrabold text-gray-900">{item.totalScore}</span>
-                  <span className="text-xs text-gray-400">/30</span>
+                  <span className="text-xs text-gray-400">/24</span>
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${className}`}>

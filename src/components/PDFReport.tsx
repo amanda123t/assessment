@@ -178,10 +178,10 @@ export default function PDFReport({ assessments, ranked, roadmap }: Props) {
       {/* ── Matriz de Priorização de Automação ──────────────────────────── */}
       {(() => {
         const matrixQuadrants = [
-          { label: 'Prioridade Imediata',       min: 24, max: Infinity, bg: '#fef2f2', border: '#fecaca', title: '#b91c1c' },
-          { label: 'Alta Prioridade',           min: 20, max: 24,       bg: '#fff7ed', border: '#fed7aa', title: '#c2410c' },
-          { label: 'Oportunidade de Automação', min: 16, max: 20,       bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8' },
-          { label: 'Baixa Prioridade',          min: 0,  max: 16,       bg: '#f9fafb', border: '#e5e7eb', title: '#6b7280' },
+          { label: 'Prioridade Imediata',       min: 18, max: Infinity, bg: '#fef2f2', border: '#fecaca', title: '#b91c1c' },
+          { label: 'Alta Prioridade',           min: 15, max: 18,       bg: '#fff7ed', border: '#fed7aa', title: '#c2410c' },
+          { label: 'Oportunidade de Automação', min: 12, max: 15,       bg: '#eff6ff', border: '#bfdbfe', title: '#1d4ed8' },
+          { label: 'Baixa Prioridade',          min: 0,  max: 12,       bg: '#f9fafb', border: '#e5e7eb', title: '#6b7280' },
         ];
         return (
           <div style={{ padding: '20px 32px 0' }}>
@@ -228,8 +228,8 @@ export default function PDFReport({ assessments, ranked, roadmap }: Props) {
           <tbody>
             {ranked.slice(0, 10).map((item, i) => {
               const score = item.totalScore;
-              const potential = score >= 24 ? 'Muito Alto' : score >= 20 ? 'Alto' : score >= 16 ? 'Médio' : 'Baixo';
-              const potentialColor = score >= 24 ? '#dc2626' : score >= 20 ? '#d97706' : score >= 16 ? '#a16207' : '#6b7280';
+              const potential = score >= 18 ? 'Muito Alto' : score >= 15 ? 'Alto' : score >= 12 ? 'Médio' : 'Baixo';
+              const potentialColor = score >= 18 ? '#dc2626' : score >= 15 ? '#d97706' : score >= 12 ? '#a16207' : '#6b7280';
               return (
                 <tr key={item.subprocessId} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
                   <td style={{ border: '1px solid #e5e7eb', padding: '6px 10px', textAlign: 'center', color: '#9ca3af', fontWeight: 'bold' }}>{item.rank}</td>

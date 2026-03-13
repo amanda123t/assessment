@@ -36,7 +36,7 @@ export interface ChartDataPoint {
   fill: string;            // hex color for Recharts
 }
 
-const MAX_SCORE = 30;
+const MAX_SCORE = 24;
 
 /** Normalized operational impact: log(annualHours + 1). */
 export function computeImpactScore(annualHours: number): number {
@@ -49,9 +49,8 @@ export function computePriorityScore(automationScore: number, annualHours: numbe
 }
 
 function getPriority(score: number): Priority {
-  const pct = score / MAX_SCORE;
-  if (pct >= 0.75) return 'Alta';
-  if (pct >= 0.5) return 'Média';
+  if (score >= 18) return 'Alta';  // ≥ 75% of 24
+  if (score >= 12) return 'Média'; // ≥ 50% of 24
   return 'Baixa';
 }
 

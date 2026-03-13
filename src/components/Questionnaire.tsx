@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ClipboardCheck } from 'lucide-react';
 import { Macroprocess, Process, Subprocess, CriteriaScores, RealValues, CRITERIA } from '@/types';
-import { getEmptyScores, calculateTotalScore } from '@/lib/scoring';
+import { getEmptyScores, calculateWeightedScore } from '@/lib/scoring';
 
 interface Props {
   macroprocess: Macroprocess;
@@ -88,7 +88,7 @@ export default function Questionnaire({
   const [realRaw, setRealRaw] = useState<RealValuesRaw>(EMPTY_REAL);
 
   const allAnswered = Object.values(scores).every((s) => s > 0);
-  const totalScore = calculateTotalScore(scores);
+  const totalScore = calculateWeightedScore(scores);
   const criteriaAnsweredCount = Object.values(scores).filter((s) => s > 0).length;
   const isLast = currentIndex === total - 1;
 
