@@ -3,6 +3,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { RankedAssessment } from '@/lib/ranking';
+import { normalizeScore } from '@/lib/scoring';
 import { RoadmapItem, RoadmapCategory } from '@/lib/automationRoadmap';
 import { FTE_HOURS_YEAR, DEFAULT_HOURLY_COST } from '@/lib/impactCalculator';
 
@@ -427,7 +428,7 @@ export default function PDFDiagnosticReport({
                 <Text style={s.top3Name}>{item.subprocessName}</Text>
                 <Text style={s.top3Meta}>{item.macroprocessName} › {item.processName}</Text>
               </View>
-              <Text style={[s.top3Score, { color: c }]}>{item.totalScore}</Text>
+              <Text style={[s.top3Score, { color: c }]}>{normalizeScore(item.totalScore)}/100</Text>
               <Text style={[s.top3Badge, { backgroundColor: c }]}>{item.priority}</Text>
             </View>
           );
@@ -485,7 +486,7 @@ export default function PDFDiagnosticReport({
               <View key={item.subprocessId} style={[s.tblRow, i % 2 === 1 ? s.tblRowAlt : {}]}>
                 <Text style={[s.td, { width: '8%',  textAlign: 'center', color: '#9ca3af' }]}>{item.rank}</Text>
                 <Text style={[s.td, { width: '56%' }]}>{item.subprocessName}</Text>
-                <Text style={[s.td, { width: '18%', textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>{item.totalScore}</Text>
+                <Text style={[s.td, { width: '18%', textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>{normalizeScore(item.totalScore)}/100</Text>
                 <Text style={[s.td, { width: '18%', textAlign: 'center', color: pt.color, fontFamily: 'Helvetica-Bold' }]}>{pt.label}</Text>
               </View>
             );
