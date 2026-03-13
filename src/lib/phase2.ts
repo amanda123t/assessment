@@ -100,6 +100,9 @@ export interface Phase2SubprocessData {
   tempoEspera?: string;
   slaEsperado?: string;
 
+  // Block 10 (simplified single-choice) — principal bottleneck
+  gargalo?: string;
+
   updatedAt?: unknown;
 }
 

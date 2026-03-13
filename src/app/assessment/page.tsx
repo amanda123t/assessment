@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useEffect, useRef, useReducer } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
 import {
-  Macroprocess, Process, Subprocess, CriteriaScores,
+  Macroprocess, Process, Subprocess, CriteriaScores, RealValues,
   SelectedSubprocessItem, CustomArea,
 } from '@/types';
 import { createAssessment } from '@/lib/assessmentEngine';
@@ -229,11 +229,18 @@ export default function AssessmentPage() {
     subprocess:   Subprocess,
     macroprocess: Macroprocess,
     process:      Process,
+    realValues?:  RealValues,
   ) => {
+
+    console.log('[Page] completeQuestionnaire called', {
+      subprocessId:   subprocess.id,
+      currentIndex:   state.currentSubprocessIndex,
+      totalSelected:  state.globalSelectedSubprocesses.length,
+    });
 
     // Compute once — isCustom comes from the current item in state.
     const { isCustom } = state.globalSelectedSubprocesses[state.currentSubprocessIndex];
-    const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom);
+    const assessment = createAssessment(macroprocess, process, subprocess, scores, isCustom, realValues);
 
     // Incremental save — persists progress immediately so resuming works even
     // if the user closes the tab before reaching the ranking screen.
@@ -245,6 +252,7 @@ export default function AssessmentPage() {
         process:       assessment.processName,
         score:         assessment.totalScore,
         scores:        assessment.scores,
+        real_values:   realValues ?? null,
         answered_by:   state.email,
         created_at:    new Date().toISOString(),
       }).catch((err) => {
