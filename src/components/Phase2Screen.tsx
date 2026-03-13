@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
 import {
   Plus, ChevronDown, ChevronUp, Save, CheckCircle,
-  Search, X, Tag, Sparkles, ArrowRight, ChevronLeft, ChevronRight,
+  Search, X, Sparkles, ArrowRight, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { getAllMacroprocesses } from '@/data/industryLibrary';
 import {
@@ -310,515 +310,20 @@ const TYPE_COLOURS: Record<string, string> = {
   'Integração API':   'bg-emerald-100 border-emerald-200 text-emerald-700',
 };
 
-// ── Per-subprocess wizard card ────────────────────────────────────────────────
+// ── Report colour helpers ─────────────────────────────────────────────────────
 
-interface SubprocessCardProps {
-  entry:          Phase2Entry;
-  diagnosticId:   string;
-  respondentName: string;
-  initialData:    Partial<Phase2FormData>;
-  onError:        (message: string) => void;
+function potentialColor(potential: string): string {
+  if (potential === 'ALTO')  return 'bg-emerald-50 border border-emerald-200 text-emerald-800';
+  if (potential === 'MÉDIO') return 'bg-amber-50 border border-amber-200 text-amber-800';
+  return 'bg-red-50 border border-red-200 text-red-800';
 }
 
-function SubprocessCard({ entry, diagnosticId, respondentName, initialData, onError }: SubprocessCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [saving,   setSaving]   = useState(false);
-  const [saved,    setSaved]    = useState(!!initialData.departamento || !!initialData.comoComeca);
-  const [data, setData] = useState<Partial<Phase2FormData>>({ ...EMPTY_PHASE2_FORM, ...initialData });
-
-  const [step, setStep] = useState<WizardStep>(() => {
-    if (initialData.gargalo)                      return 'done';
-    if (initialData.sempresMesmosPassos)          return 10;
-    if (initialData.copiaManual)                  return 9;
-    if (initialData.fontesDados?.length)          return 8;
-    if (initialData.seguiRegras)                  return 7;
-    if (initialData.temDecisao)                   return 6;
-    if (initialData.sequenciaEtapas?.length)      return 5;
-    if (initialData.etapasPrincipais?.length)     return 4;
-    if (initialData.comoComeca)                   return 3;
-    if (initialData.departamento)                 return 2;
-    return 1;
-  });
-
-  const set = useCallback(<K extends keyof Phase2FormData>(key: K, value: Phase2FormData[K]) => {
-    setData(prev => ({ ...prev, [key]: value }));
-  }, []);
-
-  const doSave = async (formData: Partial<Phase2FormData>) => {
-    setSaving(true);
-    try {
-      await savePhase2Response(
-        diagnosticId,
-        entry.subprocessId,
-        entry.subprocessName,
-        entry.processName,
-        entry.isPrioritized,
-        { ...formData, respondentName },
-      );
-      setSaved(true);
-    } catch (err) {
-      console.error('[Phase2] Save failed:', err);
-      onError('Erro ao salvar. Verifique sua conexão e tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleContinue = async () => {
-    await doSave(data);
-    if (step === TOTAL_STEPS) setStep('done');
-    else setStep(((step as number) + 1) as WizardStep);
-  };
-
-  const handleBack = () => {
-    if (step === 'done') setStep(TOTAL_STEPS as WizardStep);
-    else if ((step as number) > 1) setStep(((step as number) - 1) as WizardStep);
-  };
-
-  const analysis: Phase2Analysis | null = analyzeProcess(data);
-  const stepNum = step === 'done' ? null : (step as number);
-
-  return (
-    <div className={`rounded-2xl border shadow-sm overflow-hidden ${entry.isPrioritized ? 'border-violet-200' : 'border-gray-200'}`}>
-
-      {/* Card header */}
-      <button
-        type="button"
-        onClick={() => setExpanded(v => !v)}
-        className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors ${
-          entry.isPrioritized ? 'bg-violet-50 hover:bg-violet-100' : 'bg-gray-50 hover:bg-gray-100'
-        }`}
-      >
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold text-gray-800">{entry.subprocessName}</span>
-              {!entry.isPrioritized && (
-                <span className="inline-flex items-center gap-1 bg-amber-100 border border-amber-300 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  <Tag size={9} strokeWidth={2} />
-                  NÃO PRIORIZADO
-                </span>
-              )}
-              {step === 'done' ? (
-                <span className="inline-flex items-center gap-1 bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  <CheckCircle size={9} strokeWidth={2} />
-                  Diagnóstico concluído
-                </span>
-              ) : saved && (
-                <span className="inline-flex items-center gap-1 text-emerald-600 text-[10px] font-bold">
-                  <CheckCircle size={10} strokeWidth={2} />
-                  Salvo
-                </span>
-              )}
-              {stepNum !== null && stepNum > 1 && (
-                <span className="text-[10px] text-gray-400">Etapa {stepNum} de {TOTAL_STEPS}</span>
-              )}
-            </div>
-            <p className="text-xs text-gray-400 mt-0.5">{entry.processName}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 shrink-0 ml-3">
-          {entry.voteAverage !== undefined && (
-            <span className="text-[10px] font-semibold text-violet-600">
-              média votação {entry.voteAverage.toFixed(1)}
-            </span>
-          )}
-          {expanded
-            ? <ChevronUp size={16} strokeWidth={2} className="text-gray-400" />
-            : <ChevronDown size={16} strokeWidth={2} className="text-gray-400" />
-          }
-        </div>
-      </button>
-
-      {/* Wizard body */}
-      {expanded && (
-        <div className="bg-white">
-
-          {/* Step indicator */}
-          {step !== 'done' && (
-            <div className="px-5 pt-5 pb-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">
-                  Etapa {stepNum} de {TOTAL_STEPS} — {STEP_LABELS[(stepNum as number) - 1]}
-                </span>
-                <div className="flex gap-0.5">
-                  {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(n => (
-                    <div
-                      key={n}
-                      className={`h-1.5 w-3 rounded-full transition-colors ${
-                        n < (stepNum as number) ? 'bg-blue-600' :
-                        n === stepNum           ? 'bg-blue-400' :
-                                                  'bg-gray-200'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="px-5 pb-6 space-y-5">
-
-            {/* ── Step 1: Identificação ─────────────────────────────── */}
-            {step === 1 && (
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Departamento responsável por este processo
-                </label>
-                <input
-                  type="text"
-                  value={data.departamento ?? ''}
-                  onChange={e => set('departamento', e.target.value)}
-                  placeholder="Ex: Financeiro, RH, Operações"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-            )}
-
-            {/* ── Step 2: Como começa ────────────────────────────────── */}
-            {step === 2 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-1">Como esse processo normalmente começa?</p>
-                <p className="text-[10px] text-gray-400 mb-3">Selecione a opção que melhor descreve o gatilho do processo.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {COMO_COMECA_OPTIONS.map(opt => (
-                    <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => set('comoComeca', v)} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 3: Etapas principais ─────────────────────────── */}
-            {step === 3 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-1">Quais etapas normalmente acontecem nesse processo?</p>
-                <p className="text-[10px] text-gray-400 mb-3">Selecione todas as que se aplicam.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {ETAPAS_PRINCIPAIS_OPTIONS.map(opt => (
-                    <MultiCheck key={opt} label={opt} value={opt} current={data.etapasPrincipais ?? []} onChange={v => set('etapasPrincipais', v)} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 4: Sequência ─────────────────────────────────── */}
-            {step === 4 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-1">Qual é a sequência do processo?</p>
-                <p className="text-[10px] text-gray-400 mb-3">
-                  Adicione as etapas na ordem em que acontecem. Use as setas para reordenar.
-                  Esta sequência será usada para gerar o fluxo BPMN.
-                </p>
-                <SequenceBuilder value={data.sequenciaEtapas ?? []} onChange={v => set('sequenciaEtapas', v)} />
-              </div>
-            )}
-
-            {/* ── Step 5: Decisões ──────────────────────────────────── */}
-            {step === 5 && (
-              <div className="space-y-5">
-                <div>
-                  <p className="text-xs font-semibold text-gray-700 mb-3">Existe alguma decisão ou validação nesse processo?</p>
-                  <div className="flex gap-2">
-                    {['Não', 'Sim'].map(opt => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => set('temDecisao', opt)}
-                        className={`flex-1 py-2.5 rounded-lg border text-xs font-semibold transition-all ${
-                          data.temDecisao === opt
-                            ? 'bg-blue-600 border-blue-600 text-white'
-                            : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
-                        }`}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {data.temDecisao === 'Sim' && (
-                  <>
-                    <div>
-                      <p className="text-xs font-semibold text-gray-700 mb-2">Qual decisão normalmente acontece?</p>
-                      <div className="space-y-1.5">
-                        {TIPO_DECISAO_OPTIONS.map(opt => (
-                          <Radio key={opt} label={opt} value={opt} current={data.tipoDecisao ?? ''} onChange={v => set('tipoDecisao', v)} />
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-gray-700 mb-2">Se a validação falhar, o que acontece?</p>
-                      <div className="space-y-1.5">
-                        {FALHA_DECISAO_OPTIONS.map(opt => (
-                          <Radio key={opt} label={opt} value={opt} current={data.falhaDecisao ?? ''} onChange={v => set('falhaDecisao', v)} />
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* ── Step 6: Como funciona ─────────────────────────────── */}
-            {step === 6 && (
-              <div className="space-y-5">
-                <div>
-                  <p className="text-xs font-semibold text-gray-700 mb-2">O processo segue regras claras?</p>
-                  <div className="space-y-1.5">
-                    {['Sempre segue regras claras', 'Na maioria das vezes segue regras claras', 'Raramente segue regras claras'].map(opt => (
-                      <Radio key={opt} label={opt} value={opt} current={data.seguiRegras ?? ''} onChange={v => set('seguiRegras', v)} />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-700 mb-2">Esse processo exige análise ou decisão humana?</p>
-                  <div className="space-y-1.5">
-                    {['Não exige análise humana', 'Exige análise humana em alguns casos', 'Exige análise humana com frequência'].map(opt => (
-                      <Radio key={opt} label={opt} value={opt} current={data.exigeAnalise ?? ''} onChange={v => set('exigeAnalise', v)} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 7: Origem dos dados ─────────────────────────── */}
-            {step === 7 && (
-              <div className="space-y-5">
-                <div>
-                  <p className="text-xs font-semibold text-gray-700 mb-1">De onde vêm as informações usadas nesse processo?</p>
-                  <p className="text-[10px] text-gray-400 mb-3">Selecione as fontes mais comuns.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    {FONTES_DADOS_OPTIONS.map(opt => (
-                      <MultiCheck key={opt} label={opt} value={opt} current={data.fontesDados ?? []} onChange={v => set('fontesDados', v)} />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-700 mb-2">Como normalmente chegam essas informações?</p>
-                  <div className="space-y-1.5">
-                    {COMO_CHEGAM_OPTIONS.map(opt => (
-                      <MultiCheck key={opt} label={opt} value={opt} current={data.comoChegam ?? []} onChange={v => set('comoChegam', v)} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 8: Sistemas ─────────────────────────────────── */}
-            {step === 8 && (
-              <div className="space-y-5">
-                <div>
-                  <p className="text-xs font-semibold text-gray-700 mb-2">Quais sistemas são utilizados nesse processo?</p>
-                  <SystemsInput value={data.sistemas ?? []} onChange={v => set('sistemas', v)} />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-700 mb-2">As informações precisam ser copiadas manualmente entre sistemas?</p>
-                  <div className="space-y-1.5">
-                    {['Não', 'Sim, em alguns casos', 'Sim, com frequência', 'Não sei'].map(opt => (
-                      <Radio key={opt} label={opt} value={opt} current={data.copiaManual ?? ''} onChange={v => set('copiaManual', v)} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 9: Estabilidade ─────────────────────────────── */}
-            {step === 9 && (
-              <div className="space-y-5">
-                <div>
-                  <p className="text-xs font-semibold text-gray-700 mb-2">Este processo normalmente segue sempre os mesmos passos?</p>
-                  <div className="space-y-1.5">
-                    {['Sempre segue os mesmos passos', 'Na maioria das vezes segue os mesmos passos', 'Varia bastante dependendo do caso'].map(opt => (
-                      <Radio key={opt} label={opt} value={opt} current={data.sempresMesmosPassos ?? ''} onChange={v => set('sempresMesmosPassos', v)} />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-700 mb-2">Existe previsão de mudança nesse processo ou nos sistemas envolvidos?</p>
-                  <div className="space-y-1.5">
-                    {['Não há previsão de mudança', 'Existe possibilidade de mudança', 'Mudanças já estão planejadas', 'Não sei'].map(opt => (
-                      <Radio key={opt} label={opt} value={opt} current={data.previsaoMudanca ?? ''} onChange={v => set('previsaoMudanca', v)} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── Step 10: Gargalos ────────────────────────────────── */}
-            {step === 10 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-1">Qual é o principal problema desse processo hoje?</p>
-                <p className="text-[10px] text-gray-400 mb-3">Selecione o que mais impacta o dia a dia da equipe.</p>
-                <div className="space-y-1.5">
-                  {GARGALO_OPTIONS.map(opt => (
-                    <Radio key={opt} label={opt} value={opt} current={data.gargalo ?? ''} onChange={v => set('gargalo', v)} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── Resultado ────────────────────────────────────────── */}
-            {step === 'done' && analysis && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-1">
-                  <Sparkles size={15} className="text-violet-600" strokeWidth={1.75} />
-                  <span className="text-xs font-bold text-gray-800">Resultado do diagnóstico</span>
-                </div>
-
-                {/* Potencial + Complexidade side by side */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className={`rounded-xl border p-4 ${
-                    analysis.potential === 'ALTO'  ? 'bg-emerald-50 border-emerald-200' :
-                    analysis.potential === 'MÉDIO' ? 'bg-amber-50  border-amber-200'   :
-                                                      'bg-red-50    border-red-200'
-                  }`}>
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Potencial de automação</p>
-                    <p className={`text-2xl font-black ${
-                      analysis.potential === 'ALTO'  ? 'text-emerald-700' :
-                      analysis.potential === 'MÉDIO' ? 'text-amber-700'   :
-                                                        'text-red-700'
-                    }`}>
-                      {analysis.potential}
-                    </p>
-                  </div>
-                  <div className={`rounded-xl border p-4 ${
-                    analysis.complexidade === 'Baixa' ? 'bg-emerald-50 border-emerald-200' :
-                    analysis.complexidade === 'Média' ? 'bg-amber-50  border-amber-200'   :
-                                                         'bg-red-50    border-red-200'
-                  }`}>
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Complexidade</p>
-                    <p className={`text-2xl font-black ${
-                      analysis.complexidade === 'Baixa' ? 'text-emerald-700' :
-                      analysis.complexidade === 'Média' ? 'text-amber-700'   :
-                                                           'text-red-700'
-                    }`}>
-                      {analysis.complexidade}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Tipos de automação */}
-                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-2">Tipo de automação indicado</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {analysis.tiposAutomacao.map(t => (
-                      <span key={t} className={`inline-flex items-center border text-[10px] font-bold px-2.5 py-1 rounded-full ${TYPE_COLOURS[t] ?? 'bg-gray-100 border-gray-200 text-gray-700'}`}>
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Fluxo BPMN */}
-                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-3">Fluxo do processo (BPMN simplificado)</p>
-                  <BPMNDiagram nodes={analysis.fluxoBPMN} />
-                  <div className="flex gap-3 mt-3 pt-2 border-t border-gray-200">
-                    <span className="flex items-center gap-1 text-[8px] text-gray-400">
-                      <div className="w-3 h-3 rounded-full bg-emerald-500 flex-shrink-0" /> Evento
-                    </span>
-                    <span className="flex items-center gap-1 text-[8px] text-gray-400">
-                      <div className="w-4 h-3 rounded bg-blue-200 border border-blue-300 flex-shrink-0" /> Atividade
-                    </span>
-                    <span className="flex items-center gap-1 text-[8px] text-gray-400">
-                      <div className="w-3 h-3 bg-amber-200 border border-amber-400 rotate-45 flex-shrink-0" /> Decisão
-                    </span>
-                  </div>
-                  {/* Accessible text fallback */}
-                  <details className="mt-3">
-                    <summary className="text-[9px] text-gray-400 cursor-pointer hover:text-gray-600 select-none">
-                      Ver etapas em texto
-                    </summary>
-                    <ol className="mt-2 space-y-1 pl-4 list-decimal">
-                      {analysis.fluxoBPMN.map((node, i) => (
-                        <li key={i} className="text-[10px] text-gray-600">
-                          <span className="font-medium">{node.label}</span>
-                          {node.type === 'gateway' && node.branches && (
-                            <span className="text-gray-400">
-                              {' '}({node.branches.map(b => b.condition).join(' / ')})
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ol>
-                  </details>
-                </div>
-
-                {/* Justificativa */}
-                <div className="rounded-xl border border-gray-100 bg-white p-4">
-                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-2">Justificativa da análise</p>
-                  <p className="text-xs text-gray-700 leading-relaxed">{analysis.justificativa}</p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setStep(TOTAL_STEPS as WizardStep)}
-                  className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <ChevronLeft size={12} strokeWidth={2} />
-                  Editar respostas
-                </button>
-              </div>
-            )}
-
-            {step === 'done' && !analysis && (
-              <div className="text-center py-6">
-                <p className="text-xs text-gray-400 mb-2">Preencha todas as etapas para ver a análise.</p>
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                >
-                  Reiniciar diagnóstico
-                </button>
-              </div>
-            )}
-
-            {/* ── Navigation ───────────────────────────────────────── */}
-            {step !== 'done' && (
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                <div className="flex items-center gap-2">
-                  {(stepNum as number) > 1 && (
-                    <button
-                      type="button"
-                      onClick={handleBack}
-                      className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors"
-                    >
-                      <ChevronLeft size={13} strokeWidth={2} />
-                      Voltar
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => doSave(data)}
-                    disabled={saving || !respondentName.trim()}
-                    className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 disabled:opacity-40 font-medium transition-colors border border-gray-200 px-3 py-1.5 rounded-lg"
-                  >
-                    <Save size={12} strokeWidth={1.75} />
-                    {saving ? 'Salvando…' : 'Salvar progresso'}
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleContinue}
-                  disabled={saving || !respondentName.trim()}
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-lg text-xs transition-colors"
-                >
-                  {step === TOTAL_STEPS ? 'Finalizar diagnóstico' : (
-                    <>Continuar <ArrowRight size={13} strokeWidth={2} /></>
-                  )}
-                </button>
-              </div>
-            )}
-
-            {!respondentName.trim() && step !== 'done' && (
-              <p className="text-[10px] text-amber-600">Informe seu nome no topo da página para salvar.</p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+function complexityColor(complexity: string): string {
+  if (complexity === 'Baixa') return 'bg-emerald-50 border border-emerald-200 text-emerald-800';
+  if (complexity === 'Média') return 'bg-amber-50 border border-amber-200 text-amber-800';
+  return 'bg-red-50 border border-red-200 text-red-800';
 }
+
 
 // ── Library picker modal ──────────────────────────────────────────────────────
 
@@ -1486,6 +991,117 @@ function WizardView({
   );
 }
 
+// ── Report view ───────────────────────────────────────────────────────────────
+
+interface ReportViewProps {
+  entries:    Phase2Entry[];
+  savedForms: Map<string, Partial<Phase2FormData>>;
+  onBack:     () => void;
+}
+
+function ReportView({ entries, savedForms, onBack }: ReportViewProps) {
+  const completedEntries = entries.filter(e => getEntryStatus(e, savedForms) === 'done');
+
+  const analyses = completedEntries.flatMap(entry => {
+    const data     = savedForms.get(entry.subprocessId) ?? {};
+    const analysis = analyzeProcess(data);
+    return analysis ? [{ entry, analysis }] : [];
+  });
+
+  // Summary stats
+  const altoCount = analyses.filter(a => a.analysis.potential === 'ALTO').length;
+  const typeCounts: Record<string, number> = {};
+  analyses.forEach(({ analysis }) => {
+    analysis.tiposAutomacao.forEach(t => { typeCounts[t] = (typeCounts[t] ?? 0) + 1; });
+  });
+  const mostFreqType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <ChevronLeft size={16} strokeWidth={2} />
+          Voltar
+        </button>
+        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <Sparkles size={18} className="text-violet-500" strokeWidth={2} />
+          Relatório de Automação
+        </h2>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
+          <div className="text-3xl font-bold text-gray-900 mb-1">{completedEntries.length}</div>
+          <div className="text-xs text-gray-500 font-medium">Subprocessos mapeados</div>
+        </div>
+        <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5 text-center">
+          <div className="text-3xl font-bold text-emerald-600 mb-1">{altoCount}</div>
+          <div className="text-xs text-gray-500 font-medium">Alto potencial</div>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-center">
+          <div className="text-sm font-bold text-gray-900 mb-1 leading-tight">{mostFreqType}</div>
+          <div className="text-xs text-gray-500 font-medium">Tipo mais frequente</div>
+        </div>
+      </div>
+
+      {/* Per-subprocess sections */}
+      {analyses.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-12">Nenhum subprocesso concluído com análise disponível.</p>
+      ) : analyses.map(({ entry, analysis }) => (
+        <div key={entry.subprocessId} className="mb-10">
+          {/* Section header */}
+          <div className="mb-4 pb-2 border-b border-gray-100">
+            <h3 className="text-base font-bold text-gray-900">{entry.subprocessName}</h3>
+            <p className="text-sm text-gray-400 mt-0.5">{entry.processName}</p>
+          </div>
+
+          {/* Potential + complexity */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className={`rounded-xl p-4 ${potentialColor(analysis.potential)}`}>
+              <div className="text-[10px] font-semibold uppercase tracking-wider mb-1 opacity-70">Potencial de automação</div>
+              <div className="text-xl font-bold">{analysis.potential}</div>
+            </div>
+            <div className={`rounded-xl p-4 ${complexityColor(analysis.complexidade)}`}>
+              <div className="text-[10px] font-semibold uppercase tracking-wider mb-1 opacity-70">Complexidade</div>
+              <div className="text-xl font-bold">{analysis.complexidade}</div>
+            </div>
+          </div>
+
+          {/* Technology badges */}
+          {analysis.tiposAutomacao.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {analysis.tiposAutomacao.map(type => (
+                <span
+                  key={type}
+                  className={`inline-flex items-center border rounded-full text-xs font-semibold px-3 py-1 ${TYPE_COLOURS[type] ?? 'bg-gray-100 border-gray-200 text-gray-700'}`}
+                >
+                  {type}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Justification */}
+          <p className="text-sm text-gray-600 leading-relaxed mb-4">{analysis.justificativa}</p>
+
+          {/* BPMN diagram */}
+          {analysis.fluxoBPMN.length > 0 && (
+            <div className="rounded-xl border border-gray-100 bg-white p-4 overflow-x-auto">
+              <BPMNDiagram nodes={analysis.fluxoBPMN} size="full" />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Phase2Screen({ diagnosticId, prioritized, savedForms: initialSavedForms }: Props) {
@@ -1568,7 +1184,11 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
       )}
 
       {view === 'report' && (
-        <div>Relatório (próximo prompt)</div>
+        <ReportView
+          entries={entries}
+          savedForms={savedForms}
+          onBack={() => setView('selection')}
+        />
       )}
 
       {/* Modals — available from all views */}
