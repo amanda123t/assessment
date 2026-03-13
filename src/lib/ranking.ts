@@ -7,8 +7,7 @@
  * - Computing priority color tokens for UI and charts
  * - Preparing chart-ready data arrays
  *
- * priorityScore = automationScore × log(annualHours + 1)
- * impactScore   = log(annualHours + 1)
+ * priorityScore and impactScore come from SubprocessAssessment (0–100, see scoring.ts).
  *
  * No UI code here — only plain data transformations.
  */
@@ -24,10 +23,7 @@ export interface RankedAssessment extends SubprocessAssessment {
   barColor: string;        // Tailwind bg color class
   badgeColor: string;      // Tailwind badge class set
   scorePercent: number;    // 0–100 for progress bars
-  /** Natural-log of annualHours+1 — normalized operational impact for matrix/roadmap. */
-  impactScore: number;
-  /** automationScore × log(annualHours + 1) — composite ranking metric. */
-  priorityScore: number;
+  // impactScore and priorityScore (0–100) are inherited from SubprocessAssessment
 }
 
 export interface ChartDataPoint {
@@ -38,15 +34,6 @@ export interface ChartDataPoint {
 
 const MAX_SCORE = 24;
 
-/** Normalized operational impact: log(annualHours + 1). */
-export function computeImpactScore(annualHours: number): number {
-  return Math.log(annualHours + 1);
-}
-
-/** Composite priority: automationScore × log(annualHours + 1). */
-export function computePriorityScore(automationScore: number, annualHours: number): number {
-  return automationScore * Math.log(annualHours + 1);
-}
 
 function getPriority(score: number): Priority {
   if (score >= 18) return 'Alta';  // ≥ 75% of 24
@@ -81,18 +68,12 @@ function getPriorityColors(priority: Priority) {
 }
 
 /**
- * Sort assessments by priorityScore descending and enrich with ranking metadata.
- * priorityScore = automationScore × log(annualHours + 1)
- * impactScore   = log(annualHours + 1)
- * Priority label (Alta/Média/Baixa) continues to derive from totalScore for display consistency.
+ * Sort assessments by priorityScore (0–100, from scoring.ts) descending and enrich with
+ * ranking metadata.  Priority label (Alta/Média/Baixa) still derives from totalScore for
+ * display consistency with the weighted-score scale.
  */
 export function buildRanking(assessments: SubprocessAssessment[]): RankedAssessment[] {
   return [...assessments]
-    .map((assessment) => ({
-      ...assessment,
-      impactScore: computeImpactScore(assessment.annualHours),
-      priorityScore: computePriorityScore(assessment.automationScore, assessment.annualHours),
-    }))
     .sort((a, b) => b.priorityScore - a.priorityScore)
     .map((assessment, idx) => {
       const priority = getPriority(assessment.totalScore);

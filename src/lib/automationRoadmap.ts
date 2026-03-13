@@ -76,22 +76,13 @@ export function calculateImpactScore(a: SubprocessAssessment, maxSavings: number
   return Math.round(a.automationScore * 0.6 + normalizedSavings * 0.4);
 }
 
-function computeMedian(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 !== 0
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
 /**
- * Classify a subprocess into a roadmap phase.
+ * Classify a subprocess into a roadmap phase using absolute 0–100 thresholds.
  *
- * Phase 1 – Quick Wins:              high automation (≥60) + high impact (≥ median)
- * Phase 2 – Strategic Automations:   high impact + medium automation (40–59)
- * Phase 3 – Complex Transformations: high impact + low automation (<40)
- * Phase 4 – Low Priority:            low impact (< median), regardless of automation
+ * Phase 1 – Quick Wins:              priorityScore ≥ 70 AND automationScore ≥ 60
+ * Phase 2 – Strategic Automations:   priorityScore ≥ 50 AND automationScore < 60
+ * Phase 3 – Complex Transformations: impactScore ≥ 70 AND automationScore < 40
+ * Phase 4 – Low Priority:            priorityScore < 50 (fallback)
  *
  * Vote promotion: when voteAverage ≥ 4.0 and voteCount ≥ 3, the item is
  * promoted one phase up (strategic → quick-wins, transformation → strategic).
@@ -99,24 +90,21 @@ function computeMedian(values: number[]): number {
 function classifyPhase(
   automationScore: number,
   impactScore: number,
-  medianImpactScore: number,
+  priorityScore: number,
   voteAverage?: number,
   voteCount?: number,
 ): Pick<RoadmapItem, 'roadmapCategory' | 'timeline'> {
-  const highImpact  = impactScore >= medianImpactScore;
-  const highAuto    = automationScore >= 60;
-  const medAuto     = automationScore >= 40;
-  const voteBoost   = (voteAverage ?? 0) >= 4.0 && (voteCount ?? 0) >= 3;
+  const voteBoost = (voteAverage ?? 0) >= 4.0 && (voteCount ?? 0) >= 3;
 
   let category: RoadmapCategory;
-  if (highAuto && highImpact)  category = 'quick-wins';
-  else if (highImpact && medAuto) category = 'strategic';
-  else if (highImpact)         category = 'transformation';
-  else                         category = 'low-priority';
+  if (priorityScore >= 70 && automationScore >= 60)  category = 'quick-wins';
+  else if (priorityScore >= 50 && automationScore < 60) category = 'strategic';
+  else if (impactScore >= 70 && automationScore < 40)   category = 'transformation';
+  else                                                   category = 'low-priority';
 
   // Promote one phase when there is strong stakeholder consensus for urgency
   if (voteBoost) {
-    if (category === 'strategic')      category = 'quick-wins';
+    if (category === 'strategic')           category = 'quick-wins';
     else if (category === 'transformation') category = 'strategic';
   }
 
@@ -137,9 +125,12 @@ const CATEGORY_ORDER: Record<RoadmapCategory, number> = {
 /**
  * Build the full automation roadmap sorted by phase then by priorityScore descending.
  *
+ * impactScore and priorityScore (0–100) come directly from SubprocessAssessment
+ * (computed in assessmentEngine.ts via scoring.ts).
+ *
  * @param voteSummaries  Optional map of subprocessId → { average, count } from stakeholder votes.
  *   When provided:
- *   - priorityScore gains a vote boost: score × log(hours+1) × (1 + voteAverage/5)
+ *   - priorityScore gains a vote boost factor (1 + voteAverage/5) for sort ordering
  *   - Items with voteAverage ≥ 4.0 and count ≥ 3 are promoted one phase
  *   - voteAverage and voteCount are attached to each RoadmapItem for display
  *   Without votes the function behaves exactly as before.
@@ -150,32 +141,27 @@ export function buildAutomationRoadmap(
 ): RoadmapItem[] {
   if (assessments.length === 0) return [];
 
-  // Compute log-based impact and priority scores for each assessment
-  const withScores = assessments.map((a) => {
-    const impactScore = Math.log(a.annualHours + 1);
-    const vote        = voteSummaries?.get(a.subprocessId);
+  const items: RoadmapItem[] = assessments.map((a) => {
+    const vote            = voteSummaries?.get(a.subprocessId);
     const voteBoostFactor = vote && vote.count > 0 ? (1 + vote.average / 5) : 1;
-    const priorityScore   = a.automationScore * impactScore * voteBoostFactor;
-    return { assessment: a, impactScore, priorityScore, vote };
+    // Vote boost applied only to sort ordering, not to displayed score
+    const sortPriority    = Math.round(a.priorityScore * voteBoostFactor);
+    return {
+      subprocessId:        a.subprocessId,
+      subprocessName:      a.subprocessName,
+      macroprocessName:    a.macroprocessName,
+      processName:         a.processName,
+      automationScore:     a.automationScore,
+      impactScore:         a.impactScore,
+      effortScore:         calculateEffortScore(a),
+      estimatedSavings:    a.financialImpact,
+      savingsHours:        a.automationSavingsHours,
+      priorityScore:       sortPriority,
+      suggestedTechnology: suggestAutomationTechnology(a),
+      ...(vote && vote.count > 0 ? { voteAverage: vote.average, voteCount: vote.count } : {}),
+      ...classifyPhase(a.automationScore, a.impactScore, a.priorityScore, vote?.average, vote?.count),
+    };
   });
-
-  const medianImpactScore = computeMedian(withScores.map((x) => x.impactScore));
-
-  const items: RoadmapItem[] = withScores.map(({ assessment: a, impactScore, priorityScore, vote }) => ({
-    subprocessId:        a.subprocessId,
-    subprocessName:      a.subprocessName,
-    macroprocessName:    a.macroprocessName,
-    processName:         a.processName,
-    automationScore:     a.automationScore,
-    impactScore,
-    effortScore:         calculateEffortScore(a),
-    estimatedSavings:    a.financialImpact,
-    savingsHours:        a.automationSavingsHours,
-    priorityScore,
-    suggestedTechnology: suggestAutomationTechnology(a),
-    ...(vote && vote.count > 0 ? { voteAverage: vote.average, voteCount: vote.count } : {}),
-    ...classifyPhase(a.automationScore, impactScore, medianImpactScore, vote?.average, vote?.count),
-  }));
 
   return items.sort((a, b) => {
     const orderDiff = CATEGORY_ORDER[a.roadmapCategory] - CATEGORY_ORDER[b.roadmapCategory];

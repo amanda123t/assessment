@@ -578,18 +578,25 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                       {potential.label}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-3">
+                  <div className="text-xs text-gray-500 mt-2">{fmt(dispSavings)} h/ano economizáveis</div>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
                     <div className="text-center">
-                      <p className="text-lg font-bold text-gray-900">{fmt(dispSavings)}</p>
-                      <p className="text-[11px] text-gray-500">horas/ano</p>
+                      <p className={`text-lg font-bold ${item.priorityScore >= 70 ? 'text-red-600' : item.priorityScore >= 50 ? 'text-orange-500' : 'text-gray-500'}`}>
+                        {item.priorityScore}<span className="text-xs font-normal text-gray-400">/100</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500">prioridade</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-lg font-bold text-gray-900">{item.automationScore}</p>
-                      <p className="text-[11px] text-gray-500">automation</p>
+                      <p className="text-lg font-bold text-blue-600">
+                        {item.automationScore}<span className="text-xs font-normal text-gray-400">/100</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500">automação</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-lg font-bold text-gray-900">{normalizeScore(item.totalScore)}<span className="text-xs font-normal text-gray-500">/100</span></p>
-                      <p className="text-[11px] text-gray-500">score</p>
+                      <p className="text-lg font-bold text-violet-600">
+                        {item.impactScore}<span className="text-xs font-normal text-gray-400">/100</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500">impacto</p>
                     </div>
                   </div>
                 </div>
@@ -605,7 +612,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                   <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 w-10">Rank</th>
                   <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500">Subprocesso</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-36">Horas / Automação</th>
-                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-20">Pontuação</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-32">Prioridade / Automação / Impacto</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Potencial</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Pessoas</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Custo/h</th>
@@ -673,9 +680,20 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                         </div>
                       </td>
 
-                      {/* Pontuação */}
-                      <td className="px-3 py-2.5 text-center font-semibold text-gray-800 text-xs">
-                        {normalizeScore(item.totalScore)}<span className="text-gray-500 font-normal">/100</span>
+                      {/* Prioridade / Automação / Impacto */}
+                      <td className="px-3 py-2.5 text-center text-xs">
+                        <div className="space-y-0.5">
+                          <div className={`font-bold ${item.priorityScore >= 70 ? 'text-red-600' : item.priorityScore >= 50 ? 'text-orange-500' : 'text-gray-500'}`}>
+                            {item.priorityScore}<span className="font-normal text-gray-400">/100</span>
+                            <span className="text-gray-400 font-normal"> prioridade</span>
+                          </div>
+                          <div className="text-blue-600 font-medium">
+                            {item.automationScore}/100 automação
+                          </div>
+                          <div className="text-violet-600 font-medium">
+                            {item.impactScore}/100 impacto
+                          </div>
+                        </div>
                       </td>
 
                       {/* Potencial */}
@@ -865,8 +883,8 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
         {/* ── 4. Matriz de Priorização de Automação ────────────────────── */}
         {(() => {
-          // 2-axis matrix: X = automationScore, Y = impactScore (log(annualHours+1))
-          // Median impactScore is computed dynamically from the dataset
+          // 2-axis matrix: X = automationScore (0-100), Y = impactScore (0-100)
+          // Median impactScore is computed dynamically from the dataset for relative split
           const impactValues = ranked.map(r => r.impactScore);
           const sortedImpact = [...impactValues].sort((a, b) => a - b);
           const mid = Math.floor(sortedImpact.length / 2);
@@ -909,7 +927,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                 Matriz de Priorização de Automação
               </h3>
               <p className="text-xs text-gray-500 mb-4">
-                Eixo X: potencial de automação · Eixo Y: impacto operacional (horas anuais) · limiar Y = mediana do dataset
+                Eixo X: potencial de automação (0–100) · Eixo Y: impacto operacional (0–100) · limiar Y = mediana do dataset
               </p>
               <div className="grid grid-cols-2 gap-4">
                 {quadrants.map(({ label, desc, filter, bg, border, title, badge }) => {
