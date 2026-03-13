@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ChevronRight, ChevronDown,
   DollarSign, ShoppingCart, TrendingUp, Users,
   Truck, UserCog, ShieldCheck, LucideIcon,
-  Plus, X, Layers,
+  Plus, X, Layers, Search,
 } from 'lucide-react';
 import { Macroprocess, Process, Subprocess, SelectedSubprocessItem, CustomArea, CustomAreaProcess, CustomAreaSubprocess } from '@/types';
 import { getMacroprocessesForIndustry } from '@/data/industryLibrary';
@@ -283,6 +283,7 @@ export default function SubprocessExplorer({
   onCustomAreasChange,
   initialIndustry,
 }: Props) {
+  const [searchQuery, setSearchQuery]             = useState('');
   const [industryId, setIndustryId]               = useState<string | null>(initialIndustry ?? null);
   const [expandedMacros, setExpandedMacros]       = useState<Set<string>>(new Set());
   const [expandedProcesses, setExpandedProcesses] = useState<Set<string>>(new Set());
@@ -291,6 +292,26 @@ export default function SubprocessExplorer({
   const [customAreas, setCustomAreas]             = useState<CustomArea[]>(initialCustomAreas ?? []);
 
   const activeLibrary = getMacroprocessesForIndustry(industryId);
+
+  const filteredResults = useMemo(() => {
+    if (searchQuery.length < 2) return [];
+    const q = searchQuery.toLowerCase();
+    const results: { macro: Macroprocess; process: Process; subprocess: Subprocess }[] = [];
+    activeLibrary.forEach(macro => {
+      macro.processes.forEach(process => {
+        process.subprocesses.forEach(subprocess => {
+          if (
+            subprocess.name.toLowerCase().includes(q) ||
+            process.name.toLowerCase().includes(q) ||
+            macro.name.toLowerCase().includes(q)
+          ) {
+            results.push({ macro, process, subprocess });
+          }
+        });
+      });
+    });
+    return results.slice(0, 50);
+  }, [searchQuery, activeLibrary]);
   const [expandedCustomAreas, setExpandedCustomAreas]       = useState<Set<string>>(
     new Set((initialCustomAreas ?? []).map(a => a.id))
   );
@@ -398,7 +419,67 @@ export default function SubprocessExplorer({
       </div>
 
 
-      {/* Collapsible tree — library areas */}
+      {/* Search */}
+      <div className="sticky top-0 z-10 bg-gray-50 pb-3 pt-1">
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.75} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Buscar subprocesso... ex: conciliação, folha de pagamento"
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Selecione entre 5 e 15 subprocessos para um diagnóstico efetivo.
+          {selectedIds.size > 0 && (
+            <span className="font-semibold text-blue-600 ml-1">{selectedIds.size} selecionados</span>
+          )}
+        </p>
+      </div>
+
+      {/* Flat search results */}
+      {searchQuery.length >= 2 ? (
+        <div className="space-y-1">
+          {filteredResults.map(({ macro, process, subprocess }) => (
+            <button
+              key={subprocess.id}
+              onClick={() => onToggle(subprocess, macro, process)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors text-left ${
+                selectedIds.has(subprocess.id)
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-blue-50'
+              }`}
+            >
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
+                selectedIds.has(subprocess.id) ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+              }`}>
+                {selectedIds.has(subprocess.id) && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <div className="min-w-0">
+                <span className="block text-sm font-medium text-gray-800">{subprocess.name}</span>
+                <span className="block text-xs text-gray-400">{macro.name} › {process.name}</span>
+              </div>
+            </button>
+          ))}
+          {filteredResults.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-8">Nenhum subprocesso encontrado para &ldquo;{searchQuery}&rdquo;</p>
+          )}
+        </div>
+      ) : (
       <div className="space-y-2">
         {activeLibrary.map((macro) => {
           const Icon = MACRO_ICONS[macro.id];
@@ -645,6 +726,8 @@ export default function SubprocessExplorer({
           Adicionar nova área
         </button>
       </div>
+
+      )}
 
       {/* Custom subprocess creation modal (library processes) */}
       {showFormFor && (
