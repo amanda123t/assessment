@@ -119,12 +119,11 @@ export default function Questionnaire({
   };
 
   const handleSubmit = () => {
-    if (!allAnswered) return;
+    if (!allAnswered || showCompletion) return;
     setShowCompletion(true);
     setTimeout(() => {
-      setShowCompletion(false);
       onComplete(scores, subprocess, macroprocess, process, parseRealValues(realRaw));
-    }, 1200);
+    }, 800);
   };
 
   return (
@@ -273,9 +272,12 @@ export default function Questionnaire({
           {isLastCriterion && allAnswered ? (
             <button
               onClick={handleSubmit}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
+              disabled={showCompletion}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
             >
-              {isLast ? 'Ver ranking de oportunidades' : 'Avaliar próximo subprocesso'}
+              {showCompletion
+                ? (isLast ? 'Preparando resultados…' : 'Salvando…')
+                : (isLast ? 'Ver ranking de oportunidades' : 'Avaliar próximo subprocesso')}
             </button>
           ) : (
             <button
