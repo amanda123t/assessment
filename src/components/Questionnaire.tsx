@@ -87,11 +87,14 @@ export default function Questionnaire({
   const [scores, setScores] = useState<CriteriaScores>(getEmptyScores());
   const [realRaw, setRealRaw] = useState<RealValuesRaw>(EMPTY_REAL);
   const [showCompletion, setShowCompletion] = useState(false);
+  const [currentCriterion, setCurrentCriterion] = useState(0);
 
+  const criterion = CRITERIA[currentCriterion];
+  const isLastCriterion = currentCriterion === CRITERIA.length - 1;
   const allAnswered = Object.values(scores).every((s) => s > 0);
   const totalScore = calculateWeightedScore(scores);
-  const criteriaAnsweredCount = Object.values(scores).filter((s) => s > 0).length;
   const isLast = currentIndex === total - 1;
+  const realInputCfg = REAL_INPUT[criterion.key];
 
   const handleScore = (key: keyof CriteriaScores, value: number) => {
     setScores((prev) => ({ ...prev, [key]: value }));
@@ -107,16 +110,11 @@ export default function Questionnaire({
     cfg: RealInputConfig,
     rawValue: string,
   ) => {
-    // Strip anything that isn't a digit or decimal point; allow only one dot
     const clean = rawValue.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-
     setRealRaw((prev) => ({ ...prev, [cfg.stateKey]: clean }));
-
-    // Auto-select the matching range so the criterion is considered answered
     const n = parseFloat(clean);
     if (!isNaN(n) && n > 0) {
-      const autoScore = cfg.autoScore(n);
-      setScores((prev) => ({ ...prev, [criterionKey]: autoScore }));
+      setScores((prev) => ({ ...prev, [criterionKey]: cfg.autoScore(n) }));
     }
   };
 
@@ -130,7 +128,9 @@ export default function Questionnaire({
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="max-w-2xl mx-auto px-6 py-10">
+
+      {/* ── Completion overlay ───────────────────────────────────────────── */}
       {showCompletion && (
         <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center">
           <div className="text-center animate-in fade-in zoom-in duration-300">
@@ -139,12 +139,8 @@ export default function Questionnaire({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="text-lg font-bold text-gray-900">
-              {subprocess.name}
-            </p>
-            <p className="text-sm text-emerald-600 font-medium mt-1">
-              ✓ Avaliado com sucesso
-            </p>
+            <p className="text-lg font-bold text-gray-900">{subprocess.name}</p>
+            <p className="text-sm text-emerald-600 font-medium mt-1">✓ Avaliado com sucesso</p>
             {!isLast && (
               <p className="text-xs text-gray-400 mt-3">
                 Próximo: subprocesso {currentIndex + 2} de {total}
@@ -158,24 +154,33 @@ export default function Questionnaire({
           </div>
         </div>
       )}
-      {/* Header */}
-      <div className="mb-8">
-        <button
-          onClick={onBack}
-          className="text-sm text-gray-500 hover:text-gray-600 transition-colors mb-5 block"
-        >
-          ← Voltar
-        </button>
 
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <div className="mb-8">
         <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-1">
           Subprocesso {currentIndex + 1} de {total}
         </p>
 
-        <div className="w-full bg-gray-100 rounded-full h-1 mb-4">
+        {/* Criteria progress bar */}
+        <div className="w-full bg-gray-100 rounded-full h-1 mb-3">
           <div
             className="bg-blue-600 h-1 rounded-full transition-all duration-500"
-            style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
+            style={{ width: `${((currentCriterion + 1) / CRITERIA.length) * 100}%` }}
           />
+        </div>
+
+        {/* Criteria progress dots */}
+        <div className="flex gap-1 justify-center mb-5">
+          {CRITERIA.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i < currentCriterion  ? 'w-6 bg-blue-600' :
+                i === currentCriterion ? 'w-6 bg-blue-400' :
+                                         'w-3 bg-gray-200'
+              }`}
+            />
+          ))}
         </div>
 
         <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
@@ -186,83 +191,102 @@ export default function Questionnaire({
 
         <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
           <ClipboardCheck size={14} className="text-gray-400" strokeWidth={1.75} />
-          Selecione uma opção para cada critério
+          Critério {currentCriterion + 1} de {CRITERIA.length}
         </p>
       </div>
 
-      {/* Criteria cards */}
-      <div className="space-y-4">
-        {CRITERIA.map((criterion) => {
-          const currentScore = scores[criterion.key];
-          const realInputCfg = REAL_INPUT[criterion.key];
+      {/* ── Criterion card ───────────────────────────────────────────────── */}
+      <div key={criterion.key} className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+        <div className="mb-5">
+          <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">
+            {criterion.label}
+          </p>
+          <p className="text-sm text-gray-600">{criterion.description}</p>
+          {criterion.example && (
+            <p className="text-sm text-blue-500 mt-2 italic">{criterion.example}</p>
+          )}
+        </div>
 
-          return (
-            <div key={criterion.key} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-              <div className="mb-4">
-                <h3 className="font-semibold text-gray-800 text-sm">{criterion.label}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{criterion.description}</p>
-                {criterion.example && (
-                  <p className="text-xs text-blue-500 mt-1 italic">{criterion.example}</p>
-                )}
-              </div>
+        {/* Options — 2 columns so each option has more breathing room */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {criterion.options.map((optLabel, optIdx) => {
+            const val = optIdx + 1;
+            const isSelected = scores[criterion.key] === val;
+            return (
+              <button
+                key={val}
+                onClick={() => {
+                  handleScore(criterion.key, val);
+                  // Auto-advance after 300 ms — skip on last criterion
+                  setTimeout(() => {
+                    if (currentCriterion < CRITERIA.length - 1) {
+                      setCurrentCriterion((prev) => prev + 1);
+                    }
+                  }, 300);
+                }}
+                className={`px-4 py-4 rounded-xl border text-left text-sm font-medium transition-all duration-200 leading-snug ${
+                  isSelected
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-md scale-[1.02]'
+                    : 'bg-white border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700'
+                }`}
+              >
+                {optLabel}
+              </button>
+            );
+          })}
+        </div>
 
-              {/* Range buttons */}
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {criterion.options.map((optLabel, optIdx) => {
-                  const val = optIdx + 1;
-                  const isSelected = currentScore === val;
-                  return (
-                    <button
-                      key={val}
-                      onClick={() => handleScore(criterion.key, val)}
-                      className={`px-3 py-3.5 rounded-lg border text-center text-sm font-medium transition-all duration-150 leading-snug
-                        ${isSelected
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-sm ring-2 ring-blue-300 ring-offset-1'
-                          : 'bg-white border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700'
-                        }`}
-                    >
-                      {optLabel}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Optional real-value input — auto-selects matching range on input */}
-              {realInputCfg && (
-                <div className="mt-3 flex items-center gap-3">
-                  <label className="text-xs text-gray-500 whitespace-nowrap">
-                    {realInputCfg.label}
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={realRaw[realInputCfg.stateKey]}
-                    onChange={(e) => handleRealInput(criterion.key, realInputCfg, e.target.value)}
-                    placeholder={realInputCfg.placeholder}
-                    className="w-28 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {/* Optional real-value input */}
+        {realInputCfg && (
+          <div className="mt-4 flex items-center gap-3">
+            <label className="text-xs text-gray-500 whitespace-nowrap">
+              {realInputCfg.label}
+            </label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={realRaw[realInputCfg.stateKey]}
+              onChange={(e) => handleRealInput(criterion.key, realInputCfg, e.target.value)}
+              placeholder={realInputCfg.placeholder}
+              className="w-28 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+            />
+          </div>
+        )}
       </div>
 
-      {/* Footer */}
-      <div className="mt-8 flex items-center justify-between">
-        <span className="text-sm text-gray-500">
-          {allAnswered
-            ? <span className="text-blue-600 font-semibold">Pontuação total: <span className="text-lg">{normalizeScore(totalScore)}</span>/100</span>
-            : <>{criteriaAnsweredCount} de {CRITERIA.length} respondidos</>
-          }
-        </span>
+      {/* ── Navigation ───────────────────────────────────────────────────── */}
+      <div className="mt-6 flex items-center justify-between">
         <button
-          onClick={handleSubmit}
-          disabled={!allAnswered}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white disabled:text-gray-400 font-semibold px-6 py-2.5 rounded-lg transition-colors text-sm"
+          onClick={() => currentCriterion > 0 ? setCurrentCriterion((prev) => prev - 1) : onBack()}
+          className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
         >
-          {isLast ? 'Ver ranking de oportunidades' : 'Avaliar próximo subprocesso'}
+          ← {currentCriterion > 0 ? 'Critério anterior' : 'Voltar'}
         </button>
+
+        <div className="flex items-center gap-3">
+          {allAnswered && isLastCriterion && (
+            <span className="text-sm text-blue-600 font-semibold hidden sm:block">
+              Pontuação: {normalizeScore(totalScore)}/100
+            </span>
+          )}
+
+          {isLastCriterion && allAnswered ? (
+            <button
+              onClick={handleSubmit}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
+            >
+              {isLast ? 'Ver ranking de oportunidades' : 'Avaliar próximo subprocesso'}
+            </button>
+          ) : (
+            <button
+              onClick={() => setCurrentCriterion((prev) => prev + 1)}
+              disabled={!scores[criterion.key]}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
+            >
+              Próximo critério →
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
