@@ -208,23 +208,6 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     }).catch((err) => console.error('[RankingScreen] Failed to fetch vote summaries:', err));
   }, [diagnosticId]);
 
-  // ── IntersectionObserver for active section highlight ────────────────────
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) setActiveSection(entry.target.id);
-        });
-      },
-      { rootMargin: '-20% 0px -70% 0px' },
-    );
-    SECTIONS.forEach((s) => {
-      const el = document.getElementById(s.id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, []);
-
   // ── Debounced recalculate on override changes ─────────────────────────────
   useEffect(() => {
     const hasAnyOverride = Object.values(subprocessOverrides).some(
@@ -545,38 +528,8 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
         </p>
       </div>
 
-      {/* ── Sticky section nav ────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-100 -mx-6 px-6 mb-8">
-        <div className="flex gap-1">
-          {SECTIONS.map((s) => (
-            <a
-              key={s.id}
-              href={`#${s.id}`}
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' });
-                setActiveSection(s.id);
-              }}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeSection === s.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              {s.label}
-            </a>
-          ))}
-        </div>
-      </nav>
-
-      {/* ── Results content ───────────────────────────────────────────── */}
-      <div id="diagnostic-results" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
-
-        {/* ════════════════════════════════════════ RESUMO ══════════════ */}
-        <section id="resumo" className="scroll-mt-16 mb-10">
-
-          {/* 3 metric cards */}
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* ── Always-visible metric summary ─────────────────────────────── */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 
             {/* Card 1 — Operational Impact */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -632,56 +585,85 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
           </div>
 
-          {/* Matriz 2x2 — only when >= 3 subprocessos */}
-          {assessments.length >= 3 && (
-            <div className="mt-6">
-              <section className={CARD}>
-                <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
-                  <Target size={16} className="text-blue-600" strokeWidth={1.75} />
-                  Matriz de Priorização de Automação
-                </h3>
-                <p className="text-xs text-gray-500 mb-4">
-                  Eixo X: potencial de automação (0–100) · Eixo Y: impacto operacional (0–100) · limiar Y = mediana do dataset
-                </p>
-                {(() => {
-                  const quadrantData = quadrants.map((q) => ({
-                    ...q,
-                    items: ranked.filter(q.filter),
-                  }));
-                  const nonEmpty  = quadrantData.filter((q) => q.items.length > 0);
-                  const showAll   = nonEmpty.length <= 1;
-                  const toRender  = showAll ? quadrantData : nonEmpty;
-                  return (
-                    <div className={`grid gap-4 ${toRender.length <= 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2'}`}>
-                      {toRender.map(({ label, desc, items, bg, border, title: titleColor, badge }) => (
-                        <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
-                          <div className={`text-xs font-bold uppercase tracking-wide mb-1 ${titleColor}`}>{label}</div>
-                          <p className="text-xs text-gray-400 mb-3 leading-snug">{desc}</p>
-                          {items.length === 0 ? (
-                            <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
-                          ) : (
-                            <ul className="space-y-2">
-                              {items.map((r) => (
-                                <li key={r.subprocessId} className="flex items-center justify-between gap-2">
-                                  <span className="text-xs text-gray-800 leading-snug flex-1">{r.subprocessName}</span>
-                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge}`}>{r.automationScore}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </section>
-            </div>
-          )}
+      {/* ── Sticky section nav ────────────────────────────────────────── */}
+      <nav className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-100 -mx-6 px-6 mb-8">
+        <div className="flex gap-1">
+          {SECTIONS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setActiveSection(s.id)}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeSection === s.id
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </nav>
 
-        </section>
+      {/* ── Results content ───────────────────────────────────────────── */}
+      <div id="diagnostic-results" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
+
+        {/* ════════════════════════════════════════ RESUMO ══════════════ */}
+        {activeSection === 'resumo' && (
+          <section className="mb-10">
+
+            {/* Matriz 2x2 — only when >= 3 subprocessos */}
+            {assessments.length >= 3 && (
+              <div className="mt-6">
+                <section className={CARD}>
+                  <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                    <Target size={16} className="text-blue-600" strokeWidth={1.75} />
+                    Matriz de Priorização de Automação
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Eixo X: potencial de automação (0–100) · Eixo Y: impacto operacional (0–100) · limiar Y = mediana do dataset
+                  </p>
+                  {(() => {
+                    const quadrantData = quadrants.map((q) => ({
+                      ...q,
+                      items: ranked.filter(q.filter),
+                    }));
+                    const nonEmpty  = quadrantData.filter((q) => q.items.length > 0);
+                    const showAll   = nonEmpty.length <= 1;
+                    const toRender  = showAll ? quadrantData : nonEmpty;
+                    return (
+                      <div className={`grid gap-4 ${toRender.length <= 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2'}`}>
+                        {toRender.map(({ label, desc, items, bg, border, title: titleColor, badge }) => (
+                          <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
+                            <div className={`text-xs font-bold uppercase tracking-wide mb-1 ${titleColor}`}>{label}</div>
+                            <p className="text-xs text-gray-400 mb-3 leading-snug">{desc}</p>
+                            {items.length === 0 ? (
+                              <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
+                            ) : (
+                              <ul className="space-y-2">
+                                {items.map((r) => (
+                                  <li key={r.subprocessId} className="flex items-center justify-between gap-2">
+                                    <span className="text-xs text-gray-800 leading-snug flex-1">{r.subprocessName}</span>
+                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge}`}>{r.automationScore}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </section>
+              </div>
+            )}
+
+          </section>
+        )}
 
         {/* ════════════════════════════════════════ RANKING ═════════════ */}
-        <section id="ranking" className="scroll-mt-16 mb-10">
+        {activeSection === 'ranking' && (
+        <section className="mb-10">
           <section className={CARD}>
             <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
               <Trophy size={16} className="text-blue-600" strokeWidth={1.75} />
@@ -879,9 +861,11 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
           </section>
         </section>
+        )}
 
         {/* ════════════════════════════════════════ ROADMAP ═════════════ */}
-        <section id="roadmap" className="scroll-mt-16 mb-10">
+        {activeSection === 'roadmap' && (
+        <section className="mb-10">
 
           {/* Plano de Automação por Fases */}
           {autoRoadmap.length > 0 && (
@@ -1009,9 +993,11 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
           )}
 
         </section>
+        )}
 
         {/* ════════════════════════════════════════ AÇÕES ═══════════════ */}
-        <section id="acoes" className="scroll-mt-16">
+        {activeSection === 'acoes' && (
+        <section>
           <div className={CARD}>
             <h3 className="text-base font-semibold text-gray-800 mb-1">Próximos passos</h3>
             <p className="text-xs text-gray-400 mb-5">
@@ -1062,6 +1048,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
             </div>
           </div>
         </section>
+        )}
 
       </div>{/* end #diagnostic-results */}
 

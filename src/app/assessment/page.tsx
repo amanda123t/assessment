@@ -204,22 +204,24 @@ export default function AssessmentPage() {
 
   // ── Start evaluation ───────────────────────────────────────────────────────
 
-  const startEvaluation = useCallback(() => {
+  const startEvaluation = useCallback(async () => {
 
     if (state.mode === 'individual') {
       // Individual: create the diagnostic now (first moment all fields are known).
       // selected_subprocess_ids lets the resume page rebuild the exact queue.
-      addDoc(collection(db, 'diagnostics'), {
-        company:                  state.company,
-        created_at:               new Date().toISOString(),
-        selected_subprocess_ids:  state.globalSelectedSubprocesses.map((i) => i.subprocess.id),
-        custom_areas:             state.customAreas,
-      }).then((docRef) => {
+      try {
+        const docRef = await addDoc(collection(db, 'diagnostics'), {
+          company:                  state.company,
+          created_at:               new Date().toISOString(),
+          selected_subprocess_ids:  state.globalSelectedSubprocesses.map((i) => i.subprocess.id),
+          custom_areas:             state.customAreas,
+        });
         diagnosticId.current = docRef.id;
-      }).catch((err) => {
+      } catch (err) {
         console.error('[Firestore] Failed to create diagnostic:', err);
         showToast('Erro ao iniciar diagnóstico. Verifique sua conexão.');
-      });
+        return; // do NOT advance if Firestore failed
+      }
     }
     // Group: diagnostic already created in goToExploreGroup; diagnosticId.current is set.
 
@@ -502,7 +504,7 @@ export default function AssessmentPage() {
 
           <main>
 
-            <FadeTransition transitionKey={state.step}>
+            <FadeTransition transitionKey={`${state.step}-${state.currentSubprocessIndex}`}>
 
               {state.step === 'explore' && (
 
@@ -516,7 +518,6 @@ export default function AssessmentPage() {
                   </div>
                 ) : (
                   <SubprocessExplorer
-                    key={`explorer-${state.globalSelectedSubprocesses.length}`}
                     selectedIds={selectedIds}
                     customSubprocesses={customSubprocesses}
                     initialIndustry={state.industry ?? null}
