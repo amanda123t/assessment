@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, Fragment } from 'react';
+import { useToast, ToastContainer } from '@/components/Toast';
 import { Star, ChevronDown, ChevronUp, Users, BarChart2 } from 'lucide-react';
 import { SubprocessAssessment } from '@/types';
 import Link from 'next/link';
@@ -355,6 +356,8 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
   const [submitted, setSubmitted]   = useState(false);
   const [expanded, setExpanded]     = useState<Set<string>>(new Set());
 
+  const { toasts, showToast, dismissToast } = useToast();
+
   useEffect(() => {
     const unsubscribe = subscribeToVoteSummaries(assessmentId, voterToken, (data) => {
       setSummaries(data);
@@ -384,6 +387,7 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
       setSubmitted(true);
     } catch (err) {
       console.error('[VotingPanel] Failed to submit votes:', err);
+      showToast('Erro ao salvar votos. Verifique sua conexão e tente novamente.');
     } finally {
       setSubmitting(false);
     }
@@ -404,6 +408,7 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
 
   return (
     <div>
+    <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
 
       {/* Section header */}
