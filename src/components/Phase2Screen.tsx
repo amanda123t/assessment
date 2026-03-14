@@ -1601,7 +1601,7 @@ function ValidationView({
           onChange={e => setComment(e.target.value)}
           placeholder="Adicione observações sobre este fluxo…"
           rows={3}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
         />
       </div>
 
@@ -1788,7 +1788,7 @@ function AnalystReviewView({ entry, diagnosticId, bpmn, onFinalize, onReturn, on
           onChange={e => setAnalystComment(e.target.value)}
           placeholder="Observações técnicas ou justificativa…"
           rows={3}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
         />
       </div>
 
@@ -1801,7 +1801,7 @@ function AnalystReviewView({ entry, diagnosticId, bpmn, onFinalize, onReturn, on
             onChange={e => setReturnReason(e.target.value)}
             placeholder="Descreva o que precisa ser corrigido…"
             rows={3}
-            className="w-full border border-orange-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            className="w-full border border-orange-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
             autoFocus
           />
         </div>
