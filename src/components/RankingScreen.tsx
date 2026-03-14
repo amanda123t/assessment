@@ -10,7 +10,7 @@ import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { normalizeScore } from '@/lib/scoring';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
-import { FTE_HOURS_YEAR, DEFAULT_HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, getAutomationRate, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
+import { FTE_HOURS_YEAR, DEFAULT_HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, getAutomationRate, calculateAnnualHours, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
 import Link from 'next/link';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 import Tooltip from '@/components/Tooltip';
@@ -336,17 +336,16 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
     assessments.forEach((a) => {
       const override = subprocessOverrides[a.subprocessId];
-      // Scale annualHours only when a people override is provided.
-      // originalPeople must use the real value that was used when a.annualHours was
-      // originally computed — falling back to the score midpoint when absent.
+      // Recalculate annualHours from scratch using calculateAnnualHours so that
+      // the tiered peopleFactor is applied consistently whenever people changes.
       const rawSpPeople = parseFloat(override?.people ?? '');
       const effectivePeople = (!isNaN(rawSpPeople) && rawSpPeople > 0)
         ? rawSpPeople
         : (a.realValues?.people ?? PEOPLE_MAP[a.scores.peopleInvolved] ?? 1);
-      const originalPeople = a.realValues?.people ?? PEOPLE_MAP[a.scores.peopleInvolved] ?? 1;
-      const newAnnual = Math.round(
-        a.annualHours * Math.sqrt(effectivePeople) / Math.sqrt(originalPeople)
-      );
+      const newAnnual = calculateAnnualHours(a.scores, {
+        ...a.realValues,
+        people: effectivePeople,
+      });
       const rawSpCost     = parseFloat(override?.hourlyCost ?? '');
       const effectiveCost = (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost : DEFAULT_HOURLY_COST;
 
