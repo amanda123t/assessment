@@ -1330,7 +1330,7 @@ function WizardView({
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {OUTPUT_OPTIONS.map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.outputPrincipal ?? ''} onChange={v => set('outputPrincipal', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.outputPrincipal ?? ''} onChange={v => { set('outputPrincipal', v); if (data.customerPrincipal) scheduleAutoAdvance(); }} size="base" />
                 ))}
               </div>
             </div>
@@ -1340,7 +1340,7 @@ function WizardView({
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {CUSTOMER_OPTIONS.map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.customerPrincipal ?? ''} onChange={v => set('customerPrincipal', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.customerPrincipal ?? ''} onChange={v => { set('customerPrincipal', v); if (data.outputPrincipal) scheduleAutoAdvance(); }} size="base" />
                 ))}
               </div>
             </div>
