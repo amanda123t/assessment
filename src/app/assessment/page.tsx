@@ -22,7 +22,6 @@ import SubprocessExplorer from '@/components/SubprocessExplorer';
 import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
 import Questionnaire from '@/components/Questionnaire';
 import RankingScreen from '@/components/RankingScreen';
-import FadeTransition from '@/components/FadeTransition';
 
 // ── Page component ───────────────────────────────────────────────────────────
 
@@ -504,7 +503,7 @@ export default function AssessmentPage() {
 
           <main>
 
-            <FadeTransition transitionKey={`${state.step}-${state.currentSubprocessIndex}`}>
+            <>
 
               {state.step === 'explore' && (
 
@@ -561,7 +560,7 @@ export default function AssessmentPage() {
 
               )}
 
-            </FadeTransition>
+            </>
 
           </main>
 
