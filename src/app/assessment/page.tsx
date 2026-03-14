@@ -22,6 +22,7 @@ import SubprocessExplorer from '@/components/SubprocessExplorer';
 import SelectedSubprocessesPanel from '@/components/SelectedSubprocessesPanel';
 import Questionnaire from '@/components/Questionnaire';
 import RankingScreen from '@/components/RankingScreen';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // ── Page component ───────────────────────────────────────────────────────────
 
@@ -552,11 +553,13 @@ export default function AssessmentPage() {
 
               {state.step === 'ranking' && (
 
-                <RankingScreen
-                  assessments={state.assessments}
-                  onRestart={restart}
-                  diagnosticId={diagnosticId.current}
-                />
+                <ErrorBoundary>
+                  <RankingScreen
+                    assessments={state.assessments}
+                    onRestart={restart}
+                    diagnosticId={diagnosticId.current}
+                  />
+                </ErrorBoundary>
 
               )}
 

@@ -86,7 +86,6 @@ export default function Questionnaire({
 }: Props) {
   const [scores, setScores] = useState<CriteriaScores>(getEmptyScores());
   const [realRaw, setRealRaw] = useState<RealValuesRaw>(EMPTY_REAL);
-  const [showCompletion, setShowCompletion] = useState(false);
   const [currentCriterion, setCurrentCriterion] = useState(0);
 
   const criterion = CRITERIA[currentCriterion];
@@ -119,41 +118,12 @@ export default function Questionnaire({
   };
 
   const handleSubmit = () => {
-    if (!allAnswered || showCompletion) return;
-    setShowCompletion(true);
-    // Call onComplete synchronously — React 18 batches this with the local state
-    // update so the parent transition and the overlay happen in the same render,
-    // preventing the component from getting stuck with showCompletion=true.
+    if (!allAnswered) return;
     onComplete(scores, subprocess, macroprocess, process, parseRealValues(realRaw));
   };
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-10">
-
-      {/* ── Completion overlay ───────────────────────────────────────────── */}
-      {showCompletion && (
-        <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center">
-          <div className="text-center animate-in fade-in zoom-in duration-300">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-lg font-bold text-gray-900">{subprocess.name}</p>
-            <p className="text-sm text-emerald-600 font-medium mt-1">✓ Avaliado com sucesso</p>
-            {!isLast && (
-              <p className="text-xs text-gray-400 mt-3">
-                Próximo: subprocesso {currentIndex + 2} de {total}
-              </p>
-            )}
-            {isLast && (
-              <p className="text-sm text-blue-600 font-semibold mt-3">
-                Diagnóstico completo — preparando resultados...
-              </p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="mb-8">
@@ -273,12 +243,10 @@ export default function Questionnaire({
           {isLastCriterion && allAnswered ? (
             <button
               onClick={handleSubmit}
-              disabled={showCompletion}
+              disabled={!allAnswered}
               className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
             >
-              {showCompletion
-                ? (isLast ? 'Preparando resultados…' : 'Salvando…')
-                : (isLast ? 'Ver ranking de oportunidades' : 'Avaliar próximo subprocesso')}
+              {isLast ? 'Ver ranking de oportunidades' : 'Avaliar próximo subprocesso'}
             </button>
           ) : (
             <button
