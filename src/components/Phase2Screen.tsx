@@ -1132,7 +1132,7 @@ function WizardView({
             <p className="text-sm text-gray-500 mb-4">Selecione a opção que melhor descreve o gatilho do processo.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {COMO_COMECA_OPTIONS.map(opt => (
-                <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => { set('comoComeca', v); scheduleAutoAdvance(); }} size="base" />
+                <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => { set('comoComeca', v); if (data.origemDemanda) scheduleAutoAdvance(); }} size="base" />
               ))}
             </div>
             <div className="mt-6">
@@ -1144,7 +1144,7 @@ function WizardView({
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {SUPPLIER_OPTIONS.map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.origemDemanda ?? ''} onChange={v => set('origemDemanda', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.origemDemanda ?? ''} onChange={v => { set('origemDemanda', v); if (data.comoComeca) scheduleAutoAdvance(); }} size="base" />
                 ))}
               </div>
             </div>
