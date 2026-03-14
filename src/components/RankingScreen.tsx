@@ -55,10 +55,12 @@ function fmtFinancial(n: number): string {
   return `R$ ${Math.round(n).toLocaleString('pt-BR')}`;
 }
 
-function getPriorityBadge(priorityScore: number): { label: string; color: string } {
-  if (priorityScore >= 70) return { label: 'Alta',  color: 'text-red-700 bg-red-50 border-red-200' };
-  if (priorityScore >= 50) return { label: 'Média', color: 'text-amber-800 bg-amber-100 border-amber-300' };
-  return                          { label: 'Baixa', color: 'text-gray-600 bg-gray-50 border-gray-200' };
+function getMatrixBadge(automationScore: number, impactScore: number, medianImpact: number): { label: string; color: string } {
+  if (automationScore >= 60)
+    return { label: 'Alta',  color: 'text-red-700 bg-red-50 border-red-200' };
+  if (impactScore >= medianImpact)
+    return { label: 'Média', color: 'text-amber-800 bg-amber-100 border-amber-300' };
+  return   { label: 'Baixa', color: 'text-gray-600 bg-gray-50 border-gray-200' };
 }
 
 // ─── Insights (kept for PDF toolchain) ──────────────────────────────────────
@@ -260,6 +262,10 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     : sortedImpact.length % 2 !== 0
       ? sortedImpact[midIdx]
       : (sortedImpact[midIdx - 1] + sortedImpact[midIdx]) / 2;
+
+  const matrixAlta  = ranked.filter((r) => r.automationScore >= 60).length;
+  const matrixMedia = ranked.filter((r) => r.automationScore < 60 && r.impactScore >= medianImpact).length;
+  const matrixBaixa = ranked.filter((r) => r.automationScore < 60 && r.impactScore < medianImpact).length;
 
   const quadrants = [
     {
@@ -645,7 +651,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
         {/* Mobile: cards */}
         <div className="block md:hidden space-y-3">
           {ranked.map((item) => {
-            const badge      = getPriorityBadge(item.priorityScore);
+            const badge      = getMatrixBadge(item.automationScore, item.impactScore, medianImpact);
             const refined    = perSubprocessRefined[item.subprocessId];
             const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
             const spOverride = subprocessOverrides[item.subprocessId] ?? { people: '', hourlyCost: '' };
@@ -719,7 +725,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
             </thead>
             <tbody>
               {ranked.map((item, i) => {
-                const badge      = getPriorityBadge(item.priorityScore);
+                const badge      = getMatrixBadge(item.automationScore, item.impactScore, medianImpact);
                 const spOverride = subprocessOverrides[item.subprocessId] ?? { people: '', hourlyCost: '' };
                 const refined    = perSubprocessRefined[item.subprocessId];
                 const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
@@ -821,15 +827,15 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
           {/* Distribuição consolidada */}
           <div className="flex gap-3 shrink-0">
             <div className="text-center">
-              <p className="text-lg font-bold text-red-600">{summary.alta}</p>
+              <p className="text-lg font-bold text-red-600">{matrixAlta}</p>
               <p className="text-[10px] text-gray-400">alta</p>
             </div>
             <div className="text-center">
-              <p className="text-lg font-bold text-orange-500">{summary.media}</p>
+              <p className="text-lg font-bold text-orange-500">{matrixMedia}</p>
               <p className="text-[10px] text-gray-400">média</p>
             </div>
             <div className="text-center">
-              <p className="text-lg font-bold text-gray-400">{summary.baixa}</p>
+              <p className="text-lg font-bold text-gray-400">{matrixBaixa}</p>
               <p className="text-[10px] text-gray-400">baixa</p>
             </div>
           </div>
