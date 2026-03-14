@@ -315,11 +315,10 @@ function SystemsInput({
 function SequenceBuilder({
   value, onChange,
 }: { value: string[]; onChange: (v: string[]) => void }) {
-  const [selected,   setSelected]   = useState('');
   const [customStep, setCustomStep] = useState('');
 
-  const addStep = () => {
-    if (selected) { onChange([...value, selected]); setSelected(''); }
+  const addFromSelect = (opt: string) => {
+    if (opt) onChange([...value, opt]);
   };
 
   const addCustom = () => {
@@ -363,47 +362,46 @@ function SequenceBuilder({
           ))}
         </div>
       )}
-      <div className="flex gap-2">
-        <select
-          value={selected}
-          onChange={e => setSelected(e.target.value)}
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-gray-700"
-        >
-          <option value="">Selecionar etapa...</option>
+
+      {/* Etapas comuns — clique direto para adicionar */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 mb-2">Clique para adicionar etapas comuns:</p>
+        <div className="flex flex-wrap gap-1.5">
           {SEQUENCE_OPTIONS.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
+            <button
+              key={opt}
+              type="button"
+              onClick={() => addFromSelect(opt)}
+              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+            >
+              + {opt}
+            </button>
           ))}
-        </select>
-        <button
-          type="button"
-          onClick={addStep}
-          disabled={!selected}
-          className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold transition-colors"
-        >
-          <Plus size={12} strokeWidth={2.5} />
-          Adicionar
-        </button>
+        </div>
       </div>
-      <div className="flex gap-2 mt-2">
+
+      {/* Etapa personalizada */}
+      <div className="flex gap-2">
         <input
           type="text"
           value={customStep}
           onChange={e => setCustomStep(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
-          placeholder="Ou digite uma etapa personalizada..."
+          placeholder="Ou digite uma etapa personalizada e pressione Enter..."
           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
         <button
           type="button"
           onClick={addCustom}
           disabled={!customStep.trim()}
-          className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-600 text-xs font-medium transition-colors whitespace-nowrap"
+          className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold transition-colors whitespace-nowrap"
         >
-          Adicionar
+          + Adicionar
         </button>
       </div>
+
       {value.length === 0 && (
-        <p className="text-[11px] text-gray-500 mt-1">Adicione as etapas na ordem em que acontecem no processo.</p>
+        <p className="text-[11px] text-gray-400 mt-1">Clique nas etapas comuns acima ou digite etapas personalizadas.</p>
       )}
     </div>
   );
