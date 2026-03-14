@@ -23,7 +23,7 @@ import {
 } from '@/lib/phase2';
 import BPMNEditor from '@/components/BPMNEditor';
 import Tooltip from '@/components/Tooltip';
-import FadeTransition from '@/components/FadeTransition';
+
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -2099,7 +2099,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-      <FadeTransition transitionKey={view}>
+      <>
 
       {view === 'selection' && (
         <SelectionView
@@ -2187,7 +2187,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
         />
       )}
 
-      </FadeTransition>
+      </>
 
       {/* Modals — available from all views */}
       {showLibrary && (
