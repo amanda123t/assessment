@@ -97,10 +97,11 @@ function classifyPhase(
   const voteBoost = (voteAverage ?? 0) >= 4.0 && (voteCount ?? 0) >= 3;
 
   let category: RoadmapCategory;
-  if (priorityScore >= 70 && automationScore >= 60)  category = 'quick-wins';
-  else if (priorityScore >= 50 && automationScore < 60) category = 'strategic';
-  else if (impactScore >= 70 && automationScore < 40)   category = 'transformation';
-  else                                                   category = 'low-priority';
+  if (automationScore >= 60 && priorityScore >= 70)       category = 'quick-wins';
+  else if (automationScore >= 60 && priorityScore >= 50)  category = 'quick-wins';
+  else if (automationScore >= 40 && priorityScore >= 50)  category = 'strategic';
+  else if (impactScore >= 70 && automationScore < 40)     category = 'transformation';
+  else                                                     category = 'low-priority';
 
   // Promote one phase when there is strong stakeholder consensus for urgency
   if (voteBoost) {
