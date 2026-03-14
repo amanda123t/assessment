@@ -19,7 +19,7 @@ import { collection, query, getDocs, where, doc, getDoc } from 'firebase/firesto
 import { ArrowLeft } from 'lucide-react';
 
 import { db } from '@/lib/firebase';
-import { reconstructAssessment } from '@/lib/reconstructAssessment';
+import { reconstructAssessment, deduplicateAssessments } from '@/lib/reconstructAssessment';
 import { fetchVoteSummaries } from '@/lib/votes';
 import { loadPhase2Responses, Phase2FormData } from '@/lib/phase2';
 
@@ -60,9 +60,9 @@ export default function Phase2Page() {
       const snapshot = await getDocs(
         query(collection(db, 'responses'), where('diagnostic_id', '==', id)),
       );
-      const assessments = snapshot.docs.map(d =>
+      const assessments = deduplicateAssessments(snapshot.docs.map(d =>
         reconstructAssessment(d.data() as Record<string, unknown>),
-      );
+      ));
 
       // Load vote summaries to determine prioritized subprocesses
       // Use a dummy token since we only need aggregate data here

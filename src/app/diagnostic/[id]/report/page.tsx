@@ -18,7 +18,7 @@ import { collection, query, getDocs, where, doc, getDoc } from 'firebase/firesto
 
 import { db } from '@/lib/firebase';
 import { SubprocessAssessment } from '@/types';
-import { reconstructAssessment } from '@/lib/reconstructAssessment';
+import { reconstructAssessment, deduplicateAssessments } from '@/lib/reconstructAssessment';
 
 import RankingScreen from '@/components/RankingScreen';
 import { SkeletonMetrics, SkeletonList } from '@/components/Skeleton';
@@ -50,7 +50,7 @@ export default function SharedReportPage() {
         reconstructAssessment(d.data() as Record<string, unknown>),
       );
 
-      setAssessments(rebuilt);
+      setAssessments(deduplicateAssessments(rebuilt));
       setStatus('ready');
     }
 

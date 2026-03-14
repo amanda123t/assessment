@@ -16,7 +16,7 @@ import { ArrowLeft } from 'lucide-react';
 
 import { db } from '@/lib/firebase';
 import { SubprocessAssessment } from '@/types';
-import { reconstructAssessment } from '@/lib/reconstructAssessment';
+import { reconstructAssessment, deduplicateAssessments } from '@/lib/reconstructAssessment';
 
 import VotingPanel from '@/components/VotingPanel';
 import { SkeletonList } from '@/components/Skeleton';
@@ -48,7 +48,7 @@ export default function VotePage() {
         reconstructAssessment(d.data() as Record<string, unknown>),
       );
 
-      setAssessments(rebuilt);
+      setAssessments(deduplicateAssessments(rebuilt));
       setStatus('ready');
     }
 
