@@ -35,6 +35,11 @@ function fmtD(n: number): string {
   return n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 }
 
+function fmtFte(n: number): string {
+  if (n > 0 && n < 0.1) return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+}
+
 function fmtCurrency(n: number): string {
   return `R$ ${n.toLocaleString('pt-BR')}`;
 }
@@ -610,7 +615,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
             </p>
           </div>
           <p className="text-3xl font-extrabold text-emerald-600">
-            ≈ {fmtD(dispFteEquivalent)} <span className="text-sm font-medium text-gray-500">FTE/ano</span>
+            ≈ {fmtFte(dispFteEquivalent)} <span className="text-sm font-medium text-gray-500">FTE/ano</span>
           </p>
           <p className="text-xs text-gray-400 mt-1">
             1 FTE = {fmt(FTE_HOURS_YEAR)} h/ano
@@ -667,7 +672,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                         },
                       }))}
                       placeholder={String(PEOPLE_MAP[item.scores.peopleInvolved] ?? '')}
-                      className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-gray-300"
+                      className="w-14 border border-gray-300 rounded-lg px-2 py-1 text-xs text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-400 bg-gray-50"
                     />
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -683,7 +688,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                         },
                       }))}
                       placeholder={String(DEFAULT_HOURLY_COST)}
-                      className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-gray-300"
+                      className="w-14 border border-gray-300 rounded-lg px-2 py-1 text-xs text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-400 bg-gray-50"
                     />
                   </div>
                 </div>
@@ -760,7 +765,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                           },
                         }))}
                         placeholder={String(PEOPLE_MAP[item.scores.peopleInvolved] ?? '')}
-                        className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-300 bg-white"
+                        className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-400 bg-gray-50"
                       />
                     </td>
 
@@ -777,7 +782,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                           },
                         }))}
                         placeholder={String(DEFAULT_HOURLY_COST)}
-                        className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-300 bg-white"
+                        className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-400 bg-gray-50"
                       />
                     </td>
                   </tr>
