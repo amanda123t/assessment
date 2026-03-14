@@ -329,12 +329,20 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     let newFinancialTotal = 0;
 
     assessments.forEach((a) => {
-      const override      = subprocessOverrides[a.subprocessId];
-      const newAnnual     = a.annualHours;
+      const override = subprocessOverrides[a.subprocessId];
+      // Recalculate annualHours if people override is set
+      const rawSpPeople = parseFloat(override?.people ?? '');
+      const effectivePeople = (!isNaN(rawSpPeople) && rawSpPeople > 0)
+        ? rawSpPeople
+        : (PEOPLE_MAP[a.scores.peopleInvolved] ?? 1);
+      const originalPeople = PEOPLE_MAP[a.scores.peopleInvolved] ?? 1;
+      const newAnnual = Math.round(
+        a.annualHours * Math.sqrt(effectivePeople) / Math.sqrt(originalPeople)
+      );
       const rawSpCost     = parseFloat(override?.hourlyCost ?? '');
       const effectiveCost = (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost : DEFAULT_HOURLY_COST;
 
-      const newSavings         = calculateAutomationSavings(newAnnual, a.automationScore, a.scores.processStability);
+      const newSavings = calculateAutomationSavings(newAnnual, a.automationScore, a.scores.processStability);
       const fteSp              = calculateFteEquivalent(newSavings);
       const fteCurrentSp       = calculateFteCurrent(newAnnual);
       const fteAfterAutoSp     = calculateFteAfterAutomation(fteCurrentSp, fteSp);
