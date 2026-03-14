@@ -999,13 +999,14 @@ function WizardView({
   const doSave = async (formData: Partial<Phase2FormData>) => {
     setSaving(true);
     try {
+      const sanitized = JSON.parse(JSON.stringify({ ...formData, respondentName }));
       await savePhase2Response(
         diagnosticId,
         entry.subprocessId,
         entry.subprocessName,
         entry.processName,
         entry.isPrioritized,
-        { ...formData, respondentName },
+        sanitized,
       );
     } catch (err) {
       console.error('[Phase2] Wizard save failed:', err);
