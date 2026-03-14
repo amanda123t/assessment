@@ -262,42 +262,70 @@ function MultiCheck({
   );
 }
 
+const SYSTEM_SUGGESTIONS = [
+  'SAP', 'Oracle', 'TOTVS', 'Salesforce', 'HubSpot', 'Excel',
+  'Google Sheets', 'Power BI', 'Jira', 'Slack', 'Teams', 'E-mail',
+];
+
 function SystemsInput({
   value, onChange,
 }: { value: string[]; onChange: (v: string[]) => void }) {
   const [input, setInput] = useState('');
 
-  const add = () => {
-    const trimmed = input.trim();
+  const add = (system: string) => {
+    const trimmed = system.trim();
     if (trimmed && !value.includes(trimmed)) {
       onChange([...value, trimmed]);
       setInput('');
     }
   };
 
+  const suggestions = SYSTEM_SUGGESTIONS.filter(s => !value.includes(s));
+
   return (
     <div>
+      {/* Sugestões rápidas */}
+      {suggestions.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs text-gray-500 mb-2">Clique para adicionar:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {suggestions.map(sys => (
+              <button
+                key={sys}
+                type="button"
+                onClick={() => add(sys)}
+                className="text-xs px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+              >
+                + {sys}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Input customizado */}
       <div className="flex gap-2 mb-2">
         <input
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
-          placeholder="Ex: SAP, Salesforce, Excel..."
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(input); } }}
+          placeholder="Outro sistema? Digite e pressione Enter..."
           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
         <button
           type="button"
-          onClick={add}
-          className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium transition-colors"
+          onClick={() => add(input)}
+          disabled={!input.trim()}
+          className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold transition-colors"
         >
-          Adicionar
+          + Adicionar
         </button>
       </div>
+      {/* Selecionados */}
       {value.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {value.map(sys => (
-            <span key={sys} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium px-2 py-1 rounded-full">
+            <span key={sys} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full">
               {sys}
               <button type="button" onClick={() => onChange(value.filter(v => v !== sys))} className="hover:text-red-500 transition-colors">
                 <X size={10} />
