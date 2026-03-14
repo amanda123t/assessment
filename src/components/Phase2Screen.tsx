@@ -1283,7 +1283,7 @@ function WizardView({
               <p className="text-base font-semibold text-gray-700 mb-2">As informações precisam ser copiadas manualmente entre sistemas?</p>
               <div className="space-y-2">
                 {['Não', 'Sim, em alguns casos', 'Sim, com frequência', 'Não sei'].map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.copiaManual ?? ''} onChange={v => set('copiaManual', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.copiaManual ?? ''} onChange={v => { set('copiaManual', v); scheduleAutoAdvance(); }} size="base" />
                 ))}
               </div>
             </div>
