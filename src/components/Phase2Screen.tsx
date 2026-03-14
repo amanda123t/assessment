@@ -262,42 +262,70 @@ function MultiCheck({
   );
 }
 
+const SYSTEM_SUGGESTIONS = [
+  'SAP', 'Oracle', 'TOTVS', 'Salesforce', 'HubSpot', 'Excel',
+  'Google Sheets', 'Power BI', 'Jira', 'Slack', 'Teams', 'E-mail',
+];
+
 function SystemsInput({
   value, onChange,
 }: { value: string[]; onChange: (v: string[]) => void }) {
   const [input, setInput] = useState('');
 
-  const add = () => {
-    const trimmed = input.trim();
+  const add = (system: string) => {
+    const trimmed = system.trim();
     if (trimmed && !value.includes(trimmed)) {
       onChange([...value, trimmed]);
       setInput('');
     }
   };
 
+  const suggestions = SYSTEM_SUGGESTIONS.filter(s => !value.includes(s));
+
   return (
     <div>
+      {/* Sugestões rápidas */}
+      {suggestions.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs text-gray-500 mb-2">Clique para adicionar:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {suggestions.map(sys => (
+              <button
+                key={sys}
+                type="button"
+                onClick={() => add(sys)}
+                className="text-xs px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+              >
+                + {sys}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Input customizado */}
       <div className="flex gap-2 mb-2">
         <input
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
-          placeholder="Ex: SAP, Salesforce, Excel..."
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(input); } }}
+          placeholder="Outro sistema? Digite e pressione Enter..."
           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
         <button
           type="button"
-          onClick={add}
-          className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium transition-colors"
+          onClick={() => add(input)}
+          disabled={!input.trim()}
+          className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold transition-colors"
         >
-          Adicionar
+          + Adicionar
         </button>
       </div>
+      {/* Selecionados */}
       {value.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {value.map(sys => (
-            <span key={sys} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium px-2 py-1 rounded-full">
+            <span key={sys} className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full">
               {sys}
               <button type="button" onClick={() => onChange(value.filter(v => v !== sys))} className="hover:text-red-500 transition-colors">
                 <X size={10} />
@@ -315,11 +343,10 @@ function SystemsInput({
 function SequenceBuilder({
   value, onChange,
 }: { value: string[]; onChange: (v: string[]) => void }) {
-  const [selected,   setSelected]   = useState('');
   const [customStep, setCustomStep] = useState('');
 
-  const addStep = () => {
-    if (selected) { onChange([...value, selected]); setSelected(''); }
+  const addFromSelect = (opt: string) => {
+    if (opt) onChange([...value, opt]);
   };
 
   const addCustom = () => {
@@ -363,47 +390,46 @@ function SequenceBuilder({
           ))}
         </div>
       )}
-      <div className="flex gap-2">
-        <select
-          value={selected}
-          onChange={e => setSelected(e.target.value)}
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white text-gray-700"
-        >
-          <option value="">Selecionar etapa...</option>
+
+      {/* Etapas comuns — clique direto para adicionar */}
+      <div>
+        <p className="text-xs font-semibold text-gray-500 mb-2">Clique para adicionar etapas comuns:</p>
+        <div className="flex flex-wrap gap-1.5">
           {SEQUENCE_OPTIONS.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
+            <button
+              key={opt}
+              type="button"
+              onClick={() => addFromSelect(opt)}
+              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+            >
+              + {opt}
+            </button>
           ))}
-        </select>
-        <button
-          type="button"
-          onClick={addStep}
-          disabled={!selected}
-          className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold transition-colors"
-        >
-          <Plus size={12} strokeWidth={2.5} />
-          Adicionar
-        </button>
+        </div>
       </div>
-      <div className="flex gap-2 mt-2">
+
+      {/* Etapa personalizada */}
+      <div className="flex gap-2">
         <input
           type="text"
           value={customStep}
           onChange={e => setCustomStep(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
-          placeholder="Ou digite uma etapa personalizada..."
+          placeholder="Ou digite uma etapa personalizada e pressione Enter..."
           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
         <button
           type="button"
           onClick={addCustom}
           disabled={!customStep.trim()}
-          className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-600 text-xs font-medium transition-colors whitespace-nowrap"
+          className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-semibold transition-colors whitespace-nowrap"
         >
-          Adicionar
+          + Adicionar
         </button>
       </div>
+
       {value.length === 0 && (
-        <p className="text-[11px] text-gray-500 mt-1">Adicione as etapas na ordem em que acontecem no processo.</p>
+        <p className="text-[11px] text-gray-400 mt-1">Clique nas etapas comuns acima ou digite etapas personalizadas.</p>
       )}
     </div>
   );
@@ -973,13 +999,14 @@ function WizardView({
   const doSave = async (formData: Partial<Phase2FormData>) => {
     setSaving(true);
     try {
+      const sanitized = JSON.parse(JSON.stringify({ ...formData, respondentName }));
       await savePhase2Response(
         diagnosticId,
         entry.subprocessId,
         entry.subprocessName,
         entry.processName,
         entry.isPrioritized,
-        { ...formData, respondentName },
+        sanitized,
       );
     } catch (err) {
       console.error('[Phase2] Wizard save failed:', err);
@@ -1132,7 +1159,7 @@ function WizardView({
             <p className="text-sm text-gray-500 mb-4">Selecione a opção que melhor descreve o gatilho do processo.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {COMO_COMECA_OPTIONS.map(opt => (
-                <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => { set('comoComeca', v); scheduleAutoAdvance(); }} size="base" />
+                <Radio key={opt} label={opt} value={opt} current={data.comoComeca ?? ''} onChange={v => { set('comoComeca', v); if (data.origemDemanda) scheduleAutoAdvance(); }} size="base" />
               ))}
             </div>
             <div className="mt-6">
@@ -1144,7 +1171,7 @@ function WizardView({
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {SUPPLIER_OPTIONS.map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.origemDemanda ?? ''} onChange={v => set('origemDemanda', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.origemDemanda ?? ''} onChange={v => { set('origemDemanda', v); if (data.comoComeca) scheduleAutoAdvance(); }} size="base" />
                 ))}
               </div>
             </div>
@@ -1285,7 +1312,7 @@ function WizardView({
               <p className="text-base font-semibold text-gray-700 mb-2">As informações precisam ser copiadas manualmente entre sistemas?</p>
               <div className="space-y-2">
                 {['Não', 'Sim, em alguns casos', 'Sim, com frequência', 'Não sei'].map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.copiaManual ?? ''} onChange={v => set('copiaManual', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.copiaManual ?? ''} onChange={v => { set('copiaManual', v); scheduleAutoAdvance(); }} size="base" />
                 ))}
               </div>
             </div>
@@ -1332,7 +1359,7 @@ function WizardView({
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {OUTPUT_OPTIONS.map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.outputPrincipal ?? ''} onChange={v => set('outputPrincipal', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.outputPrincipal ?? ''} onChange={v => { set('outputPrincipal', v); if (data.customerPrincipal) scheduleAutoAdvance(); }} size="base" />
                 ))}
               </div>
             </div>
@@ -1342,7 +1369,7 @@ function WizardView({
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {CUSTOMER_OPTIONS.map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.customerPrincipal ?? ''} onChange={v => set('customerPrincipal', v)} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.customerPrincipal ?? ''} onChange={v => { set('customerPrincipal', v); if (data.outputPrincipal) scheduleAutoAdvance(); }} size="base" />
                 ))}
               </div>
             </div>
