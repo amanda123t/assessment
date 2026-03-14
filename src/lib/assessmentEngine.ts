@@ -53,6 +53,7 @@ export function createAssessment(
     fteCurrent,
     fteAutomatable,
     fteAfterAutomation,
+    realValues,
     isCustom,
   };
 }

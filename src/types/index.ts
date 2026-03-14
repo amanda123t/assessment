@@ -73,6 +73,8 @@ export interface SubprocessAssessment {
   fteAutomatable: number;
   /** FTE remaining after automation — max(0, fteCurrent - fteAutomatable). */
   fteAfterAutomation: number;
+  /** Real values typed by the user that override range midpoints in annualHours calculation. */
+  realValues?: RealValues;
   /** True for subprocesses created at runtime (not in processLibrary). */
   isCustom?: boolean;
 }

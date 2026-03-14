@@ -336,12 +336,14 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
     assessments.forEach((a) => {
       const override = subprocessOverrides[a.subprocessId];
-      // Recalculate annualHours if people override is set
+      // Scale annualHours only when a people override is provided.
+      // originalPeople must use the real value that was used when a.annualHours was
+      // originally computed — falling back to the score midpoint when absent.
       const rawSpPeople = parseFloat(override?.people ?? '');
       const effectivePeople = (!isNaN(rawSpPeople) && rawSpPeople > 0)
         ? rawSpPeople
-        : (PEOPLE_MAP[a.scores.peopleInvolved] ?? 1);
-      const originalPeople = PEOPLE_MAP[a.scores.peopleInvolved] ?? 1;
+        : (a.realValues?.people ?? PEOPLE_MAP[a.scores.peopleInvolved] ?? 1);
+      const originalPeople = a.realValues?.people ?? PEOPLE_MAP[a.scores.peopleInvolved] ?? 1;
       const newAnnual = Math.round(
         a.annualHours * Math.sqrt(effectivePeople) / Math.sqrt(originalPeople)
       );
@@ -729,8 +731,8 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                 const spOverride = subprocessOverrides[item.subprocessId] ?? { people: '', hourlyCost: '' };
                 const refined    = perSubprocessRefined[item.subprocessId];
                 const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
-                const spVolume   = VOLUME_MAP[item.scores.operationalVolume] ?? 0;
-                const spTime     = TIME_MAP[item.scores.executionTime] ?? 0;
+                const spVolume   = item.realValues?.volume      ?? VOLUME_MAP[item.scores.operationalVolume] ?? 0;
+                const spTime     = item.realValues?.timeMinutes ?? TIME_MAP[item.scores.executionTime]       ?? 0;
 
                 return (
                   <tr key={item.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
@@ -778,7 +780,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                             people: e.target.value,
                           },
                         }))}
-                        placeholder={String(PEOPLE_MAP[item.scores.peopleInvolved] ?? '')}
+                        placeholder={String(item.realValues?.people ?? PEOPLE_MAP[item.scores.peopleInvolved] ?? '')}
                         className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-400 bg-gray-50"
                       />
                     </td>
