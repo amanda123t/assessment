@@ -244,7 +244,7 @@ export default function Questionnaire({
             <button
               onClick={handleSubmit}
               disabled={!allAnswered}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:cursor-not-allowed disabled:text-gray-400 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
             >
               {isLast ? 'Ver ranking de oportunidades' : 'Avaliar próximo subprocesso'}
             </button>

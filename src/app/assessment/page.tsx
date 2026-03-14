@@ -39,16 +39,14 @@ export default function AssessmentPage() {
   // ── Persist responses in Firestore when ranking is reached ──────────────────
 
   useEffect(() => {
-
     if (state.step !== 'ranking' || state.assessments.length === 0) return;
     if (alreadySaved.current) return;
     alreadySaved.current = true;
-
     const createdAt = new Date().toISOString();
-
+    console.log('[BulkSave] Saving responses for diagnostic:', diagnosticId.current, 'assessments:', state.assessments.length);
     state.assessments.forEach((a) => {
-      // Skip any response already saved by the incremental path in completeQuestionnaire
-      if (savedAssessmentIds.current.has(a.subprocessId)) return;
+      // Sempre tentar salvar — o Firestore vai criar um documento duplicado,
+      // mas é melhor duplicar do que perder. A query no vote/report não se importa com duplicatas.
       addDoc(collection(db, 'responses'), {
         diagnostic_id: diagnosticId.current,
         subprocess_id: a.subprocessId,
@@ -57,12 +55,12 @@ export default function AssessmentPage() {
         scores:        a.scores,
         answered_by:   state.email,
         created_at:    createdAt,
+      }).then(() => {
+        console.log('[BulkSave] Saved:', a.subprocessId);
       }).catch((err) => {
-        console.error('[Firestore] Failed to save response:', err);
-        showToast('Erro ao salvar resposta. Verifique sua conexão.');
+        console.error('[BulkSave] Failed:', a.subprocessId, err);
       });
     });
-
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.step]);
 
@@ -258,7 +256,6 @@ export default function AssessmentPage() {
       // Incremental save — persists progress immediately so resuming works even
       // if the user closes the tab before reaching the ranking screen.
       if (!savedAssessmentIds.current.has(assessment.subprocessId)) {
-        savedAssessmentIds.current.add(assessment.subprocessId);
         addDoc(collection(db, 'responses'), {
           diagnostic_id: diagnosticId.current,
           subprocess_id: assessment.subprocessId,
@@ -268,6 +265,9 @@ export default function AssessmentPage() {
           real_values:   realValues ?? null,
           answered_by:   state.email,
           created_at:    new Date().toISOString(),
+        }).then(() => {
+          savedAssessmentIds.current.add(assessment.subprocessId);
+          console.log('[Firestore] Response saved OK:', assessment.subprocessId, 'diagnostic:', diagnosticId.current);
         }).catch((err) => {
           console.error('[Firestore] Failed to save response:', err);
           showToast('Erro ao salvar resposta. Verifique sua conexão.');
