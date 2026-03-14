@@ -173,6 +173,21 @@ const CUSTOMER_OPTIONS = [
   'Outro',
 ];
 
+const DEPARTAMENTO_OPTIONS = [
+  'Financeiro',
+  'Recursos Humanos',
+  'Compras / Suprimentos',
+  'Operações / Produção',
+  'Logística',
+  'Comercial / Vendas',
+  'Marketing',
+  'TI / Tecnologia',
+  'Jurídico',
+  'Atendimento ao Cliente',
+  'Administrativo',
+  'Outro',
+];
+
 const HANDOFF_AREAS_OPTIONS = [
   'Financeiro',
   'TI / Tecnologia',
@@ -1082,16 +1097,17 @@ function WizardView({
         {step === 1 && (
           <div className="space-y-6">
             <div>
-              <label className="block text-base font-semibold text-gray-700 mb-2">
+              <p className="text-base font-semibold text-gray-700 mb-1">
                 Departamento responsável por este processo
-              </label>
-              <input
-                type="text"
-                value={data.departamento ?? ''}
-                onChange={e => set('departamento', e.target.value)}
-                placeholder="Ex: Financeiro, RH, Operações"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Selecione o departamento principal que executa este processo.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {DEPARTAMENTO_OPTIONS.map(opt => (
+                  <Radio key={opt} label={opt} value={opt} current={data.departamento ?? ''} onChange={v => { set('departamento', v); }} size="base" />
+                ))}
+              </div>
             </div>
             <div>
               <p className="text-base font-semibold text-gray-700 mb-1">
