@@ -21,6 +21,8 @@ export interface RoadmapItem {
   timeline: '0–3 meses' | '3–6 meses' | '6–12 meses';
   /** Technology recommendation derived from questionnaire scores. */
   suggestedTechnology: string;
+  /** Matrix quadrant identifier — same logic as RankingScreen. */
+  matrixQuadrant?: string;
   /** Mean stakeholder priority vote (1–5). Present only when votes exist. */
   voteAverage?: number;
   /** Number of stakeholder votes cast for this subprocess. */
@@ -77,36 +79,39 @@ export function calculateImpactScore(a: SubprocessAssessment, maxSavings: number
 }
 
 /**
- * Classify a subprocess into a roadmap phase using absolute 0–100 thresholds.
+ * Classify a subprocess into a roadmap phase derived directly from its matrix quadrant,
+ * keeping the roadmap aligned with the matrix (single source of truth).
  *
- * Phase 1 – Quick Wins:              priorityScore ≥ 70 AND automationScore ≥ 60
- * Phase 2 – Strategic Automations:   priorityScore ≥ 50 AND automationScore < 60
- * Phase 3 – Complex Transformations: impactScore ≥ 70 AND automationScore < 40
- * Phase 4 – Low Priority:            priorityScore < 50 (fallback)
+ * Quadrant → Phase mapping:
+ *   prioridade-imediata / vitorias-rapidas → quick-wins  (0–3 meses)
+ *   avaliar-engenharia                     → strategic   (3–6 meses)
+ *   baixa-prioridade                       → low-priority (6–12 meses)
  *
- * Vote promotion: when voteAverage ≥ 4.0 and voteCount ≥ 3, the item is
- * promoted one phase up (strategic → quick-wins, transformation → strategic).
+ * Vote promotion: voteAverage ≥ 4.0 and voteCount ≥ 3 promotes one phase up.
  */
 function classifyPhase(
-  automationScore: number,
-  impactScore: number,
-  priorityScore: number,
+  matrixQuadrant: string,
   voteAverage?: number,
   voteCount?: number,
 ): Pick<RoadmapItem, 'roadmapCategory' | 'timeline'> {
   const voteBoost = (voteAverage ?? 0) >= 4.0 && (voteCount ?? 0) >= 3;
 
   let category: RoadmapCategory;
-  if (automationScore >= 60 && priorityScore >= 70)       category = 'quick-wins';
-  else if (automationScore >= 60 && priorityScore >= 50)  category = 'quick-wins';
-  else if (automationScore >= 40 && priorityScore >= 50)  category = 'strategic';
-  else if (impactScore >= 70 && automationScore < 40)     category = 'transformation';
-  else                                                     category = 'low-priority';
+  switch (matrixQuadrant) {
+    case 'prioridade-imediata':
+    case 'vitorias-rapidas':
+      category = 'quick-wins';
+      break;
+    case 'avaliar-engenharia':
+      category = 'strategic';
+      break;
+    default:
+      category = 'low-priority';
+  }
 
-  // Promote one phase when there is strong stakeholder consensus for urgency
   if (voteBoost) {
-    if (category === 'strategic')           category = 'quick-wins';
-    else if (category === 'transformation') category = 'strategic';
+    if (category === 'strategic')       category = 'quick-wins';
+    else if (category === 'low-priority') category = 'strategic';
   }
 
   const timeline: RoadmapItem['timeline'] =
@@ -126,15 +131,10 @@ const CATEGORY_ORDER: Record<RoadmapCategory, number> = {
 /**
  * Build the full automation roadmap sorted by phase then by priorityScore descending.
  *
- * impactScore and priorityScore (0–100) come directly from SubprocessAssessment
- * (computed in assessmentEngine.ts via scoring.ts).
+ * Matrix quadrant is computed here using the same thresholds as RankingScreen so that
+ * roadmap phases are always derived from the matrix — the single source of truth.
  *
  * @param voteSummaries  Optional map of subprocessId → { average, count } from stakeholder votes.
- *   When provided:
- *   - priorityScore gains a vote boost factor (1 + voteAverage/5) for sort ordering
- *   - Items with voteAverage ≥ 4.0 and count ≥ 3 are promoted one phase
- *   - voteAverage and voteCount are attached to each RoadmapItem for display
- *   Without votes the function behaves exactly as before.
  */
 export function buildAutomationRoadmap(
   assessments: SubprocessAssessment[],
@@ -142,11 +142,24 @@ export function buildAutomationRoadmap(
 ): RoadmapItem[] {
   if (assessments.length === 0) return [];
 
+  // Compute median impactScore — same logic as RankingScreen matrix
+  const sorted = [...assessments].sort((a, b) => a.impactScore - b.impactScore);
+  const midIdx = Math.floor(sorted.length / 2);
+  const medianImpact = sorted.length % 2 !== 0
+    ? sorted[midIdx].impactScore
+    : (sorted[midIdx - 1].impactScore + sorted[midIdx].impactScore) / 2;
+
   const items: RoadmapItem[] = assessments.map((a) => {
     const vote            = voteSummaries?.get(a.subprocessId);
     const voteBoostFactor = vote && vote.count > 0 ? (1 + vote.average / 5) : 1;
-    // Vote boost applied only to sort ordering, not to displayed score
     const sortPriority    = Math.round(a.priorityScore * voteBoostFactor);
+
+    let matrixQuadrant: string;
+    if      (a.automationScore >= 60 && a.impactScore >= medianImpact) matrixQuadrant = 'prioridade-imediata';
+    else if (a.automationScore >= 60 && a.impactScore <  medianImpact) matrixQuadrant = 'vitorias-rapidas';
+    else if (a.automationScore <  60 && a.impactScore >= medianImpact) matrixQuadrant = 'avaliar-engenharia';
+    else                                                                matrixQuadrant = 'baixa-prioridade';
+
     return {
       subprocessId:        a.subprocessId,
       subprocessName:      a.subprocessName,
@@ -159,8 +172,9 @@ export function buildAutomationRoadmap(
       savingsHours:        a.automationSavingsHours,
       priorityScore:       sortPriority,
       suggestedTechnology: suggestAutomationTechnology(a),
+      matrixQuadrant,
       ...(vote && vote.count > 0 ? { voteAverage: vote.average, voteCount: vote.count } : {}),
-      ...classifyPhase(a.automationScore, a.impactScore, a.priorityScore, vote?.average, vote?.count),
+      ...classifyPhase(matrixQuadrant, vote?.average, vote?.count),
     };
   });
 

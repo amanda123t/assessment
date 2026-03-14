@@ -32,12 +32,9 @@ export interface ChartDataPoint {
   fill: string;            // hex color for Recharts
 }
 
-const MAX_SCORE = 24;
-
-
-function getPriority(score: number): Priority {
-  if (score >= 18) return 'Alta';  // ≥ 75% of 24
-  if (score >= 12) return 'Média'; // ≥ 50% of 24
+function getPriority(priorityScore: number): Priority {
+  if (priorityScore >= 70) return 'Alta';
+  if (priorityScore >= 50) return 'Média';
   return 'Baixa';
 }
 
@@ -76,7 +73,7 @@ export function buildRanking(assessments: SubprocessAssessment[]): RankedAssessm
   return [...assessments]
     .sort((a, b) => b.priorityScore - a.priorityScore)
     .map((assessment, idx) => {
-      const priority = getPriority(assessment.totalScore);
+      const priority = getPriority(assessment.priorityScore);
       const colors = getPriorityColors(priority);
       return {
         ...assessment,
@@ -85,7 +82,7 @@ export function buildRanking(assessments: SubprocessAssessment[]): RankedAssessm
         priorityColor: colors.priorityColor,
         barColor: colors.barColor,
         badgeColor: colors.badgeColor,
-        scorePercent: Math.round((assessment.totalScore / MAX_SCORE) * 100),
+        scorePercent: assessment.priorityScore,
       };
     });
 }
@@ -93,13 +90,12 @@ export function buildRanking(assessments: SubprocessAssessment[]): RankedAssessm
 /** Prepare a chart-friendly array (truncated to top N for readability). */
 export function buildChartData(ranked: RankedAssessment[], topN = 10): ChartDataPoint[] {
   return ranked.slice(0, topN).map((r) => {
-    const priority = getPriority(r.totalScore);
-    const colors = getPriorityColors(priority);
+    const colors = getPriorityColors(r.priority);
     return {
       name: r.subprocessName.length > 28
         ? r.subprocessName.slice(0, 26) + '…'
         : r.subprocessName,
-      score: r.totalScore,
+      score: r.priorityScore,
       fill: colors.chartFill,
     };
   });
