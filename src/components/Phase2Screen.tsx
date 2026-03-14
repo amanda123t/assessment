@@ -840,7 +840,6 @@ function SelectionView({
                 onClick={() => onSelectEntry(index)}
                 className="flex items-center gap-3 min-w-0 flex-1 text-left"
               >
-                <div className="shrink-0">{cfg.icon}</div>
                 <div className="min-w-0">
                   <span className="block text-sm font-semibold text-gray-800 truncate">
                     {entry.subprocessName}
