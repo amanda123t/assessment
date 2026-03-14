@@ -62,6 +62,7 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
             onChange={(e) => { setCode(e.target.value); setError(false); }}
             placeholder="Código de acesso"
             autoComplete="off"
+            autoFocus
             className={`w-full border rounded-lg px-4 py-2.5 text-sm outline-none transition-colors
               ${error
                 ? 'border-red-400 bg-red-50 focus:border-red-500'

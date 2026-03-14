@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import {
-  Trophy, FileDown, RotateCcw, Activity,
-  Lightbulb, TrendingUp, DollarSign, Target, ChevronDown, X, Pencil,
+  FileDown, RotateCcw, Activity,
+  TrendingUp, DollarSign, Target, ChevronDown, X, Pencil,
   Zap, Layers, Clock,
 } from 'lucide-react';
 import { SubprocessAssessment, AssessmentIdentification } from '@/types';
@@ -16,7 +16,7 @@ import PDFDiagnosticReport from './PDFDiagnosticReport';
 import Tooltip from '@/components/Tooltip';
 import { fetchVoteSummaries } from '@/lib/votes';
 
-// suppress unused-import warning for normalizeScore (used by downstream PDF toolchain)
+// suppress unused-import warnings (used by downstream PDF toolchain)
 void normalizeScore;
 
 interface Props {
@@ -35,18 +35,28 @@ function fmtD(n: number): string {
   return n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 }
 
-function getAutomationPotential(score: number): { label: string; color: string } {
-  if (score >= 18) return { label: 'Muito Alto', color: 'text-red-600 bg-red-50 border-red-200' };
-  if (score >= 15) return { label: 'Alto',       color: 'text-orange-600 bg-orange-50 border-orange-200' };
-  if (score >= 12) return { label: 'Médio',      color: 'text-amber-800 bg-amber-100 border-amber-300' };
-  return               { label: 'Baixo',      color: 'text-gray-600 bg-gray-50 border-gray-200' };
-}
-
 function fmtCurrency(n: number): string {
   return `R$ ${n.toLocaleString('pt-BR')}`;
 }
+// suppress unused warning (used by downstream PDF toolchain)
+void fmtCurrency;
 
-// ─── Insights ───────────────────────────────────────────────────────────────
+/** Rounds to nearest thousand and formats as "R$ X mil" or "R$ X.XXX". */
+function fmtFinancial(n: number): string {
+  if (n >= 1000) {
+    const mil = Math.round(n / 1000);
+    return `R$ ${mil} mil`;
+  }
+  return `R$ ${Math.round(n).toLocaleString('pt-BR')}`;
+}
+
+function getPriorityBadge(priorityScore: number): { label: string; color: string } {
+  if (priorityScore >= 70) return { label: 'Alta',  color: 'text-red-700 bg-red-50 border-red-200' };
+  if (priorityScore >= 50) return { label: 'Média', color: 'text-amber-800 bg-amber-100 border-amber-300' };
+  return                          { label: 'Baixa', color: 'text-gray-600 bg-gray-50 border-gray-200' };
+}
+
+// ─── Insights (kept for PDF toolchain) ──────────────────────────────────────
 
 interface Insight {
   text: string;
@@ -125,16 +135,7 @@ function buildInsights(ranked: RankedAssessment[]): string[] {
     .map((i) => i.text);
 }
 
-// ─── Navigation sections ─────────────────────────────────────────────────────
-
-const SECTIONS = [
-  { id: 'resumo',  label: 'Resumo' },
-  { id: 'ranking', label: 'Ranking' },
-  { id: 'roadmap', label: 'Roadmap' },
-  { id: 'acoes',   label: 'Ações' },
-] as const;
-
-// ─── Roadmap label maps ──────────────────────────────────────────────────────
+// ─── Roadmap label maps (kept for PDF toolchain) ─────────────────────────────
 
 const ROADMAP_LABELS: Record<RoadmapCategory, string> = {
   'quick-wins':     'Vitória Rápida',
@@ -175,15 +176,13 @@ const EMPTY_FORM: IdForm = { company: '', area: '', respondentName: '', email: '
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function RankingScreen({ assessments, onRestart, diagnosticId }: Props) {
-  const [activeSection, setActiveSection] = useState('resumo');
-  const [insightsOpen, setInsightsOpen] = useState(false);
-  const [showIdModal, setShowIdModal] = useState(false);
+  const [showIdModal, setShowIdModal]       = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
-  const [idForm, setIdForm] = useState<IdForm>(EMPTY_FORM);
+  const [idForm, setIdForm]                 = useState<IdForm>(EMPTY_FORM);
   const [savedIdentification, setSavedIdentification] = useState<AssessmentIdentification | null>(null);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [refinedImpact, setRefinedImpact] = useState<{
+  const [generatingPdf, setGeneratingPdf]   = useState(false);
+  const [refinedImpact, setRefinedImpact]   = useState<{
     annualHours: number; savingsHours: number; fteEquivalent: number;
     capacityGain: number; financialImpact: number; hourlyCost: number;
     fteCurrent: number; fteAfterAutomation: number;
@@ -229,9 +228,9 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   }, [subprocessOverrides]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
-  const ranked    = buildRanking(assessments);
-  const summary   = buildPrioritySummary(ranked);
-  const insights  = buildInsights(ranked);
+  const ranked      = buildRanking(assessments);
+  const summary     = buildPrioritySummary(ranked);
+  const insights    = buildInsights(ranked);
   const autoRoadmap = buildAutomationRoadmap(assessments, voteSummaries.size > 0 ? voteSummaries : undefined);
 
   const totalAnnualHours     = assessments.reduce((s, a) => s + a.annualHours, 0);
@@ -245,11 +244,14 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   const dispHourlyCost      = refinedImpact?.hourlyCost      ?? DEFAULT_HOURLY_COST;
   const dispSavingsHorasMes = dispSavingsHours / 12;
 
+  // suppress unused vars used by PDF toolchain
+  void totalAnnualHours; void insights; void getAutomationRate; void TrendingUp; void Target; void Pencil; void ChevronDown; void Tooltip;
+
   // ── Matrix quadrant definitions ───────────────────────────────────────────
-  const impactValues  = ranked.map((r) => r.impactScore);
-  const sortedImpact  = [...impactValues].sort((a, b) => a - b);
-  const midIdx        = Math.floor(sortedImpact.length / 2);
-  const medianImpact  = sortedImpact.length === 0 ? 0
+  const impactValues = ranked.map((r) => r.impactScore);
+  const sortedImpact = [...impactValues].sort((a, b) => a - b);
+  const midIdx       = Math.floor(sortedImpact.length / 2);
+  const medianImpact = sortedImpact.length === 0 ? 0
     : sortedImpact.length % 2 !== 0
       ? sortedImpact[midIdx]
       : (sortedImpact[midIdx - 1] + sortedImpact[midIdx]) / 2;
@@ -257,28 +259,28 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   const quadrants = [
     {
       label: 'Prioridade Imediata',
-      desc: 'Alto potencial de automação + alto impacto operacional',
+      desc:  'Alto potencial de automação + alto impacto operacional',
       filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore >= medianImpact,
       bg: 'bg-red-50', border: 'border-red-200', title: 'text-red-700',
       badge: 'bg-red-100 text-red-700 border-red-200',
     },
     {
       label: 'Vitórias Rápidas',
-      desc: 'Alto potencial de automação + menor volume de horas',
+      desc:  'Alto potencial de automação + menor volume de horas',
       filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore < medianImpact,
       bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700',
       badge: 'bg-orange-100 text-orange-700 border-orange-200',
     },
     {
       label: 'Avaliar Engenharia / Integração',
-      desc: 'Alto impacto operacional, mas automação mais complexa',
+      desc:  'Alto impacto operacional, mas automação mais complexa',
       filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore >= medianImpact,
       bg: 'bg-blue-50', border: 'border-blue-200', title: 'text-blue-700',
       badge: 'bg-blue-100 text-blue-700 border-blue-200',
     },
     {
       label: 'Baixa Prioridade',
-      desc: 'Baixo potencial de automação e baixo impacto operacional',
+      desc:  'Baixo potencial de automação e baixo impacto operacional',
       filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore < medianImpact,
       bg: 'bg-gray-50', border: 'border-gray-200', title: 'text-gray-600',
       badge: 'bg-gray-100 text-gray-600 border-gray-200',
@@ -293,7 +295,6 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   const phases = [
     {
       num: 1, label: 'Automação Rápida',
-      desc: 'Automatizações que podem ser implementadas rapidamente com tecnologias simples.',
       icon: <Zap size={15} className="text-emerald-600" strokeWidth={1.75} />,
       bg: 'bg-emerald-50', border: 'border-emerald-200', title: 'text-emerald-700',
       badge: 'bg-emerald-100 text-emerald-800 border-emerald-200', dot: 'bg-emerald-500',
@@ -301,7 +302,6 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     },
     {
       num: 2, label: 'Projetos Estruturantes',
-      desc: 'Automação que exige integração sistêmica ou workflow.',
       icon: <Layers size={15} className="text-blue-600" strokeWidth={1.75} />,
       bg: 'bg-blue-50', border: 'border-blue-200', title: 'text-blue-700',
       badge: 'bg-blue-100 text-blue-800 border-blue-200', dot: 'bg-blue-500',
@@ -309,7 +309,6 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     },
     {
       num: 3, label: 'Baixa Prioridade',
-      desc: 'Automação não prioritária no curto e médio prazo.',
       icon: <Clock size={15} className="text-gray-500" strokeWidth={1.75} />,
       bg: 'bg-gray-50', border: 'border-gray-200', title: 'text-gray-600',
       badge: 'bg-gray-100 text-gray-700 border-gray-200', dot: 'bg-gray-400',
@@ -325,8 +324,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     let newFinancialTotal = 0;
 
     assessments.forEach((a) => {
-      const override = subprocessOverrides[a.subprocessId];
-
+      const override      = subprocessOverrides[a.subprocessId];
       const newAnnual     = a.annualHours;
       const rawSpCost     = parseFloat(override?.hourlyCost ?? '');
       const effectiveCost = (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost : DEFAULT_HOURLY_COST;
@@ -514,543 +512,412 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
         </div>
       )}
 
-      {/* ── Compact header ────────────────────────────────────────────── */}
-      <div className="mb-2">
-        <h2 className="text-xl font-bold text-gray-900">Diagnóstico de Automação</h2>
-        <p className="text-sm text-gray-400 mt-1">
-          {assessments.length} subprocesso{assessments.length !== 1 ? 's' : ''} avaliado{assessments.length !== 1 ? 's' : ''}
-          {savedIdentification?.company && (
-            <span> · <span className="text-gray-600">{savedIdentification.company}</span></span>
+      {/* ── Header com ações ───────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h2 className="text-xl font-bold text-blue-600">
+            Oportunidades de Eficiência Operacional
+          </h2>
+          <p className="text-sm text-gray-400 mt-1">
+            {assessments.length} subprocesso{assessments.length !== 1 ? 's' : ''} avaliado{assessments.length !== 1 ? 's' : ''}
+            {savedIdentification?.company && (
+              <span> · <span className="text-gray-600">{savedIdentification.company}</span></span>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setShowIdModal(true)}
+            disabled={generatingPdf}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+          >
+            <FileDown size={14} strokeWidth={1.75} />
+            {generatingPdf ? 'Gerando...' : 'Exportar PDF'}
+          </button>
+          {diagnosticId && (
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-medium px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              Compartilhar
+            </button>
           )}
-          {savedIdentification?.area && (
-            <span> · {savedIdentification.area}</span>
+          {diagnosticId && (
+            <Link
+              href={`/diagnostic/${diagnosticId}/vote`}
+              className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-medium px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              Votar
+            </Link>
           )}
-        </p>
+          <button
+            onClick={onRestart}
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-gray-600 font-medium px-3 py-2 text-sm transition-colors"
+          >
+            <RotateCcw size={14} strokeWidth={1.75} />
+            Novo diagnóstico
+          </button>
+        </div>
       </div>
 
-      {/* ── Always-visible metric summary ─────────────────────────────── */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* ── 3 cards de métricas ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
 
-            {/* Card 1 — Operational Impact */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <TrendingUp size={15} className="text-blue-600" strokeWidth={1.75} />
-                </div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Impacto Operacional</p>
-              </div>
-              <p className="text-3xl font-extrabold text-gray-900">{fmt(dispSavingsHours)}</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                horas automatizáveis / ano
-                {(refinedImpact?.annualHours ?? totalAnnualHours) > 0 && (
-                  <span className="text-blue-600 font-semibold ml-1">
-                    ({Math.round((dispSavingsHours / (refinedImpact?.annualHours ?? totalAnnualHours)) * 100)}% do total)
-                  </span>
-                )}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                ≈ <span className="font-semibold text-gray-600">{fmtD(dispSavingsHorasMes)}</span> horas / mês
-              </p>
+        {/* Card 1 — Horas */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <Clock size={15} className="text-blue-600" strokeWidth={1.75} />
             </div>
-
-            {/* Card 2 — Financial Impact */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
-                  <DollarSign size={15} className="text-amber-600" strokeWidth={1.75} />
-                </div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Impacto Financeiro (cenário)</p>
-              </div>
-              <p className="text-2xl font-extrabold text-gray-900">{fmtCurrency(dispFinancialImpact)}</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                estimativa anual · custo base R${dispHourlyCost}/h
-              </p>
-            </div>
-
-            {/* Card 3 — FTE */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                  <Activity size={15} className="text-emerald-600" strokeWidth={1.75} />
-                </div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Redução Potencial de{' '}
-                  <Tooltip content="Full-Time Equivalent — unidade que representa o trabalho de uma pessoa em tempo integral (1.760 horas/ano)">FTE</Tooltip>
-                </p>
-              </div>
-              <p className="text-3xl font-extrabold text-emerald-600">≈ {fmtD(dispFteEquivalent)} FTE</p>
-              <p className="text-xs text-gray-500 mt-0.5">liberáveis com automação</p>
-              <p className="text-[10px] text-gray-400 mt-1">1 FTE = {fmt(FTE_HOURS_YEAR)} h/ano</p>
-            </div>
-
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Impacto Operacional
+            </p>
           </div>
-
-      {/* ── Sticky section nav ────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-100 -mx-6 px-6 mb-8">
-        <div className="flex gap-1">
-          {SECTIONS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setActiveSection(s.id)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeSection === s.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
+          <p className="text-3xl font-extrabold text-gray-900">
+            {fmt(dispSavingsHours)} <span className="text-sm font-medium text-gray-500">h/ano</span>
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            ≈ {fmtD(dispSavingsHorasMes)} horas / mês
+          </p>
         </div>
-      </nav>
 
-      {/* ── Results content ───────────────────────────────────────────── */}
-      <div id="diagnostic-results" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
-
-        {/* ════════════════════════════════════════ RESUMO ══════════════ */}
-        {activeSection === 'resumo' && (
-          <section className="mb-10">
-
-            {/* Matriz 2x2 — only when >= 3 subprocessos */}
-            {assessments.length >= 3 && (
-              <div className="mt-6">
-                <section className={CARD}>
-                  <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
-                    <Target size={16} className="text-blue-600" strokeWidth={1.75} />
-                    Matriz de Priorização de Automação
-                  </h3>
-                  <p className="text-xs text-gray-500 mb-4">
-                    Eixo X: potencial de automação (0–100) · Eixo Y: impacto operacional (0–100) · limiar Y = mediana do dataset
-                  </p>
-                  {(() => {
-                    const quadrantData = quadrants.map((q) => ({
-                      ...q,
-                      items: ranked.filter(q.filter),
-                    }));
-                    const nonEmpty  = quadrantData.filter((q) => q.items.length > 0);
-                    const showAll   = nonEmpty.length <= 1;
-                    const toRender  = showAll ? quadrantData : nonEmpty;
-                    return (
-                      <div className={`grid gap-4 ${toRender.length <= 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2'}`}>
-                        {toRender.map(({ label, desc, items, bg, border, title: titleColor, badge }) => (
-                          <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
-                            <div className={`text-xs font-bold uppercase tracking-wide mb-1 ${titleColor}`}>{label}</div>
-                            <p className="text-xs text-gray-400 mb-3 leading-snug">{desc}</p>
-                            {items.length === 0 ? (
-                              <p className="text-xs text-gray-400 italic">Nenhum processo nesta categoria</p>
-                            ) : (
-                              <ul className="space-y-2">
-                                {items.map((r) => (
-                                  <li key={r.subprocessId} className="flex items-center justify-between gap-2">
-                                    <span className="text-xs text-gray-800 leading-snug flex-1">{r.subprocessName}</span>
-                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${badge}`}>{r.automationScore}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </section>
-              </div>
-            )}
-
-          </section>
-        )}
-
-        {/* ════════════════════════════════════════ RANKING ═════════════ */}
-        {activeSection === 'ranking' && (
-        <section className="mb-10">
-          <section className={CARD}>
-            <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
-              <Trophy size={16} className="text-blue-600" strokeWidth={1.75} />
-              Ranking de Potencial de Automação
-            </h3>
-            <div className="flex items-start gap-2 mb-4 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5">
-              <Pencil size={13} className="text-blue-500 flex-shrink-0 mt-0.5" strokeWidth={1.75} />
-              <p className="text-xs text-blue-700 leading-relaxed">
-                Edite <span className="font-semibold">pessoas</span> ou <span className="font-semibold">custo/h</span> diretamente na tabela — os cards acima atualizam automaticamente.
-              </p>
+        {/* Card 2 — Financeiro */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+              <DollarSign size={15} className="text-amber-600" strokeWidth={1.75} />
             </div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Impacto Financeiro
+            </p>
+          </div>
+          <p className="text-3xl font-extrabold text-gray-900">
+            {fmtFinancial(dispFinancialImpact)} <span className="text-sm font-medium text-gray-500">/ano</span>
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            custo base R${dispHourlyCost}/h
+          </p>
+        </div>
 
-            {/* Mobile: cards */}
-            <div className="block md:hidden space-y-3 mb-4">
-              {ranked.map((item) => {
-                const potential   = getAutomationPotential(item.totalScore);
-                const refined     = perSubprocessRefined[item.subprocessId];
-                const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
-                return (
-                  <div key={item.subprocessId} className="bg-white rounded-xl border border-gray-100 p-4">
-                    <div className="flex items-start justify-between mb-2 gap-2">
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold text-gray-500">#{item.rank}</span>
-                        <h4 className="text-sm font-semibold text-gray-900 mt-0.5 leading-snug">{item.subprocessName}</h4>
-                        <p className="text-xs text-gray-500 truncate">{item.processName}</p>
-                      </div>
-                      <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${potential.color}`}>
-                        {potential.label}
+        {/* Card 3 — FTE */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+              <Activity size={15} className="text-emerald-600" strokeWidth={1.75} />
+            </div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Redução de FTE
+            </p>
+          </div>
+          <p className="text-3xl font-extrabold text-emerald-600">
+            ≈ {fmtD(dispFteEquivalent)} <span className="text-sm font-medium text-gray-500">FTE/ano</span>
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            1 FTE = {fmt(FTE_HOURS_YEAR)} h/ano
+          </p>
+        </div>
+      </div>
+
+      {/* ── Ranking ─────────────────────────────────────────────────────── */}
+      <div className={CARD}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-semibold text-gray-800">
+            Ranking de Potencial de Automação
+          </h3>
+          <p className="text-xs text-gray-400 hidden sm:block">
+            Edite pessoas ou custo/h — valores recalculam automaticamente
+          </p>
+        </div>
+
+        {/* Mobile: cards */}
+        <div className="block md:hidden space-y-3">
+          {ranked.map((item) => {
+            const badge      = getPriorityBadge(item.priorityScore);
+            const refined    = perSubprocessRefined[item.subprocessId];
+            const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
+            const spOverride = subprocessOverrides[item.subprocessId] ?? { people: '', hourlyCost: '' };
+            return (
+              <div key={item.subprocessId} className="bg-white rounded-xl border border-gray-100 p-4">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-400">#{item.rank}</span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.color}`}>
+                        {badge.label}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-2">{fmt(dispSavings)} h/ano economizáveis</div>
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      <div className="text-center">
-                        <p className={`text-lg font-bold ${item.priorityScore >= 70 ? 'text-red-600' : item.priorityScore >= 50 ? 'text-orange-500' : 'text-gray-500'}`}>
-                          {item.priorityScore}<span className="text-xs font-normal text-gray-400">/100</span>
-                        </p>
-                        <p className="text-[11px] text-gray-500">prioridade</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-lg font-bold text-blue-600">
-                          {item.automationScore}<span className="text-xs font-normal text-gray-400">/100</span>
-                        </p>
-                        <p className="text-[11px] text-gray-500">automação</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-lg font-bold text-violet-600">
-                          {item.impactScore}<span className="text-xs font-normal text-gray-400">/100</span>
-                        </p>
-                        <p className="text-[11px] text-gray-500">impacto</p>
-                      </div>
-                    </div>
+                    <h4 className="text-sm font-semibold text-gray-900 mt-1">{item.subprocessName}</h4>
+                    <p className="text-xs text-gray-400">{item.macroprocessName} · {fmt(dispSavings)} h economizadas/ano</p>
                   </div>
+                  <p className="text-sm font-bold text-gray-900 shrink-0">
+                    {fmtFinancial(refined?.financialImpact ?? item.financialImpact)}
+                  </p>
+                </div>
+                <div className="flex gap-3 mt-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400">Pessoas</span>
+                    <input
+                      type="number" min="1"
+                      value={spOverride.people}
+                      onChange={(e) => setSubprocessOverrides((prev) => ({
+                        ...prev,
+                        [item.subprocessId]: {
+                          ...(prev[item.subprocessId] ?? { people: '', hourlyCost: '' }),
+                          people: e.target.value,
+                        },
+                      }))}
+                      placeholder={String(PEOPLE_MAP[item.scores.peopleInvolved] ?? '')}
+                      className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-gray-300"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400">R$/h</span>
+                    <input
+                      type="number" min="1"
+                      value={spOverride.hourlyCost}
+                      onChange={(e) => setSubprocessOverrides((prev) => ({
+                        ...prev,
+                        [item.subprocessId]: {
+                          ...(prev[item.subprocessId] ?? { people: '', hourlyCost: '' }),
+                          hourlyCost: e.target.value,
+                        },
+                      }))}
+                      placeholder={String(DEFAULT_HOURLY_COST)}
+                      className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-400 placeholder:text-gray-300"
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop: table */}
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200">
+          <table className="w-full text-sm" style={{ minWidth: 600 }}>
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 w-10">#</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500">Subprocesso</th>
+                <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 w-24">Economia</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-20">Pessoas</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-20">Custo/h</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ranked.map((item, i) => {
+                const badge      = getPriorityBadge(item.priorityScore);
+                const spOverride = subprocessOverrides[item.subprocessId] ?? { people: '', hourlyCost: '' };
+                const refined    = perSubprocessRefined[item.subprocessId];
+                const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
+                const spVolume   = VOLUME_MAP[item.scores.operationalVolume] ?? 0;
+                const spTime     = TIME_MAP[item.scores.executionTime] ?? 0;
+
+                return (
+                  <tr key={item.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
+
+                    {/* Rank */}
+                    <td className="px-3 py-3 text-center font-bold text-gray-400 text-xs">
+                      {item.rank}
+                    </td>
+
+                    {/* Subprocesso + badge + detalhes */}
+                    <td className="px-3 py-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">{item.subprocessName}</span>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.color}`}>
+                          {badge.label}
+                        </span>
+                      </div>
+                      <p className="text-gray-400 mt-0.5">
+                        {item.macroprocessName} · {fmt(dispSavings)} h economizadas/ano
+                      </p>
+                      <details className="mt-1">
+                        <summary className="text-[10px] text-blue-500 cursor-pointer hover:text-blue-700 list-none">
+                          Ver detalhes do subprocesso
+                        </summary>
+                        <div className="mt-1 text-[10px] text-gray-400 bg-gray-50 rounded-md px-3 py-2">
+                          Volume: {fmt(spVolume)}/mês · Tempo médio: {spTime} min
+                        </div>
+                      </details>
+                    </td>
+
+                    {/* Economia */}
+                    <td className="px-3 py-3 text-right font-semibold text-gray-800 text-xs">
+                      {fmtFinancial(refined?.financialImpact ?? item.financialImpact)}
+                    </td>
+
+                    {/* Pessoas */}
+                    <td className="px-3 py-3 text-center">
+                      <input
+                        type="number" min="1"
+                        value={spOverride.people}
+                        onChange={(e) => setSubprocessOverrides((prev) => ({
+                          ...prev,
+                          [item.subprocessId]: {
+                            ...(prev[item.subprocessId] ?? { people: '', hourlyCost: '' }),
+                            people: e.target.value,
+                          },
+                        }))}
+                        placeholder={String(PEOPLE_MAP[item.scores.peopleInvolved] ?? '')}
+                        className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-300 bg-white"
+                      />
+                    </td>
+
+                    {/* Custo/h */}
+                    <td className="px-3 py-3 text-center">
+                      <input
+                        type="number" min="1"
+                        value={spOverride.hourlyCost}
+                        onChange={(e) => setSubprocessOverrides((prev) => ({
+                          ...prev,
+                          [item.subprocessId]: {
+                            ...(prev[item.subprocessId] ?? { people: '', hourlyCost: '' }),
+                            hourlyCost: e.target.value,
+                          },
+                        }))}
+                        placeholder={String(DEFAULT_HOURLY_COST)}
+                        className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-300 bg-white"
+                      />
+                    </td>
+                  </tr>
                 );
               })}
-            </div>
+            </tbody>
+          </table>
+        </div>
 
-            {/* Desktop: table */}
-            <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200">
-              <table className="w-full text-sm" style={{ minWidth: 720 }}>
-                <thead className="sticky top-12 z-10">
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 w-10">Rank</th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500">Subprocesso</th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-36">Horas / Automação</th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-32">Prioridade / Automação / Impacto</th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Potencial</th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Pessoas</th>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 w-24">Custo/h</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ranked.map((item, i) => {
-                    const potential   = getAutomationPotential(item.totalScore);
-                    const spOverride  = subprocessOverrides[item.subprocessId] ?? { people: '', hourlyCost: '' };
-                    const refined     = perSubprocessRefined[item.subprocessId];
-                    const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
-
-                    const isSpPeople  = !!spOverride.people;
-                    const spPeople    = spOverride.people
-                      ? parseFloat(spOverride.people)
-                      : (PEOPLE_MAP[item.scores.peopleInvolved] ?? 0);
-                    const spVolume    = VOLUME_MAP[item.scores.operationalVolume] ?? 0;
-                    const spTime      = TIME_MAP[item.scores.executionTime]       ?? 0;
-                    const spAnnual    = refined?.annualHours ?? item.annualHours;
-                    const spHorasMes  = spAnnual / 12;
-                    const spFte       = refined?.fteCurrent  ?? calculateFteCurrent(item.annualHours);
-                    const automationPct = Math.round(getAutomationRate(item.automationScore) * 100);
-
-                    return (
-                      <tr
-                        key={item.subprocessId}
-                        className={`${i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} ${
-                          i === 0 ? 'border-l-4 border-l-blue-500' : ''
-                        }`}
-                      >
-                        {/* Rank */}
-                        <td className="px-3 py-2.5 text-center font-bold text-gray-500 text-xs">{item.rank}</td>
-
-                        {/* Name + collapsible calculation details */}
-                        <td className="px-3 py-2.5 text-gray-900 text-xs">
-                          <div className="font-medium">{item.subprocessName}</div>
-                          <details className="mt-1 group">
-                            <summary className="text-[10px] text-blue-500 cursor-pointer hover:text-blue-700 list-none flex items-center gap-1">
-                              <ChevronDown size={10} className="group-open:rotate-180 transition-transform" />
-                              ver detalhes do cálculo
-                            </summary>
-                            <div className="mt-1 text-[10px] text-gray-400 space-y-0.5">
-                              <div className="flex flex-wrap gap-x-2">
-                                <span>Vol: <span className="text-gray-500">{fmt(spVolume)}/mês</span></span>
-                                <span>· Tempo: <span className="text-gray-500">{spTime} min</span></span>
-                                <span>· Pessoas: <span className={isSpPeople ? 'text-blue-500' : 'text-gray-500'}>{fmtD(spPeople)}</span></span>
-                              </div>
-                              <div className="flex flex-wrap gap-x-2 text-gray-400">
-                                <span>≈ {fmtD(spHorasMes)} h/mês</span>
-                                <span>· ≈ {fmt(spAnnual)} h/ano</span>
-                                <span>· ≈ {fmtD(spFte)} <Tooltip content="Full-Time Equivalent — unidade que representa o trabalho de uma pessoa em tempo integral (1.760 horas/ano)">FTE</Tooltip></span>
-                              </div>
-                              <div className="text-indigo-500 font-medium">
-                                Automação estimada: {automationPct}%
-                              </div>
-                            </div>
-                          </details>
-                        </td>
-
-                        {/* Horas totais / % automatizável / Horas automatizáveis */}
-                        <td className="px-3 py-2.5 text-center text-xs text-gray-700">
-                          <div className="space-y-0.5">
-                            <div className="text-gray-500">{fmt(spAnnual)} h/ano</div>
-                            <div className="text-indigo-500 font-medium">{automationPct}% autom.</div>
-                            <div className="font-semibold text-gray-800">
-                              {fmt(dispSavings)} h autom.
-                              {refined && <span className="ml-1 text-blue-400 font-bold">*</span>}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Prioridade / Automação / Impacto */}
-                        <td className="px-3 py-2.5 text-center text-xs">
-                          <div className="space-y-0.5">
-                            <div className={`font-bold ${item.priorityScore >= 70 ? 'text-red-600' : item.priorityScore >= 50 ? 'text-orange-500' : 'text-gray-500'}`}>
-                              {item.priorityScore}<span className="font-normal text-gray-400">/100</span>
-                              <span className="text-gray-400 font-normal"> prioridade</span>
-                            </div>
-                            <div className="text-blue-600 font-medium">{item.automationScore}/100 automação</div>
-                            <div className="text-violet-600 font-medium">{item.impactScore}/100 impacto</div>
-                          </div>
-                        </td>
-
-                        {/* Potencial */}
-                        <td className="px-3 py-2.5 text-center">
-                          <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${potential.color}`}>
-                            {potential.label}
-                          </span>
-                        </td>
-
-                        {/* Pessoas */}
-                        <td className="px-3 py-2 text-center">
-                          <input
-                            type="number"
-                            min="1"
-                            value={spOverride.people}
-                            onChange={(e) =>
-                              setSubprocessOverrides((prev) => ({
-                                ...prev,
-                                [item.subprocessId]: { ...spOverride, people: e.target.value },
-                              }))
-                            }
-                            placeholder={String(PEOPLE_MAP[item.scores.peopleInvolved] ?? '')}
-                            className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-300 bg-white"
-                          />
-                        </td>
-
-                        {/* Custo/h */}
-                        <td className="px-3 py-2 text-center">
-                          <input
-                            type="number"
-                            min="1"
-                            value={spOverride.hourlyCost}
-                            onChange={(e) =>
-                              setSubprocessOverrides((prev) => ({
-                                ...prev,
-                                [item.subprocessId]: { ...spOverride, hourlyCost: e.target.value },
-                              }))
-                            }
-                            placeholder={String(DEFAULT_HOURLY_COST)}
-                            className="w-16 border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-300 bg-white"
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-          </section>
-        </section>
+        {Object.keys(perSubprocessRefined).length > 0 && (
+          <p className="text-xs text-blue-500 mt-3">
+            * Valores recalculados com premissas ajustadas
+          </p>
         )}
+      </div>
 
-        {/* ════════════════════════════════════════ ROADMAP ═════════════ */}
-        {activeSection === 'roadmap' && (
-        <section className="mb-10">
-
-          {/* Plano de Automação por Fases */}
-          {autoRoadmap.length > 0 && (
-            <section className={CARD}>
-              <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
-                <Zap size={16} className="text-blue-600" strokeWidth={1.75} />
-                Plano de Automação por Fases
-              </h3>
-              <p className="text-xs text-gray-500 mb-5">
-                Gerado automaticamente com base na matriz de impacto e facilidade de automação.
-              </p>
-
-              <div className="space-y-4">
-                {phases.every((p) => p.items.length === 0) && (
-                  <p className="text-sm text-gray-400 italic">
-                    Nenhum subprocesso classificado no roadmap de automação.
-                  </p>
-                )}
-                {phases.filter((phase) => phase.items.length > 0).map((phase) => (
-                  <div key={phase.num} className={`rounded-xl border p-4 ${phase.bg} ${phase.border}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${phase.dot}`}>
-                        {phase.num}
-                      </div>
-                      {phase.icon}
-                      <span className={`text-sm font-bold ${phase.title}`}>
-                        Fase {phase.num} — {phase.label}
-                      </span>
-                      <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full border ${phase.badge}`}>
-                        {phase.items.length} subprocesso{phase.items.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-3 pl-7">{phase.desc}</p>
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-12 gap-2 px-3 pb-1 border-b border-black/5">
-                        <span className="col-span-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Subprocesso</span>
-                        <span className="col-span-3 text-[11px] font-semibold text-gray-500 uppercase tracking-wide text-center">Horas econ./ano</span>
-                        <span className="col-span-4 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Tecnologia sugerida</span>
-                      </div>
-                      {phase.items.map((item) => (
-                        <div key={item.subprocessId} className="grid grid-cols-12 gap-2 items-center bg-white/70 rounded-lg px-3 py-2.5">
-                          <div className="col-span-5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="text-xs font-medium text-gray-800 leading-snug">{item.subprocessName}</p>
-                              {item.voteCount != null && item.voteCount > 0 && (
-                                <span className="text-[10px] font-semibold text-amber-600 whitespace-nowrap">
-                                  ⭐ {item.voteAverage!.toFixed(1)} ({item.voteCount} voto{item.voteCount !== 1 ? 's' : ''})
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-gray-500 truncate">{item.processName}</p>
-                          </div>
-                          <div className="col-span-3 text-center">
-                            <span className="text-sm font-bold text-gray-700">
-                              {item.savingsHours.toLocaleString('pt-BR')}
-                            </span>
-                            <span className="text-[11px] text-gray-500 ml-0.5">h</span>
-                          </div>
-                          <div className="col-span-4">
-                            <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border leading-snug ${phase.badge}`}>
-                              {item.suggestedTechnology}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Distribuição de Prioridades — only when >= 3 subprocessos */}
-          {assessments.length >= 3 && (
-            <section className={CARD}>
-              <h3 className="text-base font-semibold text-gray-800 mb-4">Distribuição de Prioridades</h3>
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { label: 'Alta Prioridade',  count: summary.alta,  bg: 'bg-red-50    border-red-100',    text: 'text-red-600',    dot: 'bg-red-500' },
-                  { label: 'Média Prioridade', count: summary.media, bg: 'bg-orange-50 border-orange-100', text: 'text-orange-600', dot: 'bg-orange-400' },
-                  { label: 'Baixa Prioridade', count: summary.baixa, bg: 'bg-gray-50   border-gray-200',   text: 'text-gray-600',   dot: 'bg-gray-400' },
-                ].map((card) => (
-                  <div key={card.label} className={`${card.bg} border rounded-xl p-4`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className={`w-2 h-2 rounded-full ${card.dot}`} />
-                      <span className="text-xs text-gray-500 font-medium">{card.label}</span>
-                    </div>
-                    <p className={`text-3xl font-extrabold ${card.text}`}>{card.count}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Insights — only when >= 3 subprocessos (guarded inside buildInsights) */}
-          {insights.length > 0 && (
-            <section className="bg-white rounded-2xl border border-amber-100 shadow-sm mb-6 overflow-hidden">
-              <button
-                onClick={() => setInsightsOpen((v) => !v)}
-                className="w-full flex items-center justify-between px-6 py-5 hover:bg-amber-50 transition-colors"
-              >
-                <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                  <Lightbulb size={16} className="text-amber-500" strokeWidth={1.75} />
-                  Insights do Diagnóstico
-                </h3>
-                <ChevronDown
-                  size={16}
-                  strokeWidth={2.5}
-                  className={`text-amber-500 transition-transform duration-300 flex-shrink-0 ${insightsOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              {insightsOpen && (
-                <div className="px-6 pb-6">
-                  <ul className="space-y-3">
-                    {insights.map((insight, idx) => (
-                      <li key={idx} className="flex items-start gap-3">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                        <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </section>
-          )}
-
-        </section>
-        )}
-
-        {/* ════════════════════════════════════════ AÇÕES ═══════════════ */}
-        {activeSection === 'acoes' && (
-        <section>
-          <div className={CARD}>
-            <h3 className="text-base font-semibold text-gray-800 mb-1">Próximos passos</h3>
-            <p className="text-xs text-gray-400 mb-5">
-              Exporte o relatório, compartilhe com sua equipe ou inicie um novo diagnóstico.
+      {/* ── Matriz de Priorização ───────────────────────────────────────── */}
+      <div className={CARD}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-800">
+              Matriz de Priorização de Automação
+            </h3>
+            <p className="text-xs text-gray-400 mt-1">
+              Eixo X: potencial de automação · Eixo Y: impacto operacional
             </p>
-
-            <div className="flex flex-wrap gap-3">
-              {/* Primary — Export PDF */}
-              <button
-                onClick={() => setShowIdModal(true)}
-                disabled={generatingPdf}
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <FileDown size={14} strokeWidth={1.75} />
-                {generatingPdf ? 'Gerando PDF...' : 'Exportar diagnóstico em PDF'}
-              </button>
-
-              {/* Secondary — Share */}
-              {diagnosticId && (
-                <button
-                  onClick={() => setShowShareModal(true)}
-                  className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
-                >
-                  <Zap size={14} strokeWidth={1.75} />
-                  Compartilhar relatório
-                </button>
-              )}
-
-              {/* Secondary — Vote */}
-              {diagnosticId && (
-                <Link
-                  href={`/diagnostic/${diagnosticId}/vote`}
-                  className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-medium px-4 py-2.5 rounded-lg text-sm transition-colors"
-                >
-                  <Target size={14} strokeWidth={1.75} />
-                  Votar prioridades
-                </Link>
-              )}
-
-              {/* Tertiary — Restart */}
-              <button
-                onClick={onRestart}
-                className="inline-flex items-center gap-2 text-gray-400 hover:text-gray-600 font-medium px-4 py-2.5 text-sm transition-colors"
-              >
-                <RotateCcw size={14} strokeWidth={1.75} />
-                Iniciar novo diagnóstico
-              </button>
+          </div>
+          {/* Distribuição consolidada */}
+          <div className="flex gap-3 shrink-0">
+            <div className="text-center">
+              <p className="text-lg font-bold text-red-600">{summary.alta}</p>
+              <p className="text-[10px] text-gray-400">alta</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-orange-500">{summary.media}</p>
+              <p className="text-[10px] text-gray-400">média</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-gray-400">{summary.baixa}</p>
+              <p className="text-[10px] text-gray-400">baixa</p>
             </div>
           </div>
-        </section>
-        )}
+        </div>
 
-      </div>{/* end #diagnostic-results */}
+        <div className="grid grid-cols-2 gap-3">
+          {quadrants.map(({ label, desc, filter, bg, border, title, badge }) => {
+            const items = ranked.filter(filter);
+            return (
+              <div key={label} className={`rounded-xl border p-4 ${bg} ${border}`}>
+                <div className={`text-xs font-bold uppercase tracking-wide mb-1 ${title}`}>{label}</div>
+                <p className="text-xs text-gray-400 mb-3 leading-snug">{desc}</p>
+                {items.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">Nenhum processo</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {items.map((r) => (
+                      <div key={r.subprocessId} className="flex items-center justify-between gap-2 bg-white/80 rounded-lg px-3 py-1.5">
+                        <span className="text-xs text-gray-800 font-medium truncate">{r.subprocessName}</span>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${badge}`}>
+                          {r.priorityScore}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Plano de Automação por Fases ────────────────────────────────── */}
+      {autoRoadmap.length > 0 && (
+        <div className={CARD}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-gray-800">
+              Plano de Automação por Fases
+            </h3>
+            <p className="text-xs text-gray-400">
+              Gerado com base na matriz de impacto e facilidade
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {phases.every((p) => p.items.length === 0) && (
+              <p className="text-sm text-gray-400 italic">
+                Nenhum subprocesso classificado no roadmap.
+              </p>
+            )}
+            {phases.filter((phase) => phase.items.length > 0).map((phase) => (
+              <div key={phase.num} className={`rounded-xl border p-4 ${phase.bg} ${phase.border}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${phase.dot}`}>
+                    {phase.num}
+                  </div>
+                  {phase.icon}
+                  <span className={`text-sm font-bold ${phase.title}`}>
+                    Fase {phase.num} — {phase.label}
+                  </span>
+                  <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full border ${phase.badge}`}>
+                    {phase.items.length} subprocesso{phase.items.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="grid grid-cols-12 gap-2 px-3 pb-1 border-b border-black/5">
+                    <span className="col-span-5 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Subprocesso</span>
+                    <span className="col-span-3 text-[10px] font-semibold text-gray-500 uppercase tracking-wide text-center">Horas econ.</span>
+                    <span className="col-span-4 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Tecnologia</span>
+                  </div>
+                  {phase.items.map((item) => (
+                    <div key={item.subprocessId} className="grid grid-cols-12 gap-2 items-center bg-white/70 rounded-lg px-3 py-2">
+                      <div className="col-span-5">
+                        <p className="text-xs font-medium text-gray-800">{item.subprocessName}</p>
+                        <p className="text-[10px] text-gray-400">{item.processName}</p>
+                      </div>
+                      <div className="col-span-3 text-center">
+                        <span className="text-sm font-bold text-gray-700">
+                          {item.savingsHours.toLocaleString('pt-BR')}
+                        </span>
+                        <span className="text-[10px] text-gray-400 ml-0.5">h</span>
+                      </div>
+                      <div className="col-span-4">
+                        <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${phase.badge}`}>
+                          {item.suggestedTechnology}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Rodapé com premissas ────────────────────────────────────────── */}
+      <p className="text-center text-xs text-gray-400 mt-2">
+        Premissas: custo base R${dispHourlyCost}/h · 1 FTE = {fmt(FTE_HOURS_YEAR)} h/ano · Gerado em {new Date().toLocaleDateString('pt-BR')}
+      </p>
 
     </div>
   );
