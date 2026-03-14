@@ -961,6 +961,8 @@ function WizardView({
 }: WizardViewProps) {
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState<Partial<Phase2FormData>>({ ...EMPTY_PHASE2_FORM, ...initialData });
+  const dataRef = useRef(data);
+  dataRef.current = data;
 
   const [step, setStep] = useState<WizardStep>(() => {
     if ((initialData.gargalos ?? []).length > 0 || initialData.gargalo)   return 'done';
@@ -1018,10 +1020,11 @@ function WizardView({
 
   const handleContinue = async () => {
     if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
-    await doSave(data);
+    const currentData = dataRef.current;
+    await doSave(currentData);
     if (step === TOTAL_STEPS) {
       // Auto-persist the generated BPMN when the wizard is finalised.
-      const analysis = analyzeProcess(data);
+      const analysis = analyzeProcess(currentData);
       if (analysis && analysis.fluxoBPMN.length > 0) {
         const historyEntry: BPMNHistoryEntry = {
           action:  'edited',
@@ -1040,7 +1043,7 @@ function WizardView({
           console.error('[Phase2] Failed to persist BPMN:', err);
         });
       }
-      onComplete(data);
+      onComplete(currentData);
     } else {
       // Skip step 8 (Estabilidade) if triage data already provides it.
       const next = (step as number) + 1;
@@ -1050,7 +1053,7 @@ function WizardView({
 
   const handleSaveAndBack = async () => {
     if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
-    await doSave(data);
+    await doSave(dataRef.current);
     onBack();
   };
 
@@ -1505,10 +1508,10 @@ function ValidationView({
           action:  'validated',
           by:      respondentName || 'respondent',
           role:    'respondent',
-          comment: comment.trim() || undefined,
+          comment: comment.trim() || '',
           at:      new Date().toISOString(),
         }],
-        respondentComment: comment.trim() || undefined,
+        respondentComment: comment.trim() || '',
       });
       onApprove();
     } catch (err) {
@@ -1532,7 +1535,7 @@ function ValidationView({
         comment: 'Rascunho salvo ao voltar para o questionário',
         at:      new Date().toISOString(),
       }],
-      respondentComment: comment.trim() || undefined,
+      respondentComment: comment.trim() || '',
     }).catch(err => console.error('[Phase2] Back-draft save failed:', err));
     onBack();
   };
