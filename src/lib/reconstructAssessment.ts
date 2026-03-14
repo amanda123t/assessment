@@ -44,3 +44,10 @@ export function reconstructAssessment(data: Record<string, unknown>): Subprocess
     fteAfterAutomation:     0,
   };
 }
+
+/** Deduplica assessments por subprocessId — mantém o último (mais recente). */
+export function deduplicateAssessments(assessments: SubprocessAssessment[]): SubprocessAssessment[] {
+  const map = new Map<string, SubprocessAssessment>();
+  assessments.forEach(a => map.set(a.subprocessId, a));
+  return Array.from(map.values());
+}
