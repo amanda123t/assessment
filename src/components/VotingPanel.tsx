@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
-import { Star, ChevronDown, ChevronUp, Users, BarChart2 } from 'lucide-react';
+import { Star, ChevronDown, ChevronUp, Users, BarChart2, Link2 } from 'lucide-react';
 import { SubprocessAssessment } from '@/types';
 import Link from 'next/link';
 import {
@@ -362,6 +362,7 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
   const [savedVotes, setSavedVotes]           = useState<Map<string, number>>(new Map());
   const [showSavedBanner, setShowSavedBanner] = useState(false);
   const [expanded, setExpanded]               = useState<Set<string>>(new Set());
+  const [linkCopied, setLinkCopied]           = useState(false);
 
   // Prevents re-seeding selections every time the real-time snapshot fires.
   const seededRef = useRef(false);
@@ -450,10 +451,25 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
 
       {/* Section header */}
-      <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
-        <Star size={16} className="text-amber-500" strokeWidth={1.75} />
-        Votar Prioridades
-      </h3>
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+          <Star size={16} className="text-amber-500" strokeWidth={1.75} />
+          Votar Prioridades
+        </h3>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(window.location.href);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+          }}
+          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200
+                     text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+          title="Copiar link da votação"
+        >
+          <Link2 size={13} strokeWidth={2} />
+          {linkCopied ? 'Link copiado!' : 'Compartilhar votação'}
+        </button>
+      </div>
       <p className="text-xs text-gray-500 mb-5">
         Cada participante vota de forma independente. Os resultados são agregados em tempo real.
         {identityReady && voterName && (

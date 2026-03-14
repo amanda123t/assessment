@@ -2071,7 +2071,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
       newEntry.subprocessName,
       newEntry.processName,
       newEntry.isPrioritized,
-      { respondentName, respondentArea },
+      { respondentName },
     ).catch(err => {
       console.error('[Phase2] Failed to persist new entry:', err);
       showToast('Erro ao adicionar subprocesso. Verifique sua conexão.');
