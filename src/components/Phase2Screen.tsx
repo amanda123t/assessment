@@ -622,8 +622,10 @@ interface SelectionViewProps {
   bpmnMap:        Map<string, PersistedBPMN>;
   role:           'respondent' | 'analyst';
   respondentName: string;
+  respondentArea: string;
   nameConfirmed:  boolean;
-  onRespondentChange: (name: string) => void;
+  onRespondentChange:     (name: string) => void;
+  onRespondentAreaChange: (area: string) => void;
   onNameConfirm:  () => void;
   onSelectEntry:  (index: number) => void;
   onStartBatch:   (indices: number[]) => void;
@@ -633,8 +635,8 @@ interface SelectionViewProps {
 }
 
 function SelectionView({
-  entries, savedForms, bpmnMap, role, respondentName, nameConfirmed,
-  onRespondentChange, onNameConfirm, onSelectEntry, onStartBatch, onViewReport,
+  entries, savedForms, bpmnMap, role, respondentName, respondentArea, nameConfirmed,
+  onRespondentChange, onRespondentAreaChange, onNameConfirm, onSelectEntry, onStartBatch, onViewReport,
   onShowLibrary, onShowManual,
 }: SelectionViewProps) {
   const [selectedForMapping, setSelectedForMapping] = useState<Set<number>>(new Set());
@@ -760,9 +762,16 @@ function SelectionView({
             placeholder="Digite seu nome"
             className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
+          <input
+            type="text"
+            value={respondentArea}
+            onChange={e => onRespondentAreaChange(e.target.value)}
+            placeholder="Sua área ou departamento"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
           <button
             type="button"
-            disabled={!respondentName.trim()}
+            disabled={!respondentName.trim() || !respondentArea.trim()}
             onClick={onNameConfirm}
             className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold transition-colors"
           >
@@ -770,7 +779,7 @@ function SelectionView({
           </button>
         </div>
         {nameConfirmed && respondentName.trim() && (
-          <p className="text-xs text-emerald-600 mt-2 font-medium">✓ Respondendo como {respondentName.trim()}</p>
+          <p className="text-xs text-emerald-600 mt-2 font-medium">✓ Respondendo como {respondentName.trim()} — {respondentArea.trim()}</p>
         )}
       </div>
 
@@ -946,6 +955,7 @@ interface WizardViewProps {
   entry:          Phase2Entry;
   diagnosticId:   string;
   respondentName: string;
+  respondentArea: string;
   initialData:    Partial<Phase2FormData>;
   totalEntries:   number;
   entryIndex:     number;
@@ -956,7 +966,7 @@ interface WizardViewProps {
 }
 
 function WizardView({
-  entry, diagnosticId, respondentName, initialData,
+  entry, diagnosticId, respondentName, respondentArea, initialData,
   totalEntries, entryIndex, hasTriageData = false, onComplete, onBack, onError,
 }: WizardViewProps) {
   const [saving, setSaving] = useState(false);
@@ -1008,7 +1018,7 @@ function WizardView({
   const doSave = async (formData: Partial<Phase2FormData>) => {
     setSaving(true);
     try {
-      const sanitized = JSON.parse(JSON.stringify({ ...formData, respondentName }));
+      const sanitized = JSON.parse(JSON.stringify({ ...formData, respondentName, respondentArea }));
       await savePhase2Response(
         diagnosticId,
         entry.subprocessId,
@@ -2020,6 +2030,7 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
 
 export default function Phase2Screen({ diagnosticId, prioritized, savedForms: initialSavedForms, role = 'respondent' }: Props) {
   const [respondentName,      setRespondentName]      = useState('');
+  const [respondentArea,      setRespondentArea]      = useState('');
   const [nameConfirmed,       setNameConfirmed]       = useState(false);
   const [entries,             setEntries]             = useState<Phase2Entry[]>(prioritized);
   const [savedForms,          setSavedForms]          = useState<Map<string, Partial<Phase2FormData>>>(initialSavedForms);
@@ -2060,7 +2071,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
       newEntry.subprocessName,
       newEntry.processName,
       newEntry.isPrioritized,
-      { respondentName },
+      { respondentName, respondentArea },
     ).catch(err => {
       console.error('[Phase2] Failed to persist new entry:', err);
       showToast('Erro ao adicionar subprocesso. Verifique sua conexão.');
@@ -2160,8 +2171,10 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           bpmnMap={bpmnMap}
           role={role}
           respondentName={respondentName}
+          respondentArea={respondentArea}
           nameConfirmed={nameConfirmed}
           onRespondentChange={name => { setRespondentName(name); setNameConfirmed(false); }}
+          onRespondentAreaChange={area => { setRespondentArea(area); setNameConfirmed(false); }}
           onNameConfirm={() => setNameConfirmed(true)}
           onSelectEntry={handleSelectEntry}
           onStartBatch={handleStartBatchMapping}
@@ -2176,6 +2189,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           entry={entries[activeEntryIndex]}
           diagnosticId={diagnosticId}
           respondentName={respondentName}
+          respondentArea={respondentArea}
           initialData={savedForms.get(entries[activeEntryIndex].subprocessId) ?? {}}
           totalEntries={mappingQueue.length > 0 ? mappingQueue.length : entries.length}
           entryIndex={mappingQueue.length > 0 ? mappingQueuePosition : activeEntryIndex}
