@@ -253,30 +253,29 @@ export default function AssessmentPage() {
         totalScore:   assessment.totalScore,
       });
 
-      // Incremental save — persists progress immediately so resuming works even
-      // if the user closes the tab before reaching the ranking screen.
+      // Dispatch PRIMEIRO — garante que o fluxo avança independente do Firestore
+      dispatch({ type: 'COMPLETE_QUESTIONNAIRE', payload: assessment });
+
+      // Save incremental — fire and forget, não bloqueia o fluxo
       if (!savedAssessmentIds.current.has(assessment.subprocessId)) {
+        const sanitizedRealValues = realValues
+          ? JSON.parse(JSON.stringify(realValues))
+          : null;
         addDoc(collection(db, 'responses'), {
           diagnostic_id: diagnosticId.current,
           subprocess_id: assessment.subprocessId,
           process:       assessment.processName,
           score:         assessment.totalScore,
           scores:        assessment.scores,
-          real_values:   realValues ?? null,
+          real_values:   sanitizedRealValues,
           answered_by:   state.email,
           created_at:    new Date().toISOString(),
         }).then(() => {
           savedAssessmentIds.current.add(assessment.subprocessId);
-          console.log('[Firestore] Response saved OK:', assessment.subprocessId, 'diagnostic:', diagnosticId.current);
         }).catch((err) => {
           console.error('[Firestore] Failed to save response:', err);
-          showToast('Erro ao salvar resposta. Verifique sua conexão.');
         });
       }
-
-      console.log('[completeQuestionnaire] dispatching COMPLETE_QUESTIONNAIRE');
-      dispatch({ type: 'COMPLETE_QUESTIONNAIRE', payload: assessment });
-      console.log('[completeQuestionnaire] dispatch DONE');
 
     } catch (err) {
       console.error('[completeQuestionnaire] ERROR:', err);
