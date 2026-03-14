@@ -998,6 +998,13 @@ function WizardView({
     }, 350);
   }, []);
 
+  const scheduleAutoAdvanceSlow = useCallback(() => {
+    if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+    autoAdvanceTimer.current = setTimeout(() => {
+      setStep((prev) => ((prev as number) + 1) as WizardStep);
+    }, 1200);
+  }, []);
+
   const doSave = async (formData: Partial<Phase2FormData>) => {
     setSaving(true);
     try {
@@ -1135,7 +1142,7 @@ function WizardView({
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {DEPARTAMENTO_OPTIONS.map(opt => (
-                  <Radio key={opt} label={opt} value={opt} current={data.departamento ?? ''} onChange={v => { set('departamento', v); }} size="base" />
+                  <Radio key={opt} label={opt} value={opt} current={data.departamento ?? ''} onChange={v => { set('departamento', v); if ((data.areasEnvolvidas ?? []).length > 0) scheduleAutoAdvanceSlow(); }} size="base" />
                 ))}
               </div>
             </div>
@@ -1148,7 +1155,7 @@ function WizardView({
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {HANDOFF_AREAS_OPTIONS.map(opt => (
-                  <MultiCheck key={opt} label={opt} value={opt} current={data.areasEnvolvidas ?? []} onChange={v => set('areasEnvolvidas', v)} size="base" />
+                  <MultiCheck key={opt} label={opt} value={opt} current={data.areasEnvolvidas ?? []} onChange={v => { set('areasEnvolvidas', v); if (data.departamento && v.length > 0) scheduleAutoAdvanceSlow(); }} size="base" />
                 ))}
               </div>
             </div>
@@ -1289,7 +1296,7 @@ function WizardView({
               <p className="text-sm text-gray-500 mb-4">Selecione as fontes mais comuns.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {FONTES_DADOS_OPTIONS.map(opt => (
-                  <MultiCheck key={opt} label={opt} value={opt} current={data.fontesDados ?? []} onChange={v => set('fontesDados', v)} size="base" />
+                  <MultiCheck key={opt} label={opt} value={opt} current={data.fontesDados ?? []} onChange={v => { set('fontesDados', v); if ((data.comoChegam ?? []).length > 0 && v.length > 0) scheduleAutoAdvanceSlow(); }} size="base" />
                 ))}
               </div>
             </div>
@@ -1297,7 +1304,7 @@ function WizardView({
               <p className="text-base font-semibold text-gray-700 mb-2">Como normalmente chegam essas informações?</p>
               <div className="space-y-2">
                 {COMO_CHEGAM_OPTIONS.map(opt => (
-                  <MultiCheck key={opt} label={opt} value={opt} current={data.comoChegam ?? []} onChange={v => set('comoChegam', v)} size="base" />
+                  <MultiCheck key={opt} label={opt} value={opt} current={data.comoChegam ?? []} onChange={v => { set('comoChegam', v); if ((data.fontesDados ?? []).length > 0 && v.length > 0) scheduleAutoAdvanceSlow(); }} size="base" />
                 ))}
               </div>
             </div>
