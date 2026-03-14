@@ -121,10 +121,10 @@ export default function Questionnaire({
   const handleSubmit = () => {
     if (!allAnswered || showCompletion) return;
     setShowCompletion(true);
-    // Call onComplete synchronously — React 18 batches this with the local state
-    // update so the parent transition and the overlay happen in the same render,
-    // preventing the component from getting stuck with showCompletion=true.
-    onComplete(scores, subprocess, macroprocess, process, parseRealValues(realRaw));
+    // Delay the parent transition so the completion overlay is visible first.
+    setTimeout(() => {
+      onComplete(scores, subprocess, macroprocess, process, parseRealValues(realRaw));
+    }, 800);
   };
 
   return (
