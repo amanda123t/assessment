@@ -507,10 +507,10 @@ export default function PDFDiagnosticReport({
               : (sortedImpact[mid - 1] + sortedImpact[mid]) / 2;
 
           const quadrants = [
-            { label: 'Prioridade Imediata',             bg: '#fef2f2', border: '#fecaca', color: '#b91c1c', filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore >= medianImpact },
-            { label: 'Quick Wins',                      bg: '#fff7ed', border: '#fed7aa', color: '#c2410c', filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore < medianImpact },
-            { label: 'Avaliar Engenharia / Integração', bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8', filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore >= medianImpact },
-            { label: 'Baixa Prioridade',                bg: '#f9fafb', border: '#e5e7eb', color: '#6b7280', filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore < medianImpact },
+            { label: 'Quick Wins',          bg: '#fef2f2', border: '#fecaca', color: '#b91c1c', filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore >= medianImpact },
+            { label: 'Ganhos Estratégicos', bg: '#fff7ed', border: '#fed7aa', color: '#c2410c', filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore < medianImpact },
+            { label: 'Projetos Complexos',  bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8', filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore >= medianImpact },
+            { label: 'Baixa Prioridade',    bg: '#f9fafb', border: '#e5e7eb', color: '#6b7280', filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore < medianImpact },
           ];
 
           return (

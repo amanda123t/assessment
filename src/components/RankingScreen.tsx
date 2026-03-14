@@ -269,21 +269,21 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
   const quadrants = [
     {
-      label: 'Prioridade Imediata',
+      label: 'Quick Wins',
       desc:  'Alto potencial de automação + alto impacto operacional',
       filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore >= medianImpact,
       bg: 'bg-red-50', border: 'border-red-200', title: 'text-red-700',
       badge: 'bg-red-100 text-red-700 border-red-200',
     },
     {
-      label: 'Vitórias Rápidas',
+      label: 'Ganhos Estratégicos',
       desc:  'Alto potencial de automação + menor volume de horas',
       filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore < medianImpact,
       bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700',
       badge: 'bg-orange-100 text-orange-700 border-orange-200',
     },
     {
-      label: 'Avaliar Engenharia / Integração',
+      label: 'Projetos Complexos',
       desc:  'Alto impacto operacional, mas automação mais complexa',
       filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore >= medianImpact,
       bg: 'bg-blue-50', border: 'border-blue-200', title: 'text-blue-700',
@@ -291,7 +291,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     },
     {
       label: 'Baixa Prioridade',
-      desc:  'Baixo potencial de automação e baixo impacto operacional',
+      desc:  'Baixo potencial e baixo impacto operacional',
       filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore < medianImpact,
       bg: 'bg-gray-50', border: 'border-gray-200', title: 'text-gray-600',
       badge: 'bg-gray-100 text-gray-600 border-gray-200',
