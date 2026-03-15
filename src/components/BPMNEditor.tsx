@@ -213,7 +213,7 @@ function BPMNEditorInner({ nodes: bpmnNodes, onChange, role, readOnly = false }:
                 if (e.key === 'Enter') confirmEdit();
                 if (e.key === 'Escape') cancelEdit();
               }}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400"
               placeholder="Nome da etapa"
             />
             <button onClick={confirmEdit} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700">
