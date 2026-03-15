@@ -10,7 +10,7 @@ import { SubprocessAssessment, AssessmentIdentification } from '@/types';
 import { buildRanking, buildPrioritySummary, RankedAssessment } from '@/lib/ranking';
 import { normalizeScore } from '@/lib/scoring';
 import { buildAutomationRoadmap, RoadmapCategory } from '@/lib/automationRoadmap';
-import { FTE_HOURS_YEAR, DEFAULT_HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, getAutomationRate, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
+import { FTE_HOURS_YEAR, DEFAULT_HOURLY_COST, VOLUME_MAP, TIME_MAP, PEOPLE_MAP, getAutomationRate, calculateAnnualHours, calculateAutomationSavings, calculateFteCurrent, calculateFteEquivalent, calculateFteAfterAutomation } from '@/lib/impactCalculator';
 import Link from 'next/link';
 import PDFDiagnosticReport from './PDFDiagnosticReport';
 import Tooltip from '@/components/Tooltip';
@@ -203,6 +203,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   >({});
 
   const [voteSummaries, setVoteSummaries] = useState<Map<string, { average: number; count: number }>>(new Map());
+  const [activeTab, setActiveTab] = useState<'executive' | 'detailed' | 'export'>('executive');
 
   // ── Fetch vote summaries ──────────────────────────────────────────────────
   useEffect(() => {
@@ -269,21 +270,21 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
   const quadrants = [
     {
-      label: 'Prioridade Imediata',
+      label: 'Quick Wins',
       desc:  'Alto potencial de automação + alto impacto operacional',
       filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore >= medianImpact,
       bg: 'bg-red-50', border: 'border-red-200', title: 'text-red-700',
       badge: 'bg-red-100 text-red-700 border-red-200',
     },
     {
-      label: 'Vitórias Rápidas',
+      label: 'Ganhos Estratégicos',
       desc:  'Alto potencial de automação + menor volume de horas',
       filter: (r: RankedAssessment) => r.automationScore >= 60 && r.impactScore < medianImpact,
       bg: 'bg-orange-50', border: 'border-orange-200', title: 'text-orange-700',
       badge: 'bg-orange-100 text-orange-700 border-orange-200',
     },
     {
-      label: 'Avaliar Engenharia / Integração',
+      label: 'Projetos Complexos',
       desc:  'Alto impacto operacional, mas automação mais complexa',
       filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore >= medianImpact,
       bg: 'bg-blue-50', border: 'border-blue-200', title: 'text-blue-700',
@@ -291,7 +292,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
     },
     {
       label: 'Baixa Prioridade',
-      desc:  'Baixo potencial de automação e baixo impacto operacional',
+      desc:  'Baixo potencial e baixo impacto operacional',
       filter: (r: RankedAssessment) => r.automationScore < 60 && r.impactScore < medianImpact,
       bg: 'bg-gray-50', border: 'border-gray-200', title: 'text-gray-600',
       badge: 'bg-gray-100 text-gray-600 border-gray-200',
@@ -336,15 +337,16 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
     assessments.forEach((a) => {
       const override = subprocessOverrides[a.subprocessId];
-      // Recalculate annualHours if people override is set
+      // Recalculate annualHours from scratch using calculateAnnualHours so that
+      // the tiered peopleFactor is applied consistently whenever people changes.
       const rawSpPeople = parseFloat(override?.people ?? '');
       const effectivePeople = (!isNaN(rawSpPeople) && rawSpPeople > 0)
         ? rawSpPeople
-        : (PEOPLE_MAP[a.scores.peopleInvolved] ?? 1);
-      const originalPeople = PEOPLE_MAP[a.scores.peopleInvolved] ?? 1;
-      const newAnnual = Math.round(
-        a.annualHours * Math.sqrt(effectivePeople) / Math.sqrt(originalPeople)
-      );
+        : (a.realValues?.people ?? PEOPLE_MAP[a.scores.peopleInvolved] ?? 1);
+      const newAnnual = calculateAnnualHours(a.scores, {
+        ...a.realValues,
+        people: effectivePeople,
+      });
       const rawSpCost     = parseFloat(override?.hourlyCost ?? '');
       const effectiveCost = (!isNaN(rawSpCost) && rawSpCost > 0) ? rawSpCost : DEFAULT_HOURLY_COST;
 
@@ -579,63 +581,131 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
         </div>
       </div>
 
-      {/* ── 3 cards de métricas ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-
-        {/* Card 1 — Horas */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <Clock size={15} className="text-blue-600" strokeWidth={1.75} />
-            </div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Impacto Operacional
-            </p>
+      {/* ── Tab bar ──────────────────────────────────────────────────────── */}
+      {(() => {
+        const TABS: { key: typeof activeTab; label: string }[] = [
+          { key: 'executive', label: 'Resumo Executivo' },
+          { key: 'detailed',  label: 'Análise Detalhada' },
+          { key: 'export',    label: 'Exportar' },
+        ];
+        return (
+          <div className="flex border-b border-gray-200 mb-8 gap-0">
+            {TABS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveTab(key)}
+                className={`px-5 py-3 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+                  activeTab === key
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          <p className="text-3xl font-extrabold text-gray-900">
-            {fmt(dispSavingsHours)} <span className="text-sm font-medium text-gray-500">h/ano</span>
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            ≈ {fmtD(dispSavingsHorasMes)} horas / mês
-          </p>
-        </div>
+        );
+      })()}
 
-        {/* Card 2 — Financeiro */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
-              <DollarSign size={15} className="text-amber-600" strokeWidth={1.75} />
-            </div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Impacto Financeiro
-            </p>
-          </div>
-          <p className="text-3xl font-extrabold text-gray-900">
-            {fmtFinancial(dispFinancialImpact)} <span className="text-sm font-medium text-gray-500">/ano</span>
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            custo base R${dispHourlyCost}/h
-          </p>
-        </div>
+      {/* ══ TAB: Resumo Executivo ════════════════════════════════════════════ */}
+      {activeTab === 'executive' && (
+        <>
+          {/* 3 metric cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
 
-        {/* Card 3 — FTE */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
-              <Activity size={15} className="text-emerald-600" strokeWidth={1.75} />
+            {/* Card 1 — Horas */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  <Clock size={15} className="text-blue-600" strokeWidth={1.75} />
+                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Impacto Operacional
+                </p>
+              </div>
+              <p className="text-3xl font-extrabold text-gray-900">
+                {fmt(dispSavingsHours)} <span className="text-sm font-medium text-gray-500">h/ano</span>
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                ≈ {fmtD(dispSavingsHorasMes)} horas / mês
+              </p>
             </div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Redução de FTE
-            </p>
+
+            {/* Card 2 — FTE */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                  <Activity size={15} className="text-emerald-600" strokeWidth={1.75} />
+                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  FTEs Liberados
+                </p>
+              </div>
+              <p className="text-3xl font-extrabold text-emerald-600">
+                ≈ {fmtFte(dispFteEquivalent)} <span className="text-sm font-medium text-gray-500">FTE/ano</span>
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                1 FTE = {fmt(FTE_HOURS_YEAR)} h/ano
+              </p>
+            </div>
+
+            {/* Card 3 — Financeiro */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                  <DollarSign size={15} className="text-amber-600" strokeWidth={1.75} />
+                </div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Economia Financeira
+                </p>
+              </div>
+              <p className="text-3xl font-extrabold text-gray-900">
+                {fmtFinancial(dispFinancialImpact)} <span className="text-sm font-medium text-gray-500">/ano</span>
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                custo base R${dispHourlyCost}/h
+              </p>
+            </div>
           </div>
-          <p className="text-3xl font-extrabold text-emerald-600">
-            ≈ {fmtFte(dispFteEquivalent)} <span className="text-sm font-medium text-gray-500">FTE/ano</span>
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            1 FTE = {fmt(FTE_HOURS_YEAR)} h/ano
-          </p>
-        </div>
-      </div>
+
+          {/* Top 3 processos por prioridade */}
+          {ranked.length > 0 && (
+            <div className={CARD}>
+              <h3 className="text-base font-semibold text-gray-800 mb-4">
+                Top {Math.min(3, ranked.length)} Processos Prioritários
+              </h3>
+              <div className="space-y-3">
+                {ranked.slice(0, 3).map((item, i) => {
+                  const badge = getMatrixBadge(item.automationScore, item.impactScore, medianImpact);
+                  const medals = ['🥇', '🥈', '🥉'];
+                  return (
+                    <div key={item.subprocessId} className="flex items-center gap-4 bg-gray-50 rounded-xl px-4 py-3">
+                      <span className="text-xl shrink-0">{medals[i]}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-gray-900">{item.subprocessName}</span>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.color}`}>
+                            {badge.label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-0.5">{item.macroprocessName}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-gray-800">{fmtFinancial(item.financialImpact)}</p>
+                        <p className="text-xs text-gray-400">{fmt(item.automationSavingsHours)} h/ano</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ══ TAB: Análise Detalhada ══════════════════════════════════════════ */}
+      {activeTab === 'detailed' && (<>
 
       {/* ── Ranking ─────────────────────────────────────────────────────── */}
       <div className={CARD}>
@@ -729,8 +799,8 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                 const spOverride = subprocessOverrides[item.subprocessId] ?? { people: '', hourlyCost: '' };
                 const refined    = perSubprocessRefined[item.subprocessId];
                 const dispSavings = refined?.savingsHours ?? item.automationSavingsHours;
-                const spVolume   = VOLUME_MAP[item.scores.operationalVolume] ?? 0;
-                const spTime     = TIME_MAP[item.scores.executionTime] ?? 0;
+                const spVolume   = item.realValues?.volume      ?? VOLUME_MAP[item.scores.operationalVolume] ?? 0;
+                const spTime     = item.realValues?.timeMinutes ?? TIME_MAP[item.scores.executionTime]       ?? 0;
 
                 return (
                   <tr key={item.subprocessId} className={i % 2 === 1 ? 'bg-gray-50' : 'bg-white'}>
@@ -778,7 +848,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                             people: e.target.value,
                           },
                         }))}
-                        placeholder={String(PEOPLE_MAP[item.scores.peopleInvolved] ?? '')}
+                        placeholder={String(item.realValues?.people ?? PEOPLE_MAP[item.scores.peopleInvolved] ?? '')}
                         className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent placeholder:text-gray-400 bg-gray-50"
                       />
                     </td>
@@ -933,8 +1003,70 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
         </div>
       )}
 
+      </>)} {/* end Análise Detalhada */}
+
+      {/* ══ TAB: Exportar ═══════════════════════════════════════════════════ */}
+      {activeTab === 'export' && (
+        <div className="max-w-md mx-auto py-8 flex flex-col gap-6">
+
+          {/* PDF export */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
+              <FileDown size={26} className="text-blue-600" strokeWidth={1.5} />
+            </div>
+            <h3 className="text-base font-bold text-gray-900 mb-1">Relatório em PDF</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Gere um PDF personalizado com todos os dados do diagnóstico, incluindo ranking, matriz de priorização e plano por fases.
+            </p>
+            <button
+              onClick={() => setShowIdModal(true)}
+              disabled={generatingPdf}
+              className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700
+                         disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold
+                         px-6 py-3.5 rounded-xl text-sm transition-colors"
+            >
+              <FileDown size={16} strokeWidth={1.75} />
+              {generatingPdf ? 'Gerando PDF...' : 'Baixar relatório em PDF'}
+            </button>
+          </div>
+
+          {/* Share link */}
+          {diagnosticId && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h3 className="text-sm font-bold text-gray-900 mb-1">Compartilhar relatório</h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Qualquer pessoa com este link pode visualizar o relatório. Nenhum login necessário.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={typeof window !== 'undefined'
+                    ? `${window.location.origin}/diagnostic/${diagnosticId}/report`
+                    : ''}
+                  className="border border-gray-200 rounded-lg px-3 py-2 w-full text-xs font-mono bg-gray-50 text-gray-700"
+                />
+                <button
+                  onClick={() => {
+                    const link = `${window.location.origin}/diagnostic/${diagnosticId}/report`;
+                    navigator.clipboard.writeText(link);
+                    setShareLinkCopied(true);
+                    setTimeout(() => setShareLinkCopied(false), 2000);
+                  }}
+                  className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors"
+                >
+                  Copiar link
+                </button>
+              </div>
+              {shareLinkCopied && (
+                <p className="text-emerald-600 text-xs mt-2">Link copiado!</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Rodapé com premissas ────────────────────────────────────────── */}
-      <p className="text-center text-xs text-gray-400 mt-2">
+      <p className="text-center text-xs text-gray-400 mt-8">
         Premissas: custo base R${dispHourlyCost}/h · 1 FTE = {fmt(FTE_HOURS_YEAR)} h/ano · Gerado em {new Date().toLocaleDateString('pt-BR')}
       </p>
 

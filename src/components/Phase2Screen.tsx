@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
 import {
   Plus, ChevronDown, ChevronUp, Save, CheckCircle,
-  Search, X, Sparkles, ArrowRight, ChevronLeft, ChevronRight,
+  Search, X, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Share2,
 } from 'lucide-react';
 import { getAllMacroprocesses } from '@/data/industryLibrary';
 import {
@@ -621,21 +621,25 @@ interface SelectionViewProps {
   savedForms:     Map<string, Partial<Phase2FormData>>;
   bpmnMap:        Map<string, PersistedBPMN>;
   role:           'respondent' | 'analyst';
+  diagnosticId:   string;
   respondentName: string;
+  respondentArea: string;
   nameConfirmed:  boolean;
-  onRespondentChange: (name: string) => void;
+  onRespondentChange:     (name: string) => void;
+  onRespondentAreaChange: (area: string) => void;
   onNameConfirm:  () => void;
   onSelectEntry:  (index: number) => void;
   onStartBatch:   (indices: number[]) => void;
   onViewReport:   () => void;
   onShowLibrary:  () => void;
   onShowManual:   () => void;
+  onInvite:       () => void;
 }
 
 function SelectionView({
-  entries, savedForms, bpmnMap, role, respondentName, nameConfirmed,
-  onRespondentChange, onNameConfirm, onSelectEntry, onStartBatch, onViewReport,
-  onShowLibrary, onShowManual,
+  entries, savedForms, bpmnMap, role, diagnosticId: _diagnosticId, respondentName, respondentArea, nameConfirmed,
+  onRespondentChange, onRespondentAreaChange, onNameConfirm, onSelectEntry, onStartBatch, onViewReport,
+  onShowLibrary, onShowManual, onInvite,
 }: SelectionViewProps) {
   const [selectedForMapping, setSelectedForMapping] = useState<Set<number>>(new Set());
 
@@ -668,13 +672,37 @@ function SelectionView({
       return bpmn && ANALYST_STATUSES.has(bpmn.status);
     });
 
+    const respondentNames = new Set<string>();
+    bpmnMap.forEach(bpmn => {
+      bpmn.history.forEach(h => {
+        if (h.role === 'respondent' && h.by) respondentNames.add(h.by);
+      });
+    });
+    const respondentCount = respondentNames.size;
+
     return (
       <div>
-        <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-900">Revisão do Analista</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {analystEntries.length} subprocesso{analystEntries.length !== 1 ? 's' : ''} aguardando revisão ou finalizados.
-          </p>
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Revisão do Analista</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {analystEntries.length} subprocesso{analystEntries.length !== 1 ? 's' : ''} aguardando revisão ou finalizados.
+            </p>
+            {respondentCount > 0 && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                {respondentCount} respondente{respondentCount !== 1 ? 's' : ''} já enviou{respondentCount !== 1 ? 'ram' : ''} respostas.
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onInvite}
+            className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg
+                       border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+          >
+            <Share2 size={13} strokeWidth={2} />
+            Convidar respondente
+          </button>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
@@ -725,10 +753,16 @@ function SelectionView({
         <button
           type="button"
           onClick={onViewReport}
-          className="inline-flex items-center gap-2 border border-blue-600 rounded-lg px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 transition-colors"
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
+            doneCount === total && total > 0
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              : 'border border-blue-600 text-blue-600 hover:bg-blue-50'
+          }`}
         >
           <Sparkles size={14} strokeWidth={2} />
-          Ver relatório de {doneCount} processo{doneCount !== 1 ? 's' : ''} mapeados
+          {doneCount === total && total > 0
+            ? 'Ver relatório consolidado →'
+            : `Ver relatório de ${doneCount} processo${doneCount !== 1 ? 's' : ''} mapeados`}
         </button>
       </div>
     );
@@ -760,9 +794,16 @@ function SelectionView({
             placeholder="Digite seu nome"
             className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
+          <input
+            type="text"
+            value={respondentArea}
+            onChange={e => onRespondentAreaChange(e.target.value)}
+            placeholder="Sua área ou departamento"
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
           <button
             type="button"
-            disabled={!respondentName.trim()}
+            disabled={!respondentName.trim() || !respondentArea.trim()}
             onClick={onNameConfirm}
             className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold transition-colors"
           >
@@ -770,7 +811,7 @@ function SelectionView({
           </button>
         </div>
         {nameConfirmed && respondentName.trim() && (
-          <p className="text-xs text-emerald-600 mt-2 font-medium">✓ Respondendo como {respondentName.trim()}</p>
+          <p className="text-xs text-emerald-600 mt-2 font-medium">✓ Respondendo como {respondentName.trim()} — {respondentArea.trim()}</p>
         )}
       </div>
 
@@ -910,30 +951,40 @@ function SelectionView({
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onShowLibrary}
-          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-        >
-          <Plus size={14} strokeWidth={2} />
-          Adicionar da biblioteca
-        </button>
-        <button
-          type="button"
-          onClick={onShowManual}
-          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-        >
-          <Plus size={14} strokeWidth={2} />
-          Criar manualmente
-        </button>
+        {!(doneCount === total && total > 0) && (
+          <>
+            <button
+              type="button"
+              onClick={onShowLibrary}
+              className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            >
+              <Plus size={14} strokeWidth={2} />
+              Adicionar da biblioteca
+            </button>
+            <button
+              type="button"
+              onClick={onShowManual}
+              className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            >
+              <Plus size={14} strokeWidth={2} />
+              Criar manualmente
+            </button>
+          </>
+        )}
         <button
           type="button"
           disabled={doneCount === 0}
           onClick={onViewReport}
-          className="inline-flex items-center gap-2 border border-blue-600 rounded-lg px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ml-auto"
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ml-auto ${
+            doneCount === total && total > 0
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              : 'border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed'
+          }`}
         >
           <Sparkles size={14} strokeWidth={2} />
-          Ver relatório de {doneCount} processo{doneCount !== 1 ? 's' : ''} mapeados
+          {doneCount === total && total > 0
+            ? 'Ver relatório consolidado →'
+            : `Ver relatório de ${doneCount} processo${doneCount !== 1 ? 's' : ''} mapeados`}
         </button>
       </div>
     </div>
@@ -946,6 +997,7 @@ interface WizardViewProps {
   entry:          Phase2Entry;
   diagnosticId:   string;
   respondentName: string;
+  respondentArea: string;
   initialData:    Partial<Phase2FormData>;
   totalEntries:   number;
   entryIndex:     number;
@@ -956,7 +1008,7 @@ interface WizardViewProps {
 }
 
 function WizardView({
-  entry, diagnosticId, respondentName, initialData,
+  entry, diagnosticId, respondentName, respondentArea, initialData,
   totalEntries, entryIndex, hasTriageData = false, onComplete, onBack, onError,
 }: WizardViewProps) {
   const [saving, setSaving] = useState(false);
@@ -1008,7 +1060,7 @@ function WizardView({
   const doSave = async (formData: Partial<Phase2FormData>) => {
     setSaving(true);
     try {
-      const sanitized = JSON.parse(JSON.stringify({ ...formData, respondentName }));
+      const sanitized = JSON.parse(JSON.stringify({ ...formData, respondentName, respondentArea }));
       await savePhase2Response(
         diagnosticId,
         entry.subprocessId,
@@ -1601,7 +1653,7 @@ function ValidationView({
           onChange={e => setComment(e.target.value)}
           placeholder="Adicione observações sobre este fluxo…"
           rows={3}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
         />
       </div>
 
@@ -1788,7 +1840,7 @@ function AnalystReviewView({ entry, diagnosticId, bpmn, onFinalize, onReturn, on
           onChange={e => setAnalystComment(e.target.value)}
           placeholder="Observações técnicas ou justificativa…"
           rows={3}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
         />
       </div>
 
@@ -1801,7 +1853,7 @@ function AnalystReviewView({ entry, diagnosticId, bpmn, onFinalize, onReturn, on
             onChange={e => setReturnReason(e.target.value)}
             placeholder="Descreva o que precisa ser corrigido…"
             rows={3}
-            className="w-full border border-orange-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+            className="w-full border border-orange-200 rounded-lg px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
             autoFocus
           />
         </div>
@@ -2020,6 +2072,7 @@ function ReportView({ entries, savedForms, bpmnMap, onBack }: ReportViewProps) {
 
 export default function Phase2Screen({ diagnosticId, prioritized, savedForms: initialSavedForms, role = 'respondent' }: Props) {
   const [respondentName,      setRespondentName]      = useState('');
+  const [respondentArea,      setRespondentArea]      = useState('');
   const [nameConfirmed,       setNameConfirmed]       = useState(false);
   const [entries,             setEntries]             = useState<Phase2Entry[]>(prioritized);
   const [savedForms,          setSavedForms]          = useState<Map<string, Partial<Phase2FormData>>>(initialSavedForms);
@@ -2159,15 +2212,23 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           savedForms={savedForms}
           bpmnMap={bpmnMap}
           role={role}
+          diagnosticId={diagnosticId}
           respondentName={respondentName}
+          respondentArea={respondentArea}
           nameConfirmed={nameConfirmed}
           onRespondentChange={name => { setRespondentName(name); setNameConfirmed(false); }}
+          onRespondentAreaChange={area => { setRespondentArea(area); setNameConfirmed(false); }}
           onNameConfirm={() => setNameConfirmed(true)}
           onSelectEntry={handleSelectEntry}
           onStartBatch={handleStartBatchMapping}
           onViewReport={() => setView('report')}
           onShowLibrary={() => setShowLibrary(true)}
           onShowManual={() => setShowManual(true)}
+          onInvite={() => {
+            const url = `${window.location.origin}/diagnostic/${diagnosticId}/phase2`;
+            navigator.clipboard.writeText(url);
+            showToast('Link copiado! Compartilhe com os respondentes.');
+          }}
         />
       )}
 
@@ -2176,6 +2237,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           entry={entries[activeEntryIndex]}
           diagnosticId={diagnosticId}
           respondentName={respondentName}
+          respondentArea={respondentArea}
           initialData={savedForms.get(entries[activeEntryIndex].subprocessId) ?? {}}
           totalEntries={mappingQueue.length > 0 ? mappingQueue.length : entries.length}
           entryIndex={mappingQueue.length > 0 ? mappingQueuePosition : activeEntryIndex}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
-import { Star, ChevronDown, ChevronUp, Users, BarChart2 } from 'lucide-react';
+import { Star, ChevronDown, ChevronUp, Users, BarChart2, Link2 } from 'lucide-react';
 import { SubprocessAssessment } from '@/types';
 import Link from 'next/link';
 import {
@@ -161,9 +161,12 @@ interface ConsolidatedResultsProps {
 }
 
 function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticId }: ConsolidatedResultsProps) {
-  const [expandedArea, setExpandedArea] = useState<Set<string>>(new Set());
-  const [finalized, setFinalized]       = useState(false);
-  const [resetting, setResetting]       = useState(false);
+  const [expandedArea, setExpandedArea]     = useState<Set<string>>(new Set());
+  const [finalized, setFinalized]           = useState(false);
+  const [resetting, setResetting]           = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [checkAll, setCheckAll]             = useState(false);
+  const [checkReflect, setCheckReflect]     = useState(false);
 
   const voted = assessments.filter(a => (summaries.get(a.subprocessId)?.count ?? 0) > 0);
   const totalVoters = (() => {
@@ -271,6 +274,57 @@ function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticI
         </table>
       </div>
 
+      {/* ── Confirmation modal ── */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h4 className="text-base font-bold text-gray-900 mb-1">Antes de encerrar…</h4>
+            <p className="text-xs text-gray-500 mb-4">
+              {totalVoters} pessoa{totalVoters !== 1 ? 's' : ''} votou{totalVoters !== 1 ? 'ram' : ''} até agora.
+            </p>
+
+            <div className="space-y-3 mb-6">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checkAll}
+                  onChange={e => setCheckAll(e.target.checked)}
+                  className="mt-0.5 accent-violet-600"
+                />
+                <span className="text-sm text-gray-700">Todos os participantes tiveram a chance de votar</span>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checkReflect}
+                  onChange={e => setCheckReflect(e.target.checked)}
+                  className="mt-0.5 accent-violet-600"
+                />
+                <span className="text-sm text-gray-700">Os resultados refletem a prioridade do grupo</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="text-sm font-semibold px-4 py-2 rounded-lg border border-gray-200 text-gray-600
+                           hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setShowConfirmModal(false); setFinalized(true); }}
+                disabled={!checkAll || !checkReflect}
+                className="text-sm font-semibold px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white
+                           disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Encerrar e ver resultados →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Voting control actions ── */}
       <div className="mt-5 pt-5 border-t border-gray-100 flex flex-wrap items-center gap-3">
         {!finalized ? (
@@ -293,7 +347,7 @@ function ConsolidatedResults({ assessments, summaries, assessmentId, diagnosticI
               {resetting ? 'Zerando votos…' : 'Votar novamente'}
             </button>
             <button
-              onClick={() => setFinalized(true)}
+              onClick={() => { setCheckAll(false); setCheckReflect(false); setShowConfirmModal(true); }}
               className="text-xs font-semibold px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
             >
               Encerrar votação
@@ -362,6 +416,7 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
   const [savedVotes, setSavedVotes]           = useState<Map<string, number>>(new Map());
   const [showSavedBanner, setShowSavedBanner] = useState(false);
   const [expanded, setExpanded]               = useState<Set<string>>(new Set());
+  const [linkCopied, setLinkCopied]           = useState(false);
 
   // Prevents re-seeding selections every time the real-time snapshot fires.
   const seededRef = useRef(false);
@@ -450,10 +505,25 @@ export default function VotingPanel({ assessmentId, assessments, diagnosticId }:
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
 
       {/* Section header */}
-      <h3 className="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
-        <Star size={16} className="text-amber-500" strokeWidth={1.75} />
-        Votar Prioridades
-      </h3>
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+          <Star size={16} className="text-amber-500" strokeWidth={1.75} />
+          Votar Prioridades
+        </h3>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(window.location.href);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+          }}
+          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200
+                     text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+          title="Copiar link da votação"
+        >
+          <Link2 size={13} strokeWidth={2} />
+          {linkCopied ? 'Link copiado!' : 'Compartilhar votação'}
+        </button>
+      </div>
       <p className="text-xs text-gray-500 mb-5">
         Cada participante vota de forma independente. Os resultados são agregados em tempo real.
         {identityReady && voterName && (

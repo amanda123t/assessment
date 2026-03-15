@@ -102,7 +102,11 @@ export function calculateAnnualHours(scores: CriteriaScores, realValues?: RealVa
   const people  = realValues?.people      ?? PEOPLE_MAP[scores.peopleInvolved]     ?? 1;
 
   const baseHours    = (volume * minutes * 12) / 60;
-  const peopleFactor = Math.sqrt(people);
+  const peopleFactor = people <= 5
+    ? people
+    : people <= 20
+      ? people * 0.7
+      : people * 0.5;
 
   return Math.round(baseHours * peopleFactor);
 }
