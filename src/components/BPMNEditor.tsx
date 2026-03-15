@@ -226,8 +226,8 @@ function BPMNEditorInner({ nodes: bpmnNodes, onChange, role, readOnly = false }:
         </Panel>
       )}
 
-      {/* Toolbar — hidden in readOnly mode */}
-      {!readOnly && (
+      {/* Toolbar — hidden in readOnly mode or for respondents */}
+      {!readOnly && role !== 'respondent' && (
         <Panel position="top-left">
           <div className="flex flex-wrap gap-1.5 bg-white/90 backdrop-blur border border-gray-200 rounded-xl shadow-sm p-2">
             <ToolbarButton

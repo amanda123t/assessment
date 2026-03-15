@@ -1639,7 +1639,7 @@ function ValidationView({
 
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-5 text-sm text-blue-700">
-        Revise o fluxo gerado automaticamente. Você pode reordenar, adicionar ou remover etapas antes de validar.
+        Este fluxo foi gerado automaticamente. Se algo estiver incorreto, descreva no campo de comentário abaixo — o analista fará os ajustes.
       </div>
 
       {/* BPMN Editor */}
@@ -1652,19 +1652,20 @@ function ValidationView({
           nodes={nodes}
           onChange={setNodes}
           role="respondent"
+          readOnly
         />
       )}
 
       {/* Respondent comment */}
       <div className="mt-4">
-        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-          Comentário (opcional)
+        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+          O que precisa ser ajustado neste fluxo?
         </label>
         <textarea
           value={comment}
           onChange={e => setComment(e.target.value)}
-          placeholder="Adicione observações sobre este fluxo…"
-          rows={3}
+          placeholder="Ex: falta a etapa de aprovação do gerente antes do envio..."
+          rows={5}
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
         />
       </div>
