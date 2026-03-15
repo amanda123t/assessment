@@ -727,10 +727,16 @@ function SelectionView({
         <button
           type="button"
           onClick={onViewReport}
-          className="inline-flex items-center gap-2 border border-blue-600 rounded-lg px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 transition-colors"
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
+            doneCount === total && total > 0
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              : 'border border-blue-600 text-blue-600 hover:bg-blue-50'
+          }`}
         >
           <Sparkles size={14} strokeWidth={2} />
-          Ver relatório de {doneCount} processo{doneCount !== 1 ? 's' : ''} mapeados
+          {doneCount === total && total > 0
+            ? 'Ver relatório consolidado →'
+            : `Ver relatório de ${doneCount} processo${doneCount !== 1 ? 's' : ''} mapeados`}
         </button>
       </div>
     );
@@ -919,30 +925,40 @@ function SelectionView({
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onShowLibrary}
-          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-        >
-          <Plus size={14} strokeWidth={2} />
-          Adicionar da biblioteca
-        </button>
-        <button
-          type="button"
-          onClick={onShowManual}
-          className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-        >
-          <Plus size={14} strokeWidth={2} />
-          Criar manualmente
-        </button>
+        {!(doneCount === total && total > 0) && (
+          <>
+            <button
+              type="button"
+              onClick={onShowLibrary}
+              className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            >
+              <Plus size={14} strokeWidth={2} />
+              Adicionar da biblioteca
+            </button>
+            <button
+              type="button"
+              onClick={onShowManual}
+              className="inline-flex items-center gap-2 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            >
+              <Plus size={14} strokeWidth={2} />
+              Criar manualmente
+            </button>
+          </>
+        )}
         <button
           type="button"
           disabled={doneCount === 0}
           onClick={onViewReport}
-          className="inline-flex items-center gap-2 border border-blue-600 rounded-lg px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ml-auto"
+          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ml-auto ${
+            doneCount === total && total > 0
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              : 'border border-blue-600 text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed'
+          }`}
         >
           <Sparkles size={14} strokeWidth={2} />
-          Ver relatório de {doneCount} processo{doneCount !== 1 ? 's' : ''} mapeados
+          {doneCount === total && total > 0
+            ? 'Ver relatório consolidado →'
+            : `Ver relatório de ${doneCount} processo${doneCount !== 1 ? 's' : ''} mapeados`}
         </button>
       </div>
     </div>
