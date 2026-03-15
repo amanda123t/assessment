@@ -1652,14 +1652,13 @@ function ValidationView({
           nodes={nodes}
           onChange={setNodes}
           role="respondent"
-          readOnly
         />
       )}
 
       {/* Respondent comment */}
       <div className="mt-4">
         <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-          O que precisa ser ajustado neste fluxo?
+          O que precisa ser ajustado?
         </label>
         <textarea
           value={comment}

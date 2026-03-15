@@ -292,9 +292,87 @@ function ToolbarButton({
   );
 }
 
+// ── Linear flow viewer (respondent read-only simplified view) ─────────────────
+
+function LinearFlowNode({ node }: { node: BPMNNode }) {
+  if (node.type === 'start') {
+    return (
+      <div className="flex items-center justify-center w-28 h-8 rounded-full bg-emerald-100 border-2 border-emerald-400 text-xs font-semibold text-emerald-700">
+        {node.label || 'Início'}
+      </div>
+    );
+  }
+  if (node.type === 'end') {
+    return (
+      <div className="flex items-center justify-center w-28 h-8 rounded-full bg-gray-700 border-2 border-gray-800 text-xs font-semibold text-white">
+        {node.label || 'Fim'}
+      </div>
+    );
+  }
+  if (node.type === 'gateway') {
+    return (
+      <div className="w-full bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-bold bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">Decisão</span>
+          <span className="text-sm font-semibold text-gray-800">{node.label}</span>
+        </div>
+        {node.branches && node.branches.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {node.branches.map((branch, j) => (
+              <span key={j} className="inline-flex items-center gap-1 text-xs text-gray-600 bg-white border border-amber-200 rounded-lg px-2 py-1">
+                <span className="text-amber-500">↳</span> {branch.condition}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+  // activity, subprocess, intermediate-event
+  return (
+    <div className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+      <span className="text-sm text-gray-800">{node.label}</span>
+    </div>
+  );
+}
+
+function LinearFlowViewer({ nodes }: { nodes: BPMNNode[] }) {
+  if (nodes.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-32 text-sm text-gray-400">
+        Nenhuma etapa gerada ainda.
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center py-6 px-4 overflow-y-auto max-h-[500px] w-full">
+      {nodes.map((node, i) => (
+        <div key={i} className="flex flex-col items-center w-full max-w-md">
+          <LinearFlowNode node={node} />
+          {i < nodes.length - 1 && (
+            <div className="flex flex-col items-center my-0.5 text-gray-300">
+              <div className="w-px h-5 bg-gray-300" />
+              <svg width="10" height="6" viewBox="0 0 10 6">
+                <path d="M5 6 L0 0 L10 0 Z" fill="#d1d5db" />
+              </svg>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Public export (wraps in ReactFlowProvider) ────────────────────────────────
 
 export default function BPMNEditor(props: BPMNEditorProps) {
+  if (props.role === 'respondent') {
+    return (
+      <div className="w-full rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+        <LinearFlowViewer nodes={props.nodes} />
+      </div>
+    );
+  }
   return (
     <div className={`w-full rounded-xl border border-gray-200 overflow-hidden ${
       props.readOnly ? 'h-[400px] cursor-grab' : 'h-[500px]'
