@@ -781,37 +781,49 @@ function SelectionView({
 
       {/* Respondent identification */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
-        <h3 className="text-sm font-bold text-gray-800 mb-3">Identificação do respondente</h3>
+        <h3 className="text-sm font-bold text-gray-800 mb-3">Quem está respondendo?</h3>
         <div className="flex gap-3">
-          <input
-            type="text"
-            autoFocus
-            value={respondentName}
-            onChange={e => {
-              console.log('[SelectionView] name input onChange:', e.target.value);
-              onRespondentChange(e.target.value);
-            }}
-            placeholder="Digite seu nome"
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <input
-            type="text"
-            value={respondentArea}
-            onChange={e => onRespondentAreaChange(e.target.value)}
-            placeholder="Sua área ou departamento"
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-          <button
-            type="button"
-            disabled={!respondentName.trim() || !respondentArea.trim()}
-            onClick={onNameConfirm}
-            className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold transition-colors"
-          >
-            Confirmar
-          </button>
+          <div className="flex-1 flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-600">Nome</label>
+            <input
+              type="text"
+              autoFocus
+              value={respondentName}
+              onChange={e => {
+                console.log('[SelectionView] name input onChange:', e.target.value);
+                onRespondentChange(e.target.value);
+              }}
+              placeholder="Digite seu nome"
+              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+          <div className="flex-1 flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-600">Área / Departamento</label>
+            <input
+              type="text"
+              value={respondentArea}
+              onChange={e => onRespondentAreaChange(e.target.value)}
+              placeholder="Sua área ou departamento"
+              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+          <div className="flex flex-col justify-end">
+            <button
+              type="button"
+              disabled={!respondentName.trim() || !respondentArea.trim()}
+              onClick={onNameConfirm}
+              className="px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold transition-colors"
+            >
+              Confirmar
+            </button>
+          </div>
         </div>
         {nameConfirmed && respondentName.trim() && (
-          <p className="text-xs text-emerald-600 mt-2 font-medium">✓ Respondendo como {respondentName.trim()} — {respondentArea.trim()}</p>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-xs text-emerald-600">✓</span>
+            <span className="text-sm font-semibold text-gray-800">{respondentName.trim()}</span>
+            <span className="text-xs text-gray-500">{respondentArea.trim()}</span>
+          </div>
         )}
       </div>
 
@@ -1627,7 +1639,7 @@ function ValidationView({
 
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-5 text-sm text-blue-700">
-        Revise o fluxo gerado automaticamente. Você pode reordenar, adicionar ou remover etapas antes de validar.
+        Este fluxo foi gerado automaticamente. Se algo estiver incorreto, descreva no campo de comentário abaixo — o analista fará os ajustes.
       </div>
 
       {/* BPMN Editor */}
@@ -1645,14 +1657,14 @@ function ValidationView({
 
       {/* Respondent comment */}
       <div className="mt-4">
-        <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-          Comentário (opcional)
+        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+          O que precisa ser ajustado?
         </label>
         <textarea
           value={comment}
           onChange={e => setComment(e.target.value)}
-          placeholder="Adicione observações sobre este fluxo…"
-          rows={3}
+          placeholder="Ex: falta a etapa de aprovação do gerente antes do envio..."
+          rows={5}
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
         />
       </div>

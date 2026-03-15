@@ -203,7 +203,7 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
   >({});
 
   const [voteSummaries, setVoteSummaries] = useState<Map<string, { average: number; count: number }>>(new Map());
-  const [activeTab, setActiveTab] = useState<'executive' | 'detailed' | 'export'>('executive');
+  const [activeTab, setActiveTab] = useState<'executive' | 'detailed'>('executive');
 
   // ── Fetch vote summaries ──────────────────────────────────────────────────
   useEffect(() => {
@@ -519,7 +519,10 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
                   const link = `${window.location.origin}/diagnostic/${diagnosticId}/report`;
                   navigator.clipboard.writeText(link);
                   setShareLinkCopied(true);
-                  setTimeout(() => setShareLinkCopied(false), 2000);
+                  setTimeout(() => {
+                    setShareLinkCopied(false);
+                    setShowShareModal(false);
+                  }, 1500);
                 }}
                 className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors"
               >
@@ -586,7 +589,6 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
         const TABS: { key: typeof activeTab; label: string }[] = [
           { key: 'executive', label: 'Resumo Executivo' },
           { key: 'detailed',  label: 'Análise Detalhada' },
-          { key: 'export',    label: 'Exportar' },
         ];
         return (
           <div className="flex border-b border-gray-200 mb-8 gap-0">
@@ -1005,65 +1007,6 @@ export default function RankingScreen({ assessments, onRestart, diagnosticId }: 
 
       </>)} {/* end Análise Detalhada */}
 
-      {/* ══ TAB: Exportar ═══════════════════════════════════════════════════ */}
-      {activeTab === 'export' && (
-        <div className="max-w-md mx-auto py-8 flex flex-col gap-6">
-
-          {/* PDF export */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
-              <FileDown size={26} className="text-blue-600" strokeWidth={1.5} />
-            </div>
-            <h3 className="text-base font-bold text-gray-900 mb-1">Relatório em PDF</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Gere um PDF personalizado com todos os dados do diagnóstico, incluindo ranking, matriz de priorização e plano por fases.
-            </p>
-            <button
-              onClick={() => setShowIdModal(true)}
-              disabled={generatingPdf}
-              className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700
-                         disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold
-                         px-6 py-3.5 rounded-xl text-sm transition-colors"
-            >
-              <FileDown size={16} strokeWidth={1.75} />
-              {generatingPdf ? 'Gerando PDF...' : 'Baixar relatório em PDF'}
-            </button>
-          </div>
-
-          {/* Share link */}
-          {diagnosticId && (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="text-sm font-bold text-gray-900 mb-1">Compartilhar relatório</h3>
-              <p className="text-xs text-gray-500 mb-4">
-                Qualquer pessoa com este link pode visualizar o relatório. Nenhum login necessário.
-              </p>
-              <div className="flex gap-2">
-                <input
-                  readOnly
-                  value={typeof window !== 'undefined'
-                    ? `${window.location.origin}/diagnostic/${diagnosticId}/report`
-                    : ''}
-                  className="border border-gray-200 rounded-lg px-3 py-2 w-full text-xs font-mono bg-gray-50 text-gray-700"
-                />
-                <button
-                  onClick={() => {
-                    const link = `${window.location.origin}/diagnostic/${diagnosticId}/report`;
-                    navigator.clipboard.writeText(link);
-                    setShareLinkCopied(true);
-                    setTimeout(() => setShareLinkCopied(false), 2000);
-                  }}
-                  className="bg-gray-900 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors"
-                >
-                  Copiar link
-                </button>
-              </div>
-              {shareLinkCopied && (
-                <p className="text-emerald-600 text-xs mt-2">Link copiado!</p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── Rodapé com premissas ────────────────────────────────────────── */}
       <p className="text-center text-xs text-gray-400 mt-8">
