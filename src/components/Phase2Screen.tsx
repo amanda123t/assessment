@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast, ToastContainer } from '@/components/Toast';
 import {
   Plus, ChevronDown, ChevronUp, Save, CheckCircle,
-  Search, X, Sparkles, ArrowRight, ChevronLeft, ChevronRight,
+  Search, X, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Share2,
 } from 'lucide-react';
 import { getAllMacroprocesses } from '@/data/industryLibrary';
 import {
@@ -621,6 +621,7 @@ interface SelectionViewProps {
   savedForms:     Map<string, Partial<Phase2FormData>>;
   bpmnMap:        Map<string, PersistedBPMN>;
   role:           'respondent' | 'analyst';
+  diagnosticId:   string;
   respondentName: string;
   respondentArea: string;
   nameConfirmed:  boolean;
@@ -632,12 +633,13 @@ interface SelectionViewProps {
   onViewReport:   () => void;
   onShowLibrary:  () => void;
   onShowManual:   () => void;
+  onInvite:       () => void;
 }
 
 function SelectionView({
-  entries, savedForms, bpmnMap, role, respondentName, respondentArea, nameConfirmed,
+  entries, savedForms, bpmnMap, role, diagnosticId: _diagnosticId, respondentName, respondentArea, nameConfirmed,
   onRespondentChange, onRespondentAreaChange, onNameConfirm, onSelectEntry, onStartBatch, onViewReport,
-  onShowLibrary, onShowManual,
+  onShowLibrary, onShowManual, onInvite,
 }: SelectionViewProps) {
   const [selectedForMapping, setSelectedForMapping] = useState<Set<number>>(new Set());
 
@@ -670,13 +672,37 @@ function SelectionView({
       return bpmn && ANALYST_STATUSES.has(bpmn.status);
     });
 
+    const respondentNames = new Set<string>();
+    bpmnMap.forEach(bpmn => {
+      bpmn.history.forEach(h => {
+        if (h.role === 'respondent' && h.by) respondentNames.add(h.by);
+      });
+    });
+    const respondentCount = respondentNames.size;
+
     return (
       <div>
-        <div className="mb-5">
-          <h2 className="text-lg font-bold text-gray-900">Revisão do Analista</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {analystEntries.length} subprocesso{analystEntries.length !== 1 ? 's' : ''} aguardando revisão ou finalizados.
-          </p>
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Revisão do Analista</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {analystEntries.length} subprocesso{analystEntries.length !== 1 ? 's' : ''} aguardando revisão ou finalizados.
+            </p>
+            {respondentCount > 0 && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                {respondentCount} respondente{respondentCount !== 1 ? 's' : ''} já enviou{respondentCount !== 1 ? 'ram' : ''} respostas.
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onInvite}
+            className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg
+                       border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+          >
+            <Share2 size={13} strokeWidth={2} />
+            Convidar respondente
+          </button>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
@@ -2186,6 +2212,7 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           savedForms={savedForms}
           bpmnMap={bpmnMap}
           role={role}
+          diagnosticId={diagnosticId}
           respondentName={respondentName}
           respondentArea={respondentArea}
           nameConfirmed={nameConfirmed}
@@ -2197,6 +2224,11 @@ export default function Phase2Screen({ diagnosticId, prioritized, savedForms: in
           onViewReport={() => setView('report')}
           onShowLibrary={() => setShowLibrary(true)}
           onShowManual={() => setShowManual(true)}
+          onInvite={() => {
+            const url = `${window.location.origin}/diagnostic/${diagnosticId}/phase2`;
+            navigator.clipboard.writeText(url);
+            showToast('Link copiado! Compartilhe com os respondentes.');
+          }}
         />
       )}
 
