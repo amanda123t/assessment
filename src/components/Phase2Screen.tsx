@@ -310,7 +310,7 @@ function SystemsInput({
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(input); } }}
           placeholder="Outro sistema? Digite e pressione Enter..."
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400"
         />
         <button
           type="button"
@@ -416,7 +416,7 @@ function SequenceBuilder({
           onChange={e => setCustomStep(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
           placeholder="Ou digite uma etapa personalizada e pressione Enter..."
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400"
         />
         <button
           type="button"
@@ -500,7 +500,7 @@ function LibraryPicker({ existing, onAdd, onClose }: LibraryPickerProps) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Buscar subprocesso..."
-              className="flex-1 bg-transparent text-xs outline-none text-gray-700 placeholder-gray-400"
+              className="flex-1 bg-transparent text-xs outline-none text-gray-900 placeholder-gray-400 dark:text-gray-100 dark:placeholder-gray-400"
             />
           </div>
         </div>
@@ -547,11 +547,11 @@ function ManualAddModal({ onAdd, onClose }: ManualAddProps) {
         <div className="space-y-3 mb-5">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Nome do processo</label>
-            <input type="text" value={processName} onChange={e => setProcessName(e.target.value)} placeholder="Ex: Contas a Pagar" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            <input type="text" value={processName} onChange={e => setProcessName(e.target.value)} placeholder="Ex: Contas a Pagar" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Nome do subprocesso</label>
-            <input type="text" value={subprocessName} onChange={e => setSubprocessName(e.target.value)} placeholder="Ex: Lançamento de notas fiscais" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            <input type="text" value={subprocessName} onChange={e => setSubprocessName(e.target.value)} placeholder="Ex: Lançamento de notas fiscais" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400" />
           </div>
         </div>
         <div className="flex gap-2">
@@ -794,7 +794,7 @@ function SelectionView({
                 onRespondentChange(e.target.value);
               }}
               placeholder="Digite seu nome"
-              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400"
             />
           </div>
           <div className="flex-1 flex flex-col gap-1">
@@ -804,7 +804,7 @@ function SelectionView({
               value={respondentArea}
               onChange={e => onRespondentAreaChange(e.target.value)}
               placeholder="Sua área ou departamento"
-              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400"
             />
           </div>
           <div className="flex flex-col justify-end">
@@ -1810,7 +1810,7 @@ function AnalystReviewView({ entry, diagnosticId, bpmn, onFinalize, onReturn, on
           value={analystName}
           onChange={e => handleAnalystNameChange(e.target.value)}
           placeholder="Seu nome"
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 w-full max-w-xs"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 w-full max-w-xs text-gray-900 bg-white dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400"
         />
       </div>
 
